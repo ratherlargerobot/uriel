@@ -1,0 +1,76 @@
+------------------------------------------------------------------------------
+HEADERS
+------------------------------------------------------------------------------
+ALL NODES
+    Title: [no default]                             Page title
+    Escape-Title: true
+    Template: default.html
+    Format: html                                    "html" or "text"
+    Created: [no default]                           `date -Is` / `date +%FT%T`
+    Modified: [default is node mtime]               `date -Is` / `date +%FT%T`
+    Breadcrumb-Separator: &raquo;
+    Breadcrumb-Separator-Spaces: true
+    Flat-URL: false
+    Link-Prefix: <p>
+    Link-Suffix: </p>
+    Tags: [no default]                              foo, bar, baz, quux
+    RSS-Include: false
+    Sitemap-Include: true
+
+ROOT NODE
+    Canonical-URL: [no default]                     https://example.com
+    Tag-Node: [no default]                          path/to/tag/node
+    RSS-URL: [no default]                           /rss.xml
+    RSS-Title: <value of Title>
+    RSS-Add-Node-Title-Header: true
+    RSS-Description: [no default]
+    RSS-Image-URL: [no default]
+    RSS-Image-Width: [no default]
+    RSS-Image-Height: [no default]
+    Sitemap-URL: [no default]                       /sitemap.xml
+
+INHERITANCE
+    Headers not inherited by default:
+        Title, Created, Modified
+
+    Delete an inherited header named Foo from the current node:
+        -Foo: *
+
+    Set a header named Foo in child nodes, but not the current node:
+        +Foo: bar
+
+------------------------------------------------------------------------------
+SUBSTITUTION PARAMETERS
+------------------------------------------------------------------------------
+{{node:body}}
+
+{{include:some_template_name.html}}
+
+{{value:foo}}                                   value:<lowercase-header-name>
+{{value-unescaped:foo}}
+
+{{breadcrumbs:*}}
+
+{{created:%B %d, %Y}}                           (`man strftime`)
+{{modified:%B %d, %Y}}                          (`man strftime`)
+
+{{static-url:foo.jpg}}                          a.jpg, i/a.jpg, /a.jpg
+{{static-hash-url:foo.css}}                     a.css, i/a.css, /a.css
+
+{{rss:url}}
+
+{{node:url}}
+{{node:name}}
+{{node:title}}
+{{node:link}}
+
+{{node-url:foo/bar}}
+{{node-name:foo/bar}}
+{{node-title:foo/bar}}
+{{node-link:foo/bar}}
+
+{{node-list:*}}
+{{tag-list:*}}
+
+{{soju:your_code_here(page, node, project_root, use_canonical_url)}}
+

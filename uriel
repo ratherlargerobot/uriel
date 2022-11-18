@@ -1,0 +1,3544 @@
+#!/usr/bin/env python3
+
+"""
+uriel
+
+Yet another static website generator.
+
+Named for the archangel Uriel in the novel Unsong, whose job was to perform
+the fantastic and mundane work necessary to keep the world functioning.
+
+Copyright 2021 Nathan Rosenquist
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+"""
+
+import re
+import os
+import sys
+import time
+import hashlib
+import calendar
+import datetime
+import subprocess
+
+# the name of the program
+PROGRAM_NAME = "uriel"
+
+# rsync command
+CMD_RSYNC = "rsync"
+
+# exit codes
+EXIT_OK = 0
+EXIT_FAIL = 1
+
+# sub-directories under the project root directory
+STATIC_ROOT = "static"
+NODES_ROOT = "nodes"
+TEMPLATES_ROOT = "templates"
+LIB_ROOT = "lib"
+PUBLIC_ROOT = "public"
+
+# node index filename
+NODE_INDEX = "index"
+
+# html index filename
+HTML_INDEX = "index.html"
+
+# default template to use when rendering nodes
+DEFAULT_TEMPLATE = "default.html"
+
+# HTML escape character map
+HTML_ESCAPE_MAP = {
+    "&": "&amp;",
+    '"': "&quot;",
+    "'": "&apos;",
+    ">": "&gt;",
+    "<": "&lt;"
+}
+
+# maximum number of RSS feed entries
+RSS_MAX_ENTRIES = 20
+
+# maximum number of sitemap entries
+SITEMAP_MAX_ENTRIES = 50000
+
+# static URL path -> hash URL path
+static_hash_urls = {}
+
+class UrielError(Exception):
+    """
+    General purpose exception that will result in a program error, but
+    without showing a stack trace to the user.
+
+    """
+
+    pass
+
+
+class SojuError(Exception):
+    """
+    Represents an error from user-defined soju code that should not throw
+    a stack trace.
+
+    """
+
+    pass
+
+
+class HandlerError(Exception):
+    """
+    Represents an error from user-defined handler code that should not throw
+    a stack trace.
+
+    """
+
+    pass
+
+
+class Token:
+    """
+    Represents a single token, either a literal or a substitution parameter.
+
+    Lines are parsed one at a time. Each line can be divided into one or
+    more tokens. A token is either a literal, or a substitution parameter,
+    e.g. {{foo:bar}}
+
+    """
+
+    # possible types
+    # {{$TOKEN_TYPE_CONSTANT:*}}
+    # all are lvalues for substitution parameters, except for "literal",
+    # which is just a literal string
+    LITERAL = "literal"
+    VALUE = "value"
+    VALUE_UNESCAPED = "value-unescaped"
+    INCLUDE = "include"
+    BREADCRUMBS = "breadcrumbs"
+    CREATED = "created"
+    MODIFIED = "modified"
+    STATIC_URL = "static-url"
+    STATIC_HASH_URL = "static-hash-url"
+    RSS = "rss"
+    NODE = "node"
+    NODE_URL = "node-url"
+    NODE_NAME = "node-name"
+    NODE_TITLE = "node-title"
+    NODE_LINK = "node-link"
+    NODE_LIST = "node-list"
+    TAG_LIST = "tag-list"
+    SOJU = "soju"
+
+    def __init__(self, s):
+        """
+        Accepts a fragment of text, which may or may not be a parameter.
+
+        Sets the "type" and "value" fields according to the string contents.
+
+        """
+
+        # remember the original string that was used to make the token
+        self.original_string = s
+
+        # does it look like this was supposed to be a parameter,
+        # but we don't understand it?
+        self.unidentified_parameter = False
+
+        # parameter
+        if s.startswith("{{") and s.endswith("}}"):
+            # strip off the {{ and }}
+            content = s[2:-2]
+
+            # parse (key, value) inside of "{{ key: value }}"
+            try:
+                (keyword, value) = content.split(":", maxsplit=1)
+                keyword = keyword.strip()
+                value = value.strip()
+            except ValueError:
+                keyword = None
+                value = s
+
+            # allowed keywords inside of a {{ parameter }}
+            # (all are allowed except "literal")
+            words = [
+                Token.VALUE,
+                Token.VALUE_UNESCAPED,
+                Token.INCLUDE,
+                Token.CREATED,
+                Token.MODIFIED,
+                Token.BREADCRUMBS,
+                Token.STATIC_URL,
+                Token.STATIC_HASH_URL,
+                Token.RSS,
+                Token.NODE,
+                Token.NODE_URL,
+                Token.NODE_NAME,
+                Token.NODE_TITLE,
+                Token.NODE_LINK,
+                Token.NODE_LIST,
+                Token.TAG_LIST,
+                Token.SOJU,
+            ]
+
+            # turn the parameter key into a token type
+            self.type = None
+            for word in words:
+                if keyword == word:
+                    self.type = word
+                    break
+
+            # if we didn't find a token type that we understood,
+            # make a note of it, but pass the entire value on as a literal
+            if self.type is None:
+                self.unidentified_parameter = True
+                self.type = Token.LITERAL
+                value = self.original_string
+
+            self.value = value
+
+        # literal
+        else:
+            self.type = Token.LITERAL
+            self.value = s
+
+    def has_unidentified_parameter(self):
+        """
+        Does this token contain something that looks syntactically like a
+        substitution parameter, but not one that we recognize?
+
+        """
+
+        return self.unidentified_parameter
+
+    def __str__(self):
+        return "[token type=" + self.type + ", value='" + self.value + "']"
+
+
+class TemplateStack:
+    """
+    Nodes and templates can include other templates.
+
+    This class represents the stack of templates, in the order they were
+    included.
+
+    """
+
+    def __init__(self):
+        """
+        Constructor.
+
+        """
+
+        self.templates = []
+
+    def push(self, template, node_path):
+        """
+        Add a template to the stack.
+
+        Accepts the template to add to the stack, and the node path.
+
+        """
+
+        # if an include loop is detected, show a stack trace and raise an error
+        if template in self.templates:
+            log("include loop error:")
+            log("  %s/%s" % (NODES_ROOT, node_path))
+
+            while self.has_more_elements():
+                t = self.shift()
+                log("  %s/%s" % (TEMPLATES_ROOT, t))
+
+            log("  %s/%s" % (TEMPLATES_ROOT, template))
+
+            raise UrielError(
+                "include loop detected in template: '%s'" % (template))
+
+        self.templates.append(template)
+
+    def pop(self):
+        """
+        Remove the most recent template from the stack.
+
+        """
+
+        self.templates.pop()
+
+    def shift(self):
+        """
+        Remove the first template from the stack and return it.
+
+        """
+
+        template = self.templates[0]
+
+        self.templates = self.templates[1:]
+
+        return template
+
+    def has_more_elements(self):
+        """
+        Does this stack still have more templates that can be removed?
+
+        """
+
+        if len(self.templates) > 0:
+            return True
+
+        return False
+
+
+class Page:
+    """
+    A Page is a combination of a Node and a template.
+
+    """
+
+    def __init__(self, project_root, node, use_canonical_url=False):
+        """
+        Accepts the project root, the template, and a Node.
+
+        Optionally accepts use_canonical_url, a boolean that influences
+        whether substitution parameter URLs are rewritten to use the
+        Canonical-URL. The default is False.
+
+        """
+
+        self.project_root = project_root
+        self.node = node
+
+        # use the template from the node header, or default if not set
+        if node.has_header("template"):
+            self.template = node.get_header("template")
+        else:
+            self.template = DEFAULT_TEMPLATE
+
+        # templates can include other templates
+        # keep track of which one we're using right now, in case we
+        # have to show an error message
+        self.template_stack = TemplateStack()
+
+        # make sure we don't get into a {{node:body}} inclusion loop
+        self.node_body_semaphore = 0
+
+        # remember whether we want to include the canonical URL in links
+        self.use_canonical_url = use_canonical_url
+
+    def line_error(self, token, reason, raise_exception=True):
+        """
+        Log a parameter error stack trace.
+
+        Accepts a Token, the reason for the error, and whether or not
+        this method should raise an exception (by default it does).
+
+        """
+
+        log("parameter error:")
+        log("  %s/%s" % (NODES_ROOT, self.node.get_path()))
+
+        while self.template_stack.has_more_elements():
+            template = self.template_stack.shift()
+            log("  %s/%s" % (TEMPLATES_ROOT, template))
+
+        log("  '%s'" % (token.original_string))
+
+        if raise_exception:
+            raise UrielError(reason)
+        else:
+            log("  %s" % (reason))
+
+    def node_body_loop_error(self, token):
+        """
+        Log a {{node:body}} inclusion loop error stack trace.
+
+        Accepts a Token.
+
+        """
+
+        log("node body include loop error:")
+        log("  %s/%s" % (NODES_ROOT, self.node.get_path()))
+
+        while self.template_stack.has_more_elements():
+            template = self.template_stack.shift()
+            log("  %s/%s" % (TEMPLATES_ROOT, template))
+
+        log("  %s/%s" % (NODES_ROOT, self.node.get_path()))
+        log("  '%s'" % (token.original_string))
+
+        raise UrielError(
+            "node body include loop detected in node: '%s'" % \
+            (self.node.get_path()))
+
+    def tokenize(self, line):
+        """
+        Accepts a single line of text as input.
+
+        Turns the input into one or more Token instances.
+
+        Returns a list of Token.
+
+        """
+
+        # Token instances
+        tokens = []
+
+        # split the tokens
+        index = 0
+        while True:
+            open_index = line[index:].find("{{")
+
+            # there's a parameter coming up, but we're not there yet
+            if open_index > 0:
+                tokens.append(Token(line[index:index+open_index]))
+                index += open_index
+
+            # we're at the parameter now
+            elif open_index == 0:
+                close_index = line[index:].find("}}")
+                # we have an opening {{, but no }}
+                if -1 == close_index:
+                    tokens.append(Token(line[index:]))
+                    break
+
+                # scoop up the "{{ ... }}" part and make it into a token
+                next_index = index + close_index + 2
+                tokens.append(Token(line[index:next_index]))
+                index = next_index
+
+            # no more parameters
+            else:
+                tokens.append(Token(line[index:]))
+                break
+
+        return tokens
+
+    def text_to_html(self, text):
+        """
+        Turn a multi-line text string into a multi-line string with
+        <br> tags at the end of each line.
+
+        """
+
+        lines = text.split("\n")
+
+        return "<br>\n".join(lines)
+
+    def get_node_by_path(self, token, path):
+        """
+        Get the Node that corresponds with the given path.
+
+        Accepts a token, and a path (e.g. index, foo/index)
+
+        Returns the requested Node.
+
+        Raises a UrielError if the node can not be found.
+
+        """
+
+        # get the root node to start our search
+        root = self.node.get_root_node()
+
+        # find the node that matches the path, and return it
+        try:
+            node = root.find_node_by_path(path)
+        except UrielError as e:
+            self.line_error(token, "node '%s' does not exist" % (path))
+
+        return node
+
+    def create_breadcrumbs(self):
+        """
+        Create a breadcrumbs HTML fragment for the Node associated with
+        this Page.
+
+        Return the HTML fragment as a string.
+
+        """
+
+        # list of nodes, starting from the leaf node and
+        # going back up to the root
+        nodes = []
+
+        # list of breadcrumb HTML fragments, in the order we want
+        breadcrumbs = []
+
+        # build a list of the nodes from the leaf up to the root
+        cur = self.node
+        while True:
+            nodes.append(cur)
+
+            if cur.parent_node is None:
+                break
+
+            cur = cur.parent_node
+
+        # remove the last element from the node list (the root)
+        # because we don't want to include the home page in breadcrumbs
+        nodes = nodes[:-1]
+
+        # go through the nodes from (almost) the root to the bottom,
+        # in the order that we want the breadcrumb HTML to appear
+        first_breadcrumb = True
+        for cur_node in reversed(nodes):
+            if not first_breadcrumb:
+                breadcrumbs.append(self.node.get_breadcrumb_separator())
+
+            breadcrumbs.append(self.get_node_link(cur_node))
+
+            first_breadcrumb = False
+
+        return "".join(breadcrumbs)
+
+    def get_soju_result(self, code):
+        """
+        Run the given code in the soju module, and return the result.
+
+        """
+
+        # set up the local environment so the code fragment passed in can
+        # refer to these variables without qualifying them
+        page = self
+        node = self.node
+        project_root = self.project_root
+        use_canonical_url = self.use_canonical_url
+
+        # don't export the "self" reference from this method into eval code
+        del(self)
+
+        # run the code in the soju module, and return the result
+        result = eval("soju." + code)
+
+        if type(result) is not str:
+            err = "user-defined function '%s' returned '%s' instead of string"
+            raise SojuError(err % (code, str(type(result))))
+
+        return result
+
+    def get_node_url(self, node):
+        """
+        Get the URL for the node.
+
+        """
+
+        # canonical
+        if self.use_canonical_url:
+            return node.get_canonical_url()
+
+        # non-canonical
+        return node.get_url()
+
+    def get_node_link(self, node):
+        """
+        Get a link to the node, using the node title as the link text.
+
+        """
+
+        # canonical
+        if self.use_canonical_url:
+            return node.get_canonical_link()
+
+        # non-canonical
+        return node.get_link()
+
+    def get_static_url(self, node, url):
+        """
+        Get the static URL, in relation to the node.
+
+        """
+
+        # canonical
+        if self.use_canonical_url:
+            if url.startswith("/"):
+                root_node = self.node.get_root_node()
+                url = url[1:]
+                return root_node.get_canonical_url() + url
+
+            return node.get_canonical_url() + url
+
+        # non-canonical
+        return url
+
+    def get_maybe_canonical_html_fragment(self, node, header_basename):
+        """
+        Get the canonical or non-canonical HTML fragment associated with the
+        given header basename.
+
+        Accepts Node, and header basename (e.g. __Node-List-HTML)
+
+        Returns the value from the given header, or the version of the
+        header that has canonical URLs.
+
+        """
+
+        # canonical
+        if self.use_canonical_url:
+            header = header_basename + "-canonical"
+
+        # non-canonical
+        else:
+            header = header_basename
+
+        return node.get_header(header)
+
+    def merge_token_literal(self, token):
+        """
+        Merge a literal token and return the results.
+
+        """
+
+        if token.has_unidentified_parameter():
+            self.line_error(token, "unidentified parameter")
+
+        return token.value
+
+    def merge_token_value(self, token):
+        """
+        Merge a {{value:*}} token and return the results.
+
+        """
+
+        try:
+            unescaped_value = self.node.get_header(token.value)
+            escaped_value = escape(unescaped_value)
+            return escaped_value
+        except KeyError:
+            self.line_error(token,
+                            "header '%s' not set on this node" % \
+                            (token.value))
+
+    def merge_token_value_unescaped(self, token):
+        """
+        Merge a {{value-unescaped:*}} token and return the results.
+
+        """
+
+        try:
+            return self.node.get_header(token.value)
+        except KeyError:
+            self.line_error(token,
+                            "header '%s' not set on this node" % \
+                            (token.value))
+
+    def merge_token_include(self, token):
+        """
+        Merge an {{include:*}} token and return the results.
+
+        """
+
+        return self.merge_template(token.value)
+
+    def merge_token_created(self, token):
+        """
+        Merge a {{created:*}} token and return the results.
+
+        """
+
+        if self.node.created is None:
+            self.line_error(token, "Created header not set")
+
+        try:
+            formatted_date = self.node.created.strftime(token.value)
+            return escape(formatted_date)
+        except ValueError:
+            self.line_error(token, "invalid date format string")
+
+    def merge_token_modified(self, token):
+        """
+        Merge a {{modified:*}} token and return the results.
+
+        """
+
+        if self.node.modified is None:
+            self.line_error(token, "Modified header not set")
+
+        try:
+            formatted_date = self.node.modified.strftime(token.value)
+            return escape(formatted_date)
+        except ValueError:
+            self.line_error(token, "invalid date format string")
+
+    def merge_token_breadcrumbs(self, token):
+        """
+        Merge a {{breadcrumbs:*}} token and return the results.
+
+        """
+
+        if "*" == token.value:
+            return self.create_breadcrumbs()
+
+        self.line_error(token, "invalid rvalue parameter")
+
+    def get_static_url_abspath(self, url):
+        """
+        Get the absolute path on disk to the given static URL path.
+
+        """
+
+        # disallow ../ links for static URLs
+        if -1 != url.find("../"):
+            self.line_error(token, "../ not allowed")
+
+        # if the static url path starts with a slash, and is
+        # relative to the root of the site, start the directory path
+        # from PUBLIC_ROOT
+        if url.startswith("/"):
+            root_node = self.node.get_root_node()
+            public_root_dir = root_node.get_dest_dir()
+            static_url_dirent = public_root_dir + "/" + url
+
+        # if the static url path does not start with a slash,
+        # start the directory path relative to the node that
+        # included the static url reference
+        else:
+            static_url_dirent = self.node.get_dest_dir() + "/" + url
+
+        return os.path.abspath(static_url_dirent)
+
+    def merge_token_static_url(self, token):
+        """
+        Merge a {{static-url:*}} token and return the results.
+
+        """
+
+        url = token.value
+
+        # get the path on disk to the URL path
+        static_url_abspath = self.get_static_url_abspath(url)
+
+        # make sure the file or directory exists on the filesystem
+        if not os.path.exists(static_url_abspath):
+            self.line_error(token, "file not found: '%s'" % (url))
+
+        return self.get_static_url(self.node, url)
+
+    def merge_token_static_hash_url(self, token):
+        """
+        Merge a {{static-hash-url:*}} token and return the results.
+
+        """
+
+        url = token.value
+
+        # get the full path on disk to the URL path
+        static_url_abspath = self.get_static_url_abspath(url)
+
+        # if we already generated this file, return the cached reference
+        if static_url_abspath in static_hash_urls:
+            return static_hash_urls[static_url_abspath]
+
+        # make sure the file exists
+        if not os.path.exists(static_url_abspath):
+            self.line_error(token, "file not found: '%s'" % (url))
+
+        # make sure the path is actually a file
+        if not os.path.isfile(static_url_abspath):
+            self.line_error(token,
+                            "path exists, but is not a file: '%s'" % (url))
+
+        # get the destination directory we want to write the hash file into
+        dest_dir = os.path.dirname(static_url_abspath)
+
+        # get the destination for the relative URL directory
+        dest_url_relative_dir = os.path.dirname(url)
+
+        # get the source filename by itself
+        src_base_filename = os.path.basename(static_url_abspath)
+
+        # split the source filename into a base name and a file extension
+        (basename, file_ext) = os.path.splitext(src_base_filename)
+
+        # hash the file contents
+        md5_hash = hashlib.md5()
+        with open(static_url_abspath, "rb") as f:
+            contents = f.read()
+            md5_hash.update(contents)
+
+        # construct the base hash filename
+        hash_filename = md5_hash.hexdigest() + file_ext
+
+        # construct the relative destination URL to the hashed file
+        dest_hash_url = os.path.join(dest_url_relative_dir, hash_filename)
+
+        # construct the absolute path to the hashed file
+        dest_hash_abspath = os.path.join(dest_dir, hash_filename)
+
+        # rsync source file to dest hash file
+        cmd_stack = [CMD_RSYNC, "-a", static_url_abspath, dest_hash_abspath]
+        cmd_exec(cmd_stack)
+
+        # cache the results
+        static_hash_urls[static_url_abspath] = dest_hash_url
+
+        return dest_hash_url
+
+    def merge_token_rss(self, token):
+        """
+        Merge a {{rss:*}} token and return the results.
+
+        """
+
+        # only support {{rss:url}}
+        if "url" != token.value:
+            self.line_error(token, "invalid rvalue parameter")
+
+        # make sure required headers are present
+        if not self.node.has_header("rss-url"):
+            self.line_error(token, "RSS-URL header not set")
+        if not self.node.has_header("canonical-url"):
+            self.line_error(token, "Canonical-URL header not set")
+
+        # get relative RSS URL
+        rss_url = self.node.get_header("rss-url")
+        if rss_url.startswith("/"):
+            rss_url = rss_url[1:]
+
+        # get canonical RSS URL
+        root_node = self.node.get_root_node()
+        rss_canonical_url = root_node.get_canonical_url() + rss_url
+
+        return rss_canonical_url
+
+    def merge_token_node_body(self, token):
+        """
+        Merge a {{node:body}} token and return the results.
+
+        """
+
+        body = self.node.get_body()
+
+        # if the format is set to text, add HTML line breaks
+        if self.node.has_header("format"):
+            format = self.node.get_header("format")
+            if "text" == format:
+                body = self.text_to_html(body)
+            elif "html" == format:
+                # default
+                pass
+            else:
+                self.line_error(token, "unknown format")
+
+        # if we're in a {{node:body}} loop, show an error
+        if self.node_body_semaphore != 0:
+            self.node_body_loop_error(token)
+
+        # entering {{node:body}} merge
+        self.node_body_semaphore += 1
+
+        # merge node body contents
+        merged_body = self.merge_multiline(body)
+
+        # leaving {{node:body}} merge
+        self.node_body_semaphore -= 1
+
+        return merged_body
+
+    def merge_token_node(self, token):
+        """
+        Merge a {{node:*}} token and return the results.
+
+        """
+
+        # url
+        if "url" == token.value:
+            return self.get_node_url(self.node)
+        # name
+        elif "name" == token.value:
+            return escape(self.node.get_name())
+        # title
+        elif "title" == token.value:
+            return self.node.get_escaped_title()
+        # link
+        elif "link" == token.value:
+            return self.get_node_link(self.node)
+        # body
+        elif "body" == token.value:
+            return self.merge_token_node_body(token)
+        else:
+            self.line_error(token, "invalid rvalue parameter")
+
+    def merge_token_node_url(self, token):
+        """
+        Merge a {{node-url:*}} token and return the results.
+
+        """
+
+        try:
+            target_node = self.get_node_by_path(token, token.value)
+        except UrielError as e:
+            self.line_error(token, "node not found")
+
+        return self.get_node_url(target_node)
+
+    def merge_token_node_name(self, token):
+        """
+        Merge a {{node-name:*}} token and return the results.
+
+        """
+
+        try:
+            target_node = self.get_node_by_path(token, token.value)
+        except UrielError as e:
+            self.line_error(token, "node not found")
+
+        return escape(target_node.get_name())
+
+    def merge_token_node_title(self, token):
+        """
+        Merge a {{node-title:*}} token and return the results.
+
+        """
+
+        try:
+            target_node = self.get_node_by_path(token, token.value)
+        except UrielError as e:
+            self.line_error(token, "node not found")
+
+        return target_node.get_escaped_title()
+
+    def merge_token_node_link(self, token):
+        """
+        Merge a {{node-link:*}} token and return the results.
+
+        """
+
+        try:
+            target_node = self.get_node_by_path(token, token.value)
+        except UrielError as e:
+            self.line_error(token, "node not found")
+
+        return self.get_node_link(target_node)
+
+    def merge_token_node_list(self, token):
+        """
+        Merge a {{node-list:*}} token and return the results.
+
+        """
+
+        if "*" == token.value:
+            return self.get_maybe_canonical_html_fragment(
+                self.node, "__node-list-html")
+
+        self.line_error(token, "invalid rvalue parameter")
+
+    def merge_token_tag_list(self, token):
+        """
+        Merge a {{tag-list:*}} token and return the results.
+
+        """
+
+        if "*" == token.value:
+            if self.node.has_header("__tag-list-html"):
+                return self.get_maybe_canonical_html_fragment(
+                    self.node, "__tag-list-html")
+            else:
+                self.line_error(token, "Tags not set on this node")
+
+        self.line_error(token, "invalid rvalue parameter")
+
+    def merge_token_soju(self, token):
+        """
+        Merge a {{soju:*}} token and return the results.
+
+        """
+
+        try:
+            return self.get_soju_result(token.value)
+        except Exception as e:
+            self.line_error(token, str(e), False)
+
+            # let the stack trace bubble up,
+            # so the user can debug their code
+            raise
+
+    def merge_token(self, token):
+        """
+        Merge the contents of a single token, and return the results.
+
+        """
+
+        # literal
+        if Token.LITERAL == token.type:
+            return self.merge_token_literal(token)
+
+        # {{value:*}}
+        elif Token.VALUE == token.type:
+            return self.merge_token_value(token)
+
+        # {{value-unescaped:*}}
+        elif Token.VALUE_UNESCAPED == token.type:
+            return self.merge_token_value_unescaped(token)
+
+        # {{include:*}}
+        elif Token.INCLUDE == token.type:
+            return self.merge_token_include(token)
+
+        # {{created:*}}
+        elif Token.CREATED == token.type:
+            return self.merge_token_created(token)
+
+        # {{modified:*}}
+        elif Token.MODIFIED == token.type:
+            return self.merge_token_modified(token)
+
+        # {{breadcrumbs:*}}
+        elif Token.BREADCRUMBS == token.type:
+            return self.merge_token_breadcrumbs(token)
+
+        # {{static-url:*}}
+        elif Token.STATIC_URL == token.type:
+            return self.merge_token_static_url(token)
+
+        # {{static-hash-url:*}}
+        elif Token.STATIC_HASH_URL == token.type:
+            return self.merge_token_static_hash_url(token)
+
+        # {{rss:*}}
+        elif Token.RSS == token.type:
+            return self.merge_token_rss(token)
+
+        # {{node:*}}
+        elif Token.NODE == token.type:
+            return self.merge_token_node(token)
+
+        # {{node-url:*}}
+        elif Token.NODE_URL == token.type:
+            return self.merge_token_node_url(token)
+
+        # {{node-name:*}}
+        elif Token.NODE_NAME == token.type:
+            return self.merge_token_node_name(token)
+
+        # {{node-title:*}}
+        elif Token.NODE_TITLE == token.type:
+            return self.merge_token_node_title(token)
+
+        # {{node-link:*}}
+        elif Token.NODE_LINK == token.type:
+            return self.merge_token_node_link(token)
+
+        # {{node-list:*}}
+        elif Token.NODE_LIST == token.type:
+            return self.merge_token_node_list(token)
+
+        # {{tag-list:*}}
+        elif Token.TAG_LIST == token.type:
+            return self.merge_token_tag_list(token)
+
+        # {{soju:*}}
+        elif Token.SOJU == token.type:
+            return self.merge_token_soju(token)
+
+        # unknown
+        else:
+            self.line_error(token, "invalid parameter or value")
+
+    def merge_line(self, line):
+        """
+        Accepts a single line of text as input.
+
+        Renders any substitution parameters in the line into their
+        corresponding values (including the entire contents of other
+        included templates, and their substitution parameters, recursively).
+
+        Returns the (possibly multiline) string of rendered text.
+
+        """
+
+        if line is None:
+            return line
+
+        # if the line doesn't have at least one set of {{ and }}
+        # just return it as a literal
+        if (-1 == line.find("{{")) or (-1 == line.find("}}")):
+            return line
+
+        # tokenize the line
+        tokens = self.tokenize(line)
+
+        #################################
+        # PARSE SUBSTITUTION PARAMETERS #
+        #################################
+
+        # render the token, and place it in a list of rendered tokens
+        rendered = []
+        for token in tokens:
+            merged_token = self.merge_token(token)
+            rendered.append(merged_token)
+
+        # return the rendered tokens as a multi-line string
+        return "".join(rendered)
+
+    def merge_lines(self, lines):
+        """
+        Accepts a list of string.
+
+        Merges the template and node for each line of string.
+
+        Returns a multi-line string with the merged contents.
+
+        """
+
+        merged_lines = []
+        for line in lines:
+            line = line.rstrip()
+            merged_line = self.merge_line(line)
+            merged_lines.append(merged_line)
+
+        return "\n".join(merged_lines)
+
+    def merge_multiline(self, multiline):
+        """
+        Accepts a multi-line string.
+
+        Returns a multi-line string with merged values.
+
+        """
+
+        lines = multiline.split("\n")
+
+        return self.merge_lines(lines)
+
+    def merge_template(self, template):
+        """
+        Accepts a template as input.
+
+        Merges the template with the Node values, and returns the
+        rendered output.
+
+        """
+
+        # get the path to the template file
+        template_file = os.path.join(self.project_root,
+                                     TEMPLATES_ROOT,
+                                     template)
+
+        # if Template is set to "null"
+        if "null" == self.template:
+            # and we don't actually have a template file named "null"
+            if not os.path.exists(template_file):
+                # return a minimal template that just includes the node
+                # contents, but allows for parameter substitution
+                return self.merge_lines(["{{node:body}}"])
+
+        # read all of the lines from the template
+        lines = []
+        try:
+            with open(template_file) as f:
+                for line in f.readlines():
+                    lines.append(line)
+        except FileNotFoundError:
+            token = Token("{{include:" + template + "}}")
+            self.line_error(token,
+                            "template '" + template + "' not found")
+
+        # add the template to the stack
+        self.template_stack.push(template, self.node.get_path())
+
+        # get the result as a string with the template and node merged together
+        result = self.merge_lines(lines)
+
+        # remove the current template from the stack
+        self.template_stack.pop()
+
+        # return the result
+        return result
+
+    def render(self):
+        """
+        Render the combination of this Page, using its template and Node.
+
+        """
+
+        return self.merge_template(self.template)
+
+    def __str__(self):
+        return str(self.node) + " [" + self.template + "]"
+
+
+class Node:
+    """
+    Represents a dynamic page, either virtual or backed by a file.
+
+    This class is intended to be treated as abstract, and not
+    instantiated directly.
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path (as a subdirectory of the node root).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        self.project_root = project_root
+        self.nodes_root = os.path.join(project_root, NODES_ROOT)
+        self.path = path
+        self.parent_node = parent_node
+        self.headers = {}
+        self.body = None
+        self.children = []
+        self.tag_node_index = None
+        self.created = None
+        self.modified = None
+
+        # check for duplicate node path elsewhere in the tree
+        if parent_node is not None:
+            root_node = parent_node.get_root_node()
+            dupe = root_node.find_node_by_path(path, False)
+            if dupe is not None:
+                err = "can not create node, another node already exists " + \
+                      "with this path: '%s'"
+                raise Exception(err % (path))
+
+        # import headers from parent node
+        if self.parent_node:
+            # copy parent headers into this node
+            for (key, value) in self.parent_node.get_header_key_values():
+                self.set_header(key, value)
+
+            # N.B. the +/- keys are sorted and reversed, so that it is possible
+            #      to push inheritance out multiple levels. this works because
+            #      when sorted and reversed, ++foo sorts after +foo, and so on,
+            #      which prevents ++foo from overwriting +foo before it gets
+            #      a chance to be set.
+
+            # +
+            keys = reversed(sorted(self.get_header_keys()))
+            for key in keys:
+                if key.startswith("+"):
+                    plus_key = key
+                    stripped_key = key[1:]
+                    value = self.get_header(plus_key)
+                    self.set_header(stripped_key, value)
+                    self.delete_header(plus_key)
+
+            # -
+            keys = reversed(sorted(self.get_header_keys()))
+            for key in keys:
+                if key.startswith("-"):
+                    minus_key = key
+                    stripped_key = key[1:]
+                    value = self.get_header(minus_key)
+                    if "*" != value:
+                        err = "key '%s' can not have value '%s' " + \
+                              "in node '%s' (value must be '*')"
+                        raise UrielError(err % (key, value, self.get_path()))
+                    if self.has_header(stripped_key):
+                        self.delete_header(stripped_key)
+                    self.delete_header(minus_key)
+
+        # disable inheritance on fields that should be unique
+
+        # Title
+        if self.has_header("title"):
+            self.delete_header("title")
+
+        # Created
+        elif self.has_header("created"):
+            self.delete_header("created")
+
+        # Modified
+        elif self.has_header("modified"):
+            self.delete_header("modified")
+
+    def get_parent_node(self):
+        """
+        Get the parent Node, or None if this is the root.
+
+        """
+
+        return self.parent_node
+
+    def get_path(self):
+        """
+        Get the node path.
+
+        """
+
+        return self.path
+
+    def get_node_type(self):
+        """
+        Subclasses need to implement this, and return a string describing
+        the type of node they represent.
+
+        """
+
+        raise Exception("not implemented in abstract parent class")
+
+    def add_child(self, node):
+        """
+        Add the given Node as a child of this Node.
+
+        """
+
+        self.children.append(node)
+
+    def get_children(self):
+        """
+        Get a list of child Node entries immediately under this Node.
+
+        """
+
+        return sorted(self.children)
+
+    def get_url(self):
+        """
+        Get the URL path for this Node.
+
+        URL paths are relative to the root of the site.
+
+        Example URL paths:
+            /
+            /foo/
+            /foo/bar/
+
+        This method is the authoritative source of where a node will be
+        placed in the rendered files.
+
+        """
+
+        # set node_dir to the directory we want to use in our URL
+        # if it's an index node, strip off the "index" part
+        if self.get_path().endswith(NODE_INDEX):
+            end_index = (len(NODE_INDEX) * -1) -1
+            node_dir = self.get_path()[:end_index]
+        else:
+            node_dir = self.get_path()
+
+        # if this is the root node, return a /
+        if "" == node_dir:
+            return "/"
+
+        # preserve node hierarchy by default
+        target_dir = node_dir
+
+        # flat URL (e.g. just the leaf node name, or directory if index)
+        flat_url = node_dir.split("/")[-1:][0]
+
+        # optionally flatten the URL to only the most specific node directory
+        if self.get_boolean_header_value("flat-url", False):
+            target_dir = flat_url
+
+        # if this node doesn't have a flat URL, one of its parents might
+        elif self.get_parent_node() is not None:
+            # get the parent URL (without the slash)
+            parent_url = self.get_parent_node().get_url()[1:]
+
+            # set our target dir to the parent URL plus the flat URL
+            target_dir = parent_url + flat_url
+
+        # return the target dir, with a leading and trailing slash
+        return "/" + target_dir + "/"
+
+    def get_canonical_url(self):
+        """
+        Get the canonical URL for this Node.
+
+        """
+
+        if not self.has_header("canonical-url"):
+            raise UrielError(
+                "Canonical-URL not set, but required by node '%s'" % \
+                (self.get_path()))
+
+        return self.get_header("canonical-url") + self.get_url()
+
+    def get_name(self):
+        """
+        Get the name of this Node.
+
+        This is generally the most specific dirent from the URL.
+
+        As a special case, the name of the top-level index node is "index".
+
+        """
+
+        url = self.get_url()
+
+        leaf = "index"
+
+        url_parts = url.split("/")
+        for part in url_parts:
+            if "" != part:
+                leaf = part
+
+        return leaf
+
+    def get_display_name(self):
+        """
+        Get the display name of the node.
+
+        This is constructed from the base node name, but is formatted to be
+        more human readable.
+
+        It is used as a fallback plan in case a Title header is not set.
+
+        """
+
+        # get the node name
+        name = self.get_name()
+
+        # we're going to split the node name into a bunch of parts,
+        # and recombine them separated by spaces. we split on several
+        # different characters, and subdivide the parts further and further.
+        # to start, put the entire node name in the parts list as one element.
+        parts = [name]
+
+        # go through each single-character pattern we're splitting on
+        for pattern in "-_ ":
+            # temporarily save the parts that come out of the split
+            # for this one character
+            future_parts = []
+
+            # go through all of the parts
+            for part in parts:
+                # further split this part on the current pattern
+                tmp_parts = part.split(pattern)
+
+                # for each part that came out of this split,
+                # add them to what will become the new parts list
+                for tmp_part in tmp_parts:
+                    # by default, we pass the part straight through
+                    future_part = tmp_part
+
+                    # if this part doesn't have any capital letters,
+                    # give it initial caps
+                    if not re.match(r"[A-Z]", future_part):
+                        future_part = future_part.capitalize()
+
+                    # add it to the parts list
+                    future_parts.append(future_part)
+
+            # replace the higher-level parts list with the local one,
+            # which is now further subdivided
+            parts = future_parts
+
+        # return all of the subdivided parts, separated by spaces
+        return " ".join(parts)
+
+    def get_title(self):
+        """
+        Get the title of the node, as set by the Title header.
+
+        If that doesn't work, fall back on using the node display name.
+
+        """
+
+        # use the Title header, if we have it
+        if self.has_header("title"):
+            return self.get_header("title")
+
+        # otherwise fall back on the node name
+        return self.get_display_name()
+
+    def get_escaped_title(self):
+        """
+        Get the escaped title of the node, as set by the Title header.
+
+        If the Escape-Title: false header is set, return the Title
+        without escaping.
+
+        If that doesn't work, fall back on using the node display name.
+
+        """
+
+        if self.get_boolean_header_value("escape-title", True):
+            return escape(self.get_title())
+
+        return self.get_title()
+
+    def get_link(self):
+        """
+        Get a link to this node, using its title as the link text.
+
+        """
+
+        return "<a href=\"" + self.get_url() + "\">" + \
+               self.get_escaped_title() + "</a>"
+
+    def get_canonical_link(self):
+        """
+        Get a canonical link to this node, using its title as the link text.
+
+        """
+
+        return "<a href=\"" + self.get_canonical_url() + "\">" + \
+               self.get_escaped_title() + "</a>"
+
+    def get_link_prefix(self):
+        """
+        Get the HTML prefix to use in generated lists of links.
+
+        """
+
+        if self.has_header("link-prefix"):
+            return self.get_header("link-prefix")
+
+        return "<p>"
+
+    def get_link_suffix(self):
+        """
+        Get the HTML suffix to use in generated lists of links.
+
+        """
+
+        if self.has_header("link-suffix"):
+            return self.get_header("link-suffix")
+
+        return "</p>"
+
+    def get_tags(self):
+        """
+        Get the set of tags associated with this Node.
+
+        Returns a set of tags.
+
+        """
+
+        tag_set = set()
+
+        if self.has_header("tags"):
+            tag_list = self.get_header("tags").split(",")
+            for tag in tag_list:
+                if "" != tag:
+                    tag = tag.strip()
+
+                    # validate tag
+                    if not re.match("^[a-z0-9\-]*$", tag):
+                        raise UrielError(
+                            "invalid tag '%s' in node '%s'" % \
+                            (tag, self.get_path()))
+
+                    tag_set.add(tag)
+
+        return sorted(tag_set)
+
+    def get_dest_dir(self):
+        """
+        Get the destination directory in the public website that will
+        contain this page.
+
+        """
+
+        # get the URL path
+        url = self.get_url()
+
+        # root index node
+        if "/" == url:
+            return os.path.join(self.project_root, PUBLIC_ROOT)
+
+        # strip leading and trailing slashes from URL
+        target_url = url[1:-1]
+
+        return os.path.join(self.project_root, PUBLIC_ROOT, target_url)
+
+    def get_dest_file(self):
+        """
+        Get the destination file in the public website that will
+        contain this page.
+
+        """
+
+        return os.path.join(self.get_dest_dir(), HTML_INDEX)
+
+    def get_boolean_header_value(self, header, default):
+        """
+        Get the boolean value for a header as True or False.
+
+        If the header is not set, return the provided default value.
+
+        Raises an UrielError if any other value is found.
+
+        """
+
+        # canonicalize the header name to lowercase
+        lc_header = header.lower()
+
+        if self.has_header(lc_header):
+            value = self.get_header(lc_header)
+            if "true" == value:
+                return True
+            elif "false" == value:
+                return False
+            else:
+                err = "invalid value for '%s' " + \
+                      "header in node '%s': '%s'"
+                raise UrielError(err % (header, self.get_path(), value))
+
+        return default
+
+    def get_breadcrumb_separator(self):
+        """
+        Get the breadcrumb separator for this node.
+
+        """
+
+        separator = "&raquo;"
+        maybe_space = " "
+
+        # look at headers to see if we should change the separator
+        if self.has_header("breadcrumb-separator"):
+            separator = self.get_header("breadcrumb-separator")
+
+        # should we surround the separator with spaces?
+        if not self.get_boolean_header_value("breadcrumb-separator-spaces",
+                                             True):
+            maybe_space = ""
+
+        return maybe_space + separator + maybe_space
+
+    def find_node_by_path(self, path, raise_exceptions=True):
+        """
+        Find the Node that matches the given path.
+
+        Returns the given node.
+
+        Raises a UrielError if the node can not be found.
+
+        If the optional raise_exceptions parameter is set to False,
+        then instead of raising an exception, it will return None instead.
+
+        """
+
+        # if this node matches, return it
+        if self.get_path() == path:
+            return self
+
+        # recurse through child nodes
+        for child in self.get_children():
+           candidate = child.find_node_by_path(path, False)
+           if candidate:
+                return candidate
+
+        if raise_exceptions:
+            raise UrielError("node not found '%s'" % (path))
+
+        return None
+
+    def get_root_node(self):
+        """
+        Get the root Node, walking up the tree from whichever Node this is.
+
+        """
+
+        # if we don't have a parent, we're the root
+        if self.get_parent_node() is None:
+            return self
+
+        # recurse into the parent node
+        return self.get_parent_node().get_root_node()
+
+    def get_tag_node(self):
+        """
+        Get the tag node, by looking at the value of the Tag-Node header,
+        and then returning the matching node.
+
+        There is only one tag node, and the Tag-Node header should only be
+        set on the root node.
+
+        Returns the tag node, or None if the tag node is not configured.
+
+        Raises a UrielError if the tag node is configured, but can not be
+        found.
+
+        """
+
+        # get the root node
+        root = self.get_root_node()
+
+        # find and return the tag node
+        if self.has_header("tag-node"):
+            return root.find_node_by_path(self.get_header("tag-node"))
+
+        return None
+
+    def set_tag_node_index(self, tag_node_index):
+        """
+        Set (or replace) the tag node index on the root Node.
+
+        """
+
+        # find the root node
+        root = self.get_root_node()
+
+        # overwrite the tag node index on the root node
+        root.tag_node_index = tag_node_index
+
+    def get_tag_node_index(self):
+        """
+        Get the tag node index.
+
+        The tag node index is a dict of tags, with sets of Node as values.
+
+        Returns the tag node index, or raises a UrielError if the tag node
+        index has not already been created (via create_tag_node_index()).
+
+        """
+
+        # whatever node this is, pull the tag index out of the root node
+        tag_node_index = self.get_root_node().tag_node_index
+
+        if tag_node_index is None:
+            raise UrielError("tag node index not set")
+
+        return tag_node_index
+
+    def create_tag_node_index(self, node=None, tag_node_index=None):
+        """
+        Create tag / node index.
+
+        The tag node index is a dict of tag -> set of node
+
+        Optionally accepts a node, and a tag node index.
+
+        Returns a tag to node index.
+
+        """
+
+        is_top_level_method_call = False
+
+        # if we didn't have a Node passed in, start at the root
+        if node is None:
+            node = self.get_root_node()
+            is_top_level_method_call = True
+
+        # if we don't have a tag index, create it
+        if tag_node_index is None:
+            tag_node_index = {}
+
+        # go through the tags for this node
+        for tag in node.get_tags():
+            # if this is a new tag we haven't seen before,
+            # create a set for it and add it to the index
+            if tag not in tag_node_index:
+                tag_node_index[tag] = set()
+
+            # add the node to the index for this tag
+            tag_node_index[tag].add(node)
+
+        # recurse
+        for child in node.get_children():
+            self.create_tag_node_index(child, tag_node_index)
+
+        # if this is the top-level method call,
+        # set the tag node index on the root node
+        if is_top_level_method_call:
+            self.set_tag_node_index(tag_node_index)
+
+        return tag_node_index
+
+    def get_vnode_for_tag(self, tag):
+        """
+        Get the virtual node that represents the given tag
+        (e.g. the node for /tag/$SOME_TAG/)
+
+        """
+
+        tag_root = self.get_tag_node()
+        if tag_root is not None:
+            for vnode in tag_root.get_children():
+                if vnode.get_name() == tag:
+                    return vnode
+
+        return None
+
+    def get_node_type(self):
+        """
+        Get the Node type as a string (e.g. "file", "virtual").
+
+        """
+
+        raise Exception("not implemented")
+
+    def get_body(self):
+        """
+        Get the unrendered Node body as a multi-line string.
+
+        """
+
+        return self.body
+
+    def get_rendered_body(self):
+        """
+        Get the rendered Node body as a multi-line string.
+
+        """
+
+        return self.rendered_body
+
+    def set_body(self, body):
+        """
+        Set the unrendered Node body. Accepts a multi-line string.
+
+        """
+
+        self.body = body
+
+    def set_rendered_body(self, rendered_body):
+        """
+        Replace the contents of the Node body (e.g. with a rendered version).
+
+        """
+
+        self.rendered_body = rendered_body
+
+    def has_header(self, header):
+        """
+        Does the given header exist on this node?
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        if header in self.headers:
+            return True
+
+        return False
+
+    def get_header(self, header):
+        """
+        Get the value associated with the given header.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        return self.headers[header]
+
+    def set_header(self, header, value):
+        """
+        Set the given header to the specified value.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        self.headers[header] = value
+
+    def delete_header(self, header):
+        """
+        Delete the given header.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        del(self.headers[header])
+
+    def get_header_keys(self):
+        """
+        Get each of the header keys.
+
+        """
+
+        return sorted(self.headers.keys())
+
+    def get_header_key_values(self):
+        """
+        Get each key/value element of the headers as a series of two-element
+        tuples.
+
+        """
+
+        return sorted(self.headers.items())
+
+    def __lt__(self, other):
+        """
+        Sort Node instances by:
+            date descending (created if available, otherwise modified)
+            title ascending
+            URL ascending
+
+        """
+
+        # self and other candidate dates
+        # created isn't always set, but modified is always available
+
+        self_date = self.modified
+        if self.created:
+            self_date = self.created
+
+        other_date = other.modified
+        if other.created:
+            other_date = other.created
+
+        # sort by date
+        if self_date != other_date:
+            # try to use time zones
+            if self_date.tzinfo and other_date.tzinfo:
+                return self_date > other_date
+
+            # fall back to comparing dates without time zones
+            else:
+                self_date_epoch_sec = int(self_date.strftime("%s"))
+                other_date_epoch_sec = int(other_date.strftime("%s"))
+                return self_date_epoch_sec > other_date_epoch_sec
+
+        # then by title
+        if self.get_title() != other.get_title():
+            return self.get_title() < other.get_title()
+
+        # and finally by URL (which is unique)
+        return self.get_url() < other.get_url()
+
+    def __str__(self):
+        return self.get_path()
+
+
+class FileNode(Node):
+    """
+    Represents a dynamic page backed by a node file.
+
+    Contains headers and a body (format similar to HTTP, email, etc.)
+
+    Headers are inherited from the parent node.
+
+    Nodes have a parent/child tree relationship.
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path to the node file (as a sub path of NODES_ROOT).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        # call the superconstructor
+        super().__init__(project_root, path, parent_node=parent_node)
+
+        # set the default date based on the node modified time
+        node_path = os.path.join(self.nodes_root, self.get_path())
+        node_modified = os.path.getmtime(node_path)
+        self.modified = \
+            datetime.datetime.fromtimestamp(node_modified,
+                datetime.datetime.utcnow().astimezone().tzinfo)
+
+        # read dynamic node file, and parse out headers and body
+        body_lines = []
+        with open(os.path.join(self.nodes_root, path)) as f:
+            parsing_headers = True
+
+            # read each line in the node file
+            for line in f.readlines():
+                line = line.rstrip()
+
+                # if we're still parsing headers...
+                if parsing_headers:
+                    # if we find a line without a ":", stop parsing headers
+                    # this lets us have a body-only template
+                    if -1 == line.find(":"):
+                        parsing_headers = False
+
+                    # if we hit a blank line, it could either be the blank
+                    # line separating the headers from the body, or it could
+                    # be a node without any headers at all
+                    if "" == line:
+                        # either way, we're not parsing headers anymore
+                        parsing_headers = False
+
+                        # if we already had any headers before this,
+                        # skip the blank separating line
+                        # (if not, we'll continue on and treat it as the
+                        # first line of the page body)
+                        if len(self.headers) > 0:
+                            continue
+
+                # if we're parsing headers...
+                if parsing_headers:
+                    # parse headers
+                    (key, value) = line.split(":", maxsplit=1)
+
+                    # canonicalize header key to lowercase
+                    key = key.strip().lower()
+
+                    # strip leading/trailing whitespace from value
+                    value = value.strip()
+
+                    # set the header
+                    self.set_header(key, value)
+
+                # if we're parsing the body...
+                else:
+                    body_lines.append(line)
+
+        # process "-" headers
+        headers = sorted(self.get_header_keys())
+        for key in headers:
+            # if a header starts with a "-", and has a value of "*",
+            # it's an instruction to remove that header from this Node
+            # (e.g. -Foo: *)
+            if key.startswith("-"):
+                if "*" == value:
+                    # strip leading "-"
+                    remove_key = key[1:]
+
+                    # remove header
+                    if self.has_header(remove_key):
+                        self.delete_header(remove_key)
+                else:
+                    raise UrielError(
+                        "invalid header in node '%s': '%s': '%s'" % \
+                        (self.get_path(), key, value))
+
+        # process other special headers
+        headers = sorted(self.get_header_keys())
+        for key in headers:
+            value = self.get_header(key)
+
+            # Created
+            if "created" == key:
+                self.created = self.get_datetime_from_date_str(value)
+
+            # Modified
+            elif "modified" == key:
+                self.modified = self.get_datetime_from_date_str(value)
+
+        # remember the body as a string
+        self.body = "\n".join(body_lines)
+
+    def get_datetime_from_date_str(self, date_str):
+        """
+        Get a datetime.datetime instance from the provided date string.
+
+        The date string must be in the ISO 8601 date format.
+
+        """
+
+        try:
+            # turn the date string into a datetime instance
+            dt = datetime.datetime.fromisoformat(date_str)
+
+            # if the datetime instance doesn't have a time zone,
+            # create a new datetime with the date/time we read from
+            # the date string, augmented with the local time zone
+            if dt.tzinfo is None:
+                tmp_dt = datetime.datetime.fromtimestamp(dt.timestamp(),
+                            datetime.datetime.utcnow().astimezone().tzinfo)
+
+                dt = tmp_dt
+
+            # return the datetime with time zone
+            return dt
+
+        except Exception as e:
+            err = "invalid date header value in node " + \
+                  "'%s': '%s'"
+            raise UrielError(err % (self.get_path(), date_str))
+
+    def get_node_type(self):
+        return "file"
+
+
+class VirtualNode(Node):
+    """
+    Represents a virtual node, not backed by a file.
+
+    To use this class:
+      - call set_body() to set the node body (which will be merged with
+        template later)
+      - set headers (although it inherits headers from the parent node)
+      - add children (if necessary)
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path (as a subdirectory of the node root).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        # call the superconstructor
+        super().__init__(project_root, path, parent_node=parent_node)
+
+        # set the date, either to the parent node value, or to now
+        if self.get_parent_node():
+            self.created = self.get_parent_node().created
+            self.modified = self.get_parent_node().modified
+        else:
+            # use the current date/time/timezone
+            now = datetime.datetime.fromtimestamp(
+                    datetime.datetime.now().timestamp(),
+                    datetime.datetime.utcnow().astimezone().tzinfo)
+
+            self.created = now
+            self.modified = now
+
+    def get_node_type(self):
+        return "virtual"
+
+
+class FileWriter:
+    """
+    Writes an individual file to disk.
+
+    """
+
+    def __init__(self, path, mode="w"):
+        """
+        Accepts the path to the file, and an optional write mode.
+
+        """
+
+        self.path = path
+        self.mode = mode
+        self.f = open(path, mode)
+
+    def write(self, content):
+        """
+        Writes the content to the file.
+
+        """
+
+        self.f.write(content)
+
+    def close(self):
+        """
+        Closes the file.
+
+        """
+
+        self.f.flush()
+        self.f.close()
+
+
+def log(s):
+    """
+    Log the program name and the given string to stderr.
+
+    """
+
+    sys.stderr.write(str(s) + "\n")
+    sys.stderr.flush()
+
+def warn(s):
+    """
+    Log the given string as a warning to stderr.
+
+    """
+
+    log(PROGRAM_NAME + ": " + str(s))
+
+def die(s):
+    """
+    Log the given string as an error to stderr, and exit.
+
+    """
+
+    warn(s)
+    sys.exit(EXIT_FAIL)
+
+def show_usage():
+    """
+    Show command-line usage information for the program, and exit.
+
+    """
+
+    sys.stderr.write(PROGRAM_NAME + ": Yet Another Static Site Generator\n")
+    sys.stderr.write("Usage: " + PROGRAM_NAME + " <project-root>\n")
+    sys.exit(EXIT_FAIL)
+
+def cmd_exec(cmd_stack):
+    """
+    Execute the given command and arguments.
+
+    Accepts cmd_stack, a list of strings with the command and arguments.
+
+    Returns nothing.
+
+    Raises a UrielError if an error occurs, or if the command exits with
+    an exit code other than 0.
+
+    """
+
+    try:
+        completed_process = subprocess.run(cmd_stack)
+    except FileNotFoundError as e:
+        raise UrielError("command not found: '%s'" % (cmd_stack[0]))
+
+    if 0 != completed_process.returncode:
+        raise UrielError("command failed, returning %d: '%s'" % \
+                        (completed_process.returncode, " ".join(cmd_stack)))
+
+def require_unique_url(url, unique_urls):
+    """
+    Require the given URL to be unique in the given set of unique URLs.
+
+    Raises UrielError if the URL is not unique.
+
+    Adds the URL to the set.
+
+    """
+
+    if url in unique_urls:
+        raise UrielError("URL is not unique: '" + url + "'")
+
+    unique_urls.add(url)
+
+def escape(text):
+    """
+    Escape HTML.
+
+    Accepts unescaped text.
+
+    Returns an HTML escaped string.
+
+    """
+
+    if text is None:
+        return ""
+
+    chars = []
+    for c in text:
+        chars.append(HTML_ESCAPE_MAP.get(c, c))
+
+    return "".join(chars)
+
+def escape_xml(text):
+    """
+    Escape XML.
+
+    The main purpose of this function is to make sure that no <![CDATA[ ]]>
+    tags slip through and break the XML formatting in things like RSS feeds.
+
+    """
+
+    unescaped_lines = text.split("\n")
+    escaped_lines = []
+
+    for unescaped_line in unescaped_lines:
+        escaped_line = unescaped_line.replace("<![CDATA[", "&lt;![CDATA[")
+        escaped_line = escaped_line.replace("]]>", "]]&gt;")
+        escaped_lines.append(escaped_line)
+
+    return "\n".join(escaped_lines)
+
+def create_file_node_tree(project_root, parent_path=None, parent_node=None):
+    """
+    Create Node entries for all of the dynamic pages.
+
+    Accepts project_root
+
+    Optionally accepts the following arguments:
+        parent_path - subdirectory of nodes_root containing this node
+        parent_node - Node instance to use as the parent of discovered nodes
+
+    Returns the top Node in the tree (the top-level dynamic index page)
+
+    """
+
+    # there are a lot of dir/path variables in here.
+    # here is what they all mean:
+    #
+    # project_root  top-level project root directory
+    # parent_path   parent directory path above this part of the tree
+    #               (without the NODES_ROOT container directory)
+    # dir_path      project_root + NODES_ROOT + parent_path
+    # dirent        directory entry in this directory (e.g. "foo")
+    # dirent_path   project_root + NODES_ROOT + parent_path + dirent
+    # node_path     parent_path + dirent
+
+    # create the index node for this directory first
+    # if this is not the root node, create the index for this subdirectory
+    if parent_path:
+        dir_path = os.path.join(project_root, NODES_ROOT, parent_path)
+        index = FileNode(project_root,
+                         os.path.join(parent_path, NODE_INDEX),
+                         parent_node)
+
+    # special case: create the root node
+    else:
+        dir_path = os.path.join(project_root, NODES_ROOT)
+        index = FileNode(project_root, NODE_INDEX)
+
+    # create all the rest of the nodes
+    for dirent in sorted(os.listdir(dir_path)):
+        # skip hidden files
+        if dirent.startswith("."):
+            continue
+
+        # skip emacs backup files
+        if dirent.endswith("~"):
+            continue
+
+        # we already got the index file, don't get it again
+        if NODE_INDEX == dirent:
+            continue
+
+        # get full path to child node
+        dirent_path = os.path.join(dir_path, dirent)
+
+        # create relative path from below NODES_ROOT
+        if parent_path:
+            node_path = os.path.join(parent_path, dirent)
+        else:
+            node_path = dirent
+
+        # file: create node
+        if os.path.isfile(dirent_path):
+            node = FileNode(project_root, node_path, index)
+            index.add_child(node)
+
+        # directory: recurse
+        elif os.path.isdir(dirent_path):
+            node = create_file_node_tree(project_root,
+                                         node_path,
+                                         index)
+            index.add_child(node)
+
+    return index
+
+def create_tag_node_tree(project_root, root):
+    """
+    Create the tag node tree.
+
+    Accepts project_root directory, and the root node.
+
+    Looks for the Tag-Node header in the root node, to determine where to
+    place the tag root.
+
+    Builds an index of tags and nodes.
+
+    Creates a virtual node hierarchy under the tag root.
+
+    """
+
+    # get tag node
+    tag_node = root.get_tag_node()
+    if tag_node is None:
+        return
+
+    # build tag node index
+    root.create_tag_node_index()
+    tag_node_index = root.get_tag_node_index()
+
+    # get link prefix/suffix
+    link_prefix = tag_node.get_link_prefix()
+    link_suffix = tag_node.get_link_suffix()
+
+    ############
+    # TAG ROOT #
+    ############
+
+    # __Tag-List-HTML / __Tag-List-HTML-Canonical
+    lines = []
+    canonical_lines = []
+    for tag in sorted(tag_node_index.keys()):
+        escaped_tag = escape(tag)
+
+        line = link_prefix + \
+            "<a href=\"" + \
+            tag_node.get_url() + escaped_tag + "/" + "\">" + \
+            escaped_tag + "</a>" + \
+            link_suffix
+
+        c_line = link_prefix + \
+            "<a href=\"" + \
+            tag_node.get_canonical_url() + escaped_tag + "/" + "\">" + \
+            escaped_tag + "</a>" + \
+            link_suffix
+
+        lines.append(line)
+        canonical_lines.append(c_line)
+    tag_node.set_header("__tag-list-html",
+                        "\n".join(lines))
+    tag_node.set_header("__tag-list-html-canonical",
+                        "\n".join(canonical_lines))
+
+    # RSS-Include: false
+    # (omit tag root and child vnodes from RSS feed)
+    tag_node.set_header("rss-include", "false")
+
+    ################
+    # CHILD VNODES #
+    ################
+
+    # set the base path for the vnodes (without trailing slash)
+    vnode_base_path = tag_node.get_path()
+    if vnode_base_path.endswith(NODE_INDEX):
+        end_index = (len(NODE_INDEX) * -1) - 1
+        vnode_base_path = vnode_base_path[:end_index]
+
+    # create child vnodes for each tag
+    for tag in sorted(tag_node_index.keys()):
+        # create the path for the child vnode
+        vnode_path = vnode_base_path + "/" + tag
+
+        # create the vnode
+        vnode = VirtualNode(project_root, vnode_path, tag_node)
+
+        # copy the tag node body into the child vnode
+        vnode.set_body(tag_node.get_body())
+
+        # Title
+        vnode.set_header("title", vnode.get_name())
+
+        # Flat-URL
+        vnode.set_header("flat-url", "false")
+
+        # __Tag-List-HTML
+        lines = []
+        canonical_lines = []
+        for node in sorted(tag_node_index[tag]):
+            line = link_prefix + node.get_link() + link_suffix
+            c_line = link_prefix + node.get_canonical_link() + link_suffix
+
+            lines.append(line)
+            canonical_lines.append(c_line)
+        vnode.set_header("__tag-list-html",
+                         "\n".join(lines))
+        vnode.set_header("__tag-list-html-canonical",
+                         "\n".join(canonical_lines))
+
+        tag_node.add_child(vnode)
+
+def create_tag_links(node, use_canonical_url=False):
+    """
+    Create HTML to link to all tags associated with this node, as defined
+    in the Tags header for the given node.
+
+    Accepts a Node, and an optional use_canonical_url value (default False).
+
+    """
+
+    links = []
+
+    # go through all of the tags for this node
+    for tag in sorted(node.get_tags()):
+        # separate tags with commas
+        if len(links) > 0:
+            links.append(", ")
+
+        # get the vnode for this tag
+        tag_vnode = node.get_vnode_for_tag(tag)
+
+        if use_canonical_url:
+            url = tag_vnode.get_canonical_url()
+        else:
+            url = tag_vnode.get_url()
+
+        # construct a link to the vnode
+        link = "<a href=\"" + url + "\">" + escape(tag) + "</a>"
+        links.append(link)
+
+    return "".join(links)
+
+def create_tag_links_recursive(node):
+    """
+    Walk through the node tree, from the root, and create tag links for
+    each node that does not already have something for the {{tag-list:*}}
+    parameter.
+
+    """
+
+    # leaf node
+    if not node.has_header("__tag-list-html"):
+        node.set_header("__tag-list-html", create_tag_links(node))
+    if not node.has_header("__tag-list-html-canonical"):
+        node.set_header("__tag-list-html-canonical",
+                        create_tag_links(node, True))
+
+    # recurse
+    for child in node.get_children():
+        create_tag_links_recursive(child)
+
+def create_child_node_list_html(node):
+    """
+    Create an HTML fragment of links to all of the child nodes of the given
+    Node, and makes it available for use with the {{node-list:*}} parameter.
+
+    """
+
+    # __Node-List-HTML / __Node-List-HTML-Canonical
+    lines = []
+    canonical_lines = []
+    for child in sorted(node.get_children()):
+        # get link prefix/suffix
+        link_prefix = node.get_link_prefix()
+        link_suffix = node.get_link_suffix()
+
+        # create the link to the child node
+        line = link_prefix + child.get_link() + link_suffix
+        c_line = link_prefix + child.get_canonical_link() + link_suffix
+
+        lines.append(line)
+        canonical_lines.append(line)
+
+    # add the HTML fragment with all the links to the node headers
+    node.set_header("__node-list-html",
+                    "\n".join(lines))
+    node.set_header("__node-list-html-canonical",
+                    "\n".join(canonical_lines))
+
+    # recurse
+    for child in node.get_children():
+        create_child_node_list_html(child)
+
+def augment_node_tree(project_root, root_node):
+    """
+    Augment the node tree with additional computed values before rendering.
+
+    Accepts the project root directory, and the root Node.
+
+    """
+
+    # create tag-related things, if Tag-Node is set
+    tag_node = root_node.get_tag_node()
+    if tag_node is not None:
+        # if the tag node doesn't have explicit created or modified times set,
+        # default to now, because tags are dynamically generated anyway
+        if not tag_node.has_header("created"):
+            if not tag_node.has_header("modified"):
+                now = datetime.datetime.fromtimestamp(
+                        datetime.datetime.now().timestamp(),
+                        datetime.datetime.utcnow().astimezone().tzinfo)
+
+                tag_node.created = now
+                tag_node.modified = now
+
+        # create tag nodes
+        create_tag_node_tree(project_root, root_node)
+
+        # create links to the tag pages, on all the nodes that have tags
+        create_tag_links_recursive(root_node)
+
+    # create {{list-node:*}} HTML fragment for each node
+    create_child_node_list_html(root_node)
+
+def render_node_tree(project_root, node):
+    """
+    Walk the tree of Node entries and render their contents in place.
+
+    """
+
+    # create a Page for this Node
+    page = Page(project_root, node)
+
+    # render the contents in place
+    node.set_rendered_body(page.render())
+
+    # recurse through the child nodes
+    for child in node.get_children():
+        render_node_tree(project_root, child)
+
+def get_max_url_path_len(node, max_url_len=0, max_path_len=0):
+    """
+    Get the maximum URL and path lengths from all of the nodes,
+    and return them as a two-element tuple.
+
+    """
+
+    # get the maximum length of the url and path for this node
+    url_len = len(node.get_url())
+    path_len = len(node.get_path())
+
+    # raise the max values, if the new lengths are higher
+    max_url_len = max(url_len, max_url_len)
+    max_path_len = max(path_len, max_path_len)
+
+    # recurse
+    for child in node.get_children():
+        (max_url_len, max_path_len) = \
+            get_max_url_path_len(child, max_url_len, max_path_len)
+
+    return (max_url_len, max_path_len)
+
+def write_dynamic_nodes(project_root, node):
+    """
+    Write the dynamic node/template merged data into files under PUBLIC_ROOT.
+
+    """
+
+    # get the maximum URL and path string lengths
+    # (the max lengths are set to the length of our header names below)
+    (max_url_len, max_path_len) = get_max_url_path_len(node, 3, 4)
+
+    # not a metasyntactic variable, an actual horizontal display bar
+    bar = ("-" * 10) + ("-" * max_path_len) + "-+-" + ("-" * max_url_len)
+
+    # write the nodes
+    log("creating pages in '%s' from nodes and templates" % \
+        (os.path.join(project_root, PUBLIC_ROOT)))
+
+    log(bar)
+    log("type    | " + "node".ljust(max_path_len) + " | " + "url")
+    log(bar)
+
+    unique_urls = set()
+
+    write_nodes(project_root, node, max_url_len, max_path_len, unique_urls)
+
+    log(bar)
+
+def write_nodes(project_root, node, max_url_len, max_path_len, unique_urls):
+    """
+    Recursive function to write the nodes.
+
+    """
+
+    # get the directory and file to use for this node
+    dir = node.get_dest_dir()
+    file = node.get_dest_file()
+
+    # if the directory doesn't exist already, create it
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+    log("%s | %s | %s" % \
+        (node.get_node_type().ljust(7),
+         node.get_path().ljust(max_path_len),
+         node.get_url()))
+
+    # make sure the URL is unique before we write the node
+    url = node.get_url()
+    if url in unique_urls:
+        err = "duplicate node URL '%s' in node '%s'"
+        raise UrielError(err % (url, node.get_path()))
+    unique_urls.add(url)
+
+    # write the rendered file
+    fw = FileWriter(file)
+    fw.write(node.get_rendered_body())
+    fw.close()
+
+    # recurse into the node children
+    for child in node.get_children():
+        write_nodes(project_root,
+                    child,
+                    max_url_len,
+                    max_path_len,
+                    unique_urls)
+
+def get_eligible_nodes(node, boolean_header, default, node_set):
+    """
+    Get nodes that have the given header set to true.
+
+    Accepts a Node, the name of the header to check for true status,
+    and a node set to store the eligible nodes.
+
+    Accepts the following arguments:
+        node            - root node to search
+        boolean_header  - header name to check for boolean value
+        default         - default boolean value to use if header not set
+        node_set        - set the node will be added to if eligible
+
+    """
+
+    # leaf
+    if node.get_boolean_header_value(boolean_header, default):
+        node_set.add(node)
+
+    # recurse
+    for child in node.get_children():
+        get_eligible_nodes(child, boolean_header, default, node_set)
+
+def get_utc_offset():
+    """
+    Get the time zone offset as a three-element tuple of strings:
+
+        (sign, hours, minutes)
+
+    For example, if the local time is set to EST, this function will return:
+
+        ("-", "05", "00")
+
+    """
+
+    # get the local time, then convert it to UTC and get the offset in seconds
+    t = time.localtime()
+    utc_offset_sec = calendar.timegm(t) - \
+                     calendar.timegm(time.gmtime(time.mktime(t)))
+
+    # we need to calculate a four digit UTC offset in hours and minutes,
+    # with a + or - sign in front.
+    if utc_offset_sec >= 0:
+        sign = "+"
+    else:
+        sign = "-"
+
+    # temporary variables
+    hours = 0
+    minutes = 0
+    seconds = utc_offset_sec
+
+    # if we have a positive offset, calculate the amount
+    if seconds >= 0:
+        while seconds >= (60 * 60):
+            seconds -= (60 * 60)
+            hours += 1
+        while seconds >= 60:
+            seconds -= 60
+            minutes += 1
+
+    # if we have a negative offset, calculate the amount
+    else:
+        while seconds <= (-1 * 60 * 60):
+            seconds += (60 * 60)
+            hours += 1
+        while seconds <= (-1 * 60):
+            seconds += 60
+            minutes += 1
+
+    hh = "%.2d" % (hours)
+    mm = "%.2d" % (minutes)
+
+    return (sign, hh, mm)
+
+def get_rfc_2822_date(dt):
+    """
+    Gets a date string in RFC 2822 format.
+
+    Accepts a datetime.datetime instance, without a timezone.
+
+    Assumes that the datetime instance uses the local timezone.
+
+    Returns a date string.
+
+    """
+
+    # get the UTC offset, and format it as a string for RFC 2822 format
+    (sign, hh, mm) = get_utc_offset()
+
+    return dt.strftime("%a, %d %b %Y %H:%M:%S ") + sign + hh + mm
+
+def get_w3c_datetime(dt):
+    """
+    Gets a date string in W3C Datetime format.
+
+    Accepts a datetime.datetime instance, without a timezone.
+
+    Assumes that the datetime instance uses the local timezone.
+
+    Returns a date string.
+
+    """
+
+    # get the UTC offset, and format it as a string for W3C Datetime format
+    (sign, hh, mm) = get_utc_offset()
+
+    return dt.strftime("%Y-%m-%dT%H:%M:%S") + sign + hh + ":" + mm
+
+def get_rss_url(root_node):
+    """
+    Get the RSS URL (without a leading slash).
+
+    Returns None if RSS-URL is not enabled.
+
+    """
+
+    # if RSS is not enabled, stop here
+    if not root_node.has_header("rss-url"):
+        return None
+
+    # get the full path to the RSS file we're going to write on disk
+    rss_url = root_node.get_header("rss-url")
+    if -1 != rss_url.find("../"):
+        raise UrielError("RSS-URL can not contain ../")
+    if rss_url.startswith("/"):
+        rss_url = rss_url[1:]
+
+    return rss_url
+
+def write_rss(project_root, root_node):
+    """
+    Write RSS feed to disk (if enabled).
+
+    Accepts the project root, and the root Node.
+
+    """
+
+    # get the RSS URL
+    rss_url = get_rss_url(root_node)
+
+    # if RSS is not enabled, stop here
+    if rss_url is None:
+        return
+
+    # RSS-Title / Title
+    if root_node.has_header("rss-title"):
+        title = root_node.get_header("rss-title")
+    elif root_node.has_header("title"):
+        title = root_node.get_header("title")
+    else:
+        err = "RSS-Title or Title must be set on node '%s' to write RSS feed"
+        raise UrielError(err % (root_node.get_path()))
+
+    # RSS-Add-Node-Title-Header
+    add_node_title_header = \
+        root_node.get_boolean_header_value("rss-add-node-title-header", True)
+
+    # RSS-Description
+    if root_node.has_header("rss-description"):
+        description = root_node.get_header("rss-description")
+    else:
+        err = "RSS-Description must be set on node '%s' to write RSS feed"
+        raise UrielError(err % (root_node.get_path()))
+
+    # get the path to the RSS file to write
+    rss_file = os.path.join(root_node.get_dest_dir(), rss_url)
+
+    # skip creating the file if there's a static file with the same name
+    if os.path.exists(rss_file):
+        log("skipping creation of '%s'" % (rss_file))
+        return
+
+    # get all of the RSS-eligible nodes
+    eligible_node_set = set()
+    get_eligible_nodes(root_node, "rss-include", False, eligible_node_set)
+
+    log("creating '%s'" % (rss_file))
+
+    # keep track of which nodes we want to include
+    nodes_to_write = []
+
+    # pick out the most recent eligible nodes for inclusion
+    item_count = 0
+    for node in sorted(eligible_node_set):
+        item_count += 1
+        if item_count > RSS_MAX_ENTRIES:
+            break
+
+        nodes_to_write.append(node)
+
+    # write the RSS file
+    fw = FileWriter(rss_file)
+
+    fw.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    fw.write("<rss version=\"2.0\">\n")
+
+    # channel
+    fw.write("<channel>\n")
+
+    # title
+    fw.write("    <title>" + escape(title) + "</title>\n")
+
+    # link
+    fw.write("    <link>" + escape(root_node.get_canonical_url()) + \
+              "</link>\n")
+
+    # description
+    fw.write("    <description>" + escape(description) + "</description>\n")
+
+    # lastBuildDate
+    fw.write("    <lastBuildDate>" + \
+        escape(get_rfc_2822_date(datetime.datetime.now())) + \
+        "</lastBuildDate>\n")
+
+    # image
+    if root_node.has_header("rss-image-url"):
+        rss_image_url = root_node.get_header("rss-image-url")
+
+        # if this isn't a remote RSS image URL, validate the local path
+        if not rss_image_url.startswith("http"):
+            if rss_image_url.startswith("/"):
+                rss_image_url = rss_image_url[1:]
+
+            # get the path to the RSS image on the filesystem
+            rss_image_file = os.path.join(root_node.get_dest_dir(),
+                                          rss_image_url)
+
+            # if this is a local static file reference, make sure it exists
+            if not os.path.exists(rss_image_file):
+                raise UrielError(
+                    "RSS image file not found: '%s' at path '%s'" % \
+                    (rss_image_url, rss_image_file))
+
+            # create canonical RSS image URL
+            canonical_rss_image_url = root_node.get_canonical_url() + \
+                rss_image_url
+
+        # image
+        fw.write("    <image>\n")
+
+        # url
+        fw.write("        <url>" + escape(canonical_rss_image_url) + \
+            "</url>\n")
+
+        # title
+        fw.write("        <title>" + escape(title) + "</title>\n")
+
+        # link
+        fw.write("        <link>" + \
+            escape(root_node.get_canonical_url()) + "</link>\n")
+
+        # width
+        if root_node.has_header("rss-image-width"):
+            fw.write("        <width>" + \
+                escape(root_node.get_header("rss-image-width")) + \
+                "</width>\n")
+
+        # height
+        if root_node.has_header("rss-image-height"):
+            fw.write("        <height>" + \
+                escape(root_node.get_header("rss-image-height")) + \
+                "</height>\n")
+
+        fw.write("    </image>\n")
+
+    # nodes
+    for node in nodes_to_write:
+        # render the node for RSS
+        # this involves setting the template for the node to null
+        # before rendering it, and then resetting the template back
+        # to its original value
+        template = None
+        if node.has_header("template"):
+            template = node.get_header("template")
+        node.set_header("template", "null")
+
+        # create page
+        page = Page(project_root, node, use_canonical_url=True)
+
+        # get node body
+        rendered_node_body = page.render()
+        if add_node_title_header:
+            description = \
+                "<h1>" + escape(node.get_title()) + "</h1>\n\n" + \
+                rendered_node_body
+        else:
+            description = rendered_node_body
+
+        # set template back to its previous value, if any
+        if template is not None:
+            node.set_header("template", template)
+
+        # item
+        fw.write("    <item>\n")
+
+        # title
+        # (always escape the title, XML has stricter requirements)
+        fw.write("        <title>" + escape(node.get_title()) + \
+            "</title>\n")
+
+        # link
+        fw.write("        <link>" + escape(node.get_canonical_url()) + \
+              "</link>\n")
+
+        # description
+        fw.write("        <description>")
+        fw.write("<![CDATA[" + escape_xml(description) + "]]>")
+        fw.write("</description>\n")
+
+        # category
+        for tag in sorted(node.get_tags()):
+            fw.write("        <category>" + escape(tag) + \
+                "</category>\n")
+
+        # pubDate
+        node_date = node.modified
+        if node.created:
+            node_date = node.created
+        fw.write("        <pubDate>" + \
+            escape(get_rfc_2822_date(node_date)) + \
+            "</pubDate>\n")
+
+        fw.write("    </item>\n")
+
+    fw.write("</channel>\n")
+    fw.write("</rss>\n")
+
+    fw.close()
+
+def get_sitemap_url(root_node):
+    """
+    Get the sitemap URL (without a leading slash).
+
+    Returns None if Sitemap-URL is not enabled.
+
+    """
+
+    # if sitemap is not enabled, stop here
+    if not root_node.has_header("sitemap-url"):
+        return None
+
+    # get the full path to the sitemap file we're going to write on disk
+    sitemap_url = root_node.get_header("sitemap-url")
+    if -1 != sitemap_url.find("../"):
+        raise UrielError("Sitemap-URL can not contain ../")
+
+    if sitemap_url.startswith("/"):
+        sitemap_url = sitemap_url[1:]
+
+    return sitemap_url
+
+def write_sitemap(project_root, root_node):
+    """
+    Write sitemap file to disk (if enabled).
+
+    Also writes a simple robots.txt file that points to the sitemap.
+
+    Accepts the project root, and the root Node.
+
+    """
+
+    # get sitemap URL
+    sitemap_url = get_sitemap_url(root_node)
+    if sitemap_url is None:
+        return
+
+    # get the path to the sitemap file to write
+    sitemap_file = os.path.join(root_node.get_dest_dir(), sitemap_url)
+
+    # skip creating the file if there's a static file with the same name
+    if os.path.exists(sitemap_file):
+        log("skipping creation of '%s'" % (sitemap_file))
+        return
+
+    # get all of the sitemap-eligible nodes
+    eligible_node_set = set()
+    get_eligible_nodes(root_node, "sitemap-include", True, eligible_node_set)
+
+    log("creating '%s'" % (sitemap_file))
+
+    # keep track of which nodes we want to include
+    nodes_to_write = []
+
+    # pick out the most recent eligible nodes for inclusion
+    item_count = 0
+    for node in sorted(eligible_node_set):
+        item_count += 1
+        if item_count > SITEMAP_MAX_ENTRIES:
+            warn("warning: sitemap contents limited to most recent " + \
+                str(SITEMAP_MAX_ENTRIES) + " entries")
+
+            break
+
+        nodes_to_write.append(node)
+
+    # write the sitemap
+    fw = FileWriter(sitemap_file)
+    fw.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n")
+    fw.write("<urlset " + \
+        "xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n")
+
+    # nodes
+    for node in sorted(nodes_to_write):
+        # url
+        fw.write("    <url>\n")
+
+        # loc
+        fw.write("        <loc>" + escape(node.get_canonical_url()) + \
+            "</loc>\n")
+
+        # lastmod
+        fw.write("        <lastmod>" + \
+            escape_xml(get_w3c_datetime(node.modified)) + \
+            "</lastmod>\n")
+
+        fw.write("    </url>\n")
+
+    fw.write("</urlset>\n")
+    fw.close()
+
+def write_robots_txt(project_root, root_node):
+    """
+    Write robots.txt file.
+
+    Accepts the project_root, and the root Node.
+
+    Only writes robots.txt if Sitemap-URL is enabled.
+
+    """
+
+    # get the path to the robots.txt file
+    robots_txt_file = os.path.join(root_node.get_dest_dir(), "robots.txt")
+    if os.path.exists(robots_txt_file):
+        log("skipping creation of '%s'" % (robots_txt_file))
+        return
+
+    # get the sitemap URL (without a leading slash)
+    sitemap_url = get_sitemap_url(root_node)
+
+    # if we don't have a sitemap, there's no point to creating this
+    # particular form of robots.txt that only includes a Sitemap entry
+    if sitemap_url is None:
+        return
+
+    # write robots.txt
+    #
+    # this is just enough to get the sitemap listed,
+    # a real robots.txt on a production website might be better off
+    # using this as a starting point and copying it into static/
+    if not os.path.exists(robots_txt_file):
+        log("creating '%s'" % (robots_txt_file))
+        fw = FileWriter(robots_txt_file)
+        fw.write("Sitemap: " + \
+                root_node.get_canonical_url() + sitemap_url + "\n")
+        fw.close()
+
+def get_default_template_contents():
+    """
+    Get the contents of the initial default template, as a multi-line string.
+
+    """
+
+    lines = []
+
+    lines.append("<!DOCTYPE html>")
+    lines.append("<html lang=\"en-US\">")
+    lines.append("<head>")
+    lines.append("    <title>{{node:title}}</title>")
+    lines.append("</head>")
+    lines.append("")
+    lines.append("<body>")
+    lines.append("")
+    lines.append("<h1>{{node:title}}</h1>")
+    lines.append("")
+    lines.append("<p>The value of the <i>Foo</i> header is: ")
+    lines.append("<b>{{value:foo}}</b></p>")
+    lines.append("")
+    lines.append("{{node:body}}")
+    lines.append("")
+    lines.append("</body>")
+    lines.append("</html>")
+    lines.append("")
+
+    return "\n".join(lines)
+
+def get_default_index_node_contents():
+    """
+    Get the contents of the default index node, as a multi-line string.
+
+    """
+
+    lines = []
+
+    lines.append("Title: Hello World")
+    lines.append("Foo: bar")
+    lines.append("")
+    lines.append("<p>This page is generated from a combination of the ")
+    lines.append("<i>index</i> node and the <i>default.html</i> ")
+    lines.append("template.</p>")
+    lines.append("")
+    lines.append("<p>Replace this with your own content, etc.</p>")
+    lines.append("")
+    lines.append("<p>This page was generated by " + PROGRAM_NAME + "</p>")
+    lines.append("")
+
+    return "\n".join(lines)
+
+def get_default_soju_contents():
+    """
+    Get the contents of the default soju.py file, as a multi-line string.
+
+    """
+
+    lines = []
+
+    lines.append("#" * 78)
+    lines.append("# soju.py" + (" " * 68))
+    lines.append("#" * 78)
+    lines.append("")
+    lines.append("# The following symbols are imported using magic:")
+    lines.append("#")
+    lines.append("# import uriel")
+    lines.append("# from uriel import SojuError")
+    lines.append("# from uriel import log")
+    lines.append("# from uriel import escape")
+    lines.append("")
+    lines.append("# The following variables are available to pass to " + \
+                 "functions:")
+    lines.append("#")
+    lines.append("# page")
+    lines.append("# node")
+    lines.append("# project_root")
+    lines.append("# use_canonical_url")
+    lines.append("")
+    lines.append("# {{soju:node_title(node)}}")
+    lines.append("def node_title(node):")
+    lines.append("    return escape(node.get_title())")
+    lines.append("")
+    lines.append("")
+
+    return "\n".join(lines)
+
+def get_default_handlers_contents():
+    """
+    Get the contents of the default handlers.py file, as a multi-line string.
+
+    """
+
+    lines = []
+
+    lines.append("#" * 78)
+    lines.append("# handlers.py" + (" " * 64) + "#")
+    lines.append("#" * 78)
+    lines.append("")
+    lines.append("# The following symbols are imported using magic:")
+    lines.append("#")
+    lines.append("# import uriel")
+    lines.append("# from uriel import Page")
+    lines.append("# from uriel import Node")
+    lines.append("# from uriel import FileNode")
+    lines.append("# from uriel import VirtualNode")
+    lines.append("# from uriel import HandlerError")
+    lines.append("# from uriel import log")
+    lines.append("# from uriel import escape")
+    lines.append("")
+    lines.append("#def init(project_root):")
+    lines.append("#    pass")
+    lines.append("")
+    lines.append("#def before_render_node_tree(project_root, root_node):")
+    lines.append("#    pass")
+    lines.append("")
+    lines.append("#def after_render_node_tree(project_root, root_node):")
+    lines.append("#    pass")
+    lines.append("")
+    lines.append("#def cleanup(project_root, root_node):")
+    lines.append("#    pass")
+    lines.append("")
+    lines.append("")
+
+    return "\n".join(lines)
+
+def get_default_makefile_contents():
+    """
+    Get the contents of the default Makefile, as a multi-line string.
+
+    """
+
+    lines = []
+
+    lines.append("#" * 78)
+    lines.append("# uriel project Makefile " + (" " * 52) + "#")
+    lines.append("#" * 78)
+    lines.append("")
+    lines.append("# path to uriel")
+    lines.append("URIEL=" + os.path.abspath(__file__))
+    lines.append("")
+    lines.append("# uriel project subdirectories")
+    lines.append("STATIC=static")
+    lines.append("NODES=nodes")
+    lines.append("TEMPLATES=templates")
+    lines.append("PUBLIC=public")
+    lines.append("LIB=lib")
+    lines.append("")
+    lines.append("#" * 78)
+    lines.append("# targets " + (" " * 67) + "#")
+    lines.append("#" * 78)
+    lines.append("")
+    lines.append(".PHONY: site clean")
+    lines.append("")
+    lines.append("site:")
+    lines.append("\t${URIEL} .")
+    lines.append("")
+    lines.append("clean:")
+    lines.append("\trm -rf ${PUBLIC}/")
+    lines.append("\trm -rf ${LIB}/__pycache__")
+    lines.append("")
+    lines.append("")
+
+    return "\n".join(lines)
+
+def init_project_root(project_root):
+    """
+    (Re)initialize the rendered web site public directory with only the
+    static content, deleting everything else.
+
+    Create any missing directories required for the project:
+        static      - static files to include in the website
+        nodes       - dynamic node pages
+        templates   - templates to merge with dynamic nodes
+        public      - rendered website
+
+    """
+
+    # section root directories
+    static = os.path.join(project_root, STATIC_ROOT)
+    nodes = os.path.join(project_root, NODES_ROOT)
+    templates = os.path.join(project_root, TEMPLATES_ROOT)
+    lib = os.path.join(project_root, LIB_ROOT)
+    public = os.path.join(project_root, PUBLIC_ROOT)
+
+    # create all of the necessary project directories, if they don't exist
+    for dir in [static, nodes, templates, lib, public]:
+        if not os.path.isdir(dir):
+            log("creating '" + dir + "'")
+            try:
+                os.mkdir(dir)
+            except Exception as e:
+                err = "could not create directory '%s': '%s'"
+                raise UrielError(err % (dir, str(e)))
+
+    # (re)initialize public directory with only the static content
+    src = static + "/"
+    dest = public + "/"
+    log("copying '" + src + "' to '" + dest + "', " + \
+        "overwriting previous contents")
+    cmd_stack = [CMD_RSYNC, "-a", "--delete", src, dest]
+    cmd_exec(cmd_stack)
+
+    # create a simple default template, if it doesn't already exist
+    default_template = os.path.join(templates, DEFAULT_TEMPLATE)
+    if not os.path.exists(default_template):
+        log("creating '" + default_template + "'")
+        fw = FileWriter(default_template)
+        fw.write(get_default_template_contents())
+        fw.close()
+
+    # create a simple default home page, if it doesn't already exist
+    default_node = os.path.join(nodes, NODE_INDEX)
+    if not os.path.exists(default_node):
+        log("creating '" + default_node + "'")
+        fw = FileWriter(default_node)
+        fw.write(get_default_index_node_contents())
+        fw.close()
+
+    # create a simple default soju file
+    default_soju = os.path.join(lib, "soju.py")
+    if not os.path.exists(default_soju):
+        log("creating '" + default_soju + "'")
+        fw = FileWriter(default_soju)
+        fw.write(get_default_soju_contents())
+        fw.close()
+
+    # create a simple default handlers file
+    default_handlers = os.path.join(lib, "handlers.py")
+    if not os.path.exists(default_handlers):
+        log("creating '" + default_handlers + "'")
+        fw = FileWriter(default_handlers)
+        fw.write(get_default_handlers_contents())
+        fw.close()
+
+    # create a simple Makefile
+    default_makefile = os.path.join(project_root, "Makefile")
+    if not os.path.exists(default_makefile):
+        log("creating '" + default_makefile + "'")
+        fw = FileWriter(default_makefile)
+        fw.write(get_default_makefile_contents())
+        fw.close()
+
+def get_uriel_module():
+    """
+    Get a reference to ourselves as a module.
+
+    """
+
+    return sys.modules[__name__]
+
+def null_handler(*args):
+    """
+    Null handler to install in handlers module for missing methods.
+
+    """
+
+    pass
+
+def init_modules(project_root):
+    """
+    Initialize the modules we can use under LIB_ROOT.
+
+    """
+
+    # get the path to the lib directory
+    lib_dir = os.path.join(project_root, LIB_ROOT)
+
+    # add the project lib dir to our module import path
+    sys.path.insert(0, lib_dir)
+
+    # import modules
+    log("initializing soju")
+    import soju
+    log("initializing handlers")
+    import handlers
+
+    # export relevant symbols to soju
+    soju.uriel = get_uriel_module()
+    soju.SojuError = SojuError
+    def soju_log(s):
+        return log("soju: " + str(s))
+    soju.log = soju_log
+    soju.escape = escape
+
+    # export relevant symbols to handlers
+    handlers.uriel = get_uriel_module()
+    handlers.Page = Page
+    handlers.Node = Node
+    handlers.FileNode = FileNode
+    handlers.VirtualNode = VirtualNode
+    handlers.HandlerError = HandlerError
+    def handlers_log(s):
+        return log("handler: " + str(s))
+    handlers.log = handlers_log
+    handlers.escape = escape
+
+    # install default handlers
+    if "init" not in dir(handlers):
+        handlers.init = null_handler
+    if "before_render_node_tree" not in dir(handlers):
+        handlers.before_render_node_tree = null_handler
+    if "after_render_node_tree" not in dir(handlers):
+        handlers.after_render_node_tree = null_handler
+    if "cleanup" not in dir(handlers):
+        handlers.cleanup = null_handler
+
+    # make these modules available to the rest of the program
+    globals()["soju"] = soju
+    globals()["handlers"] = handlers
+
+def write_additional_files(project_root, node):
+    """
+    Write additional files after the nodes have been generated.
+
+    """
+
+    # write RSS feed out to disk (if enabled)
+    write_rss(project_root, node)
+
+    # write sitemap out to disk (if enabled)
+    write_sitemap(project_root, node)
+
+    # write robots.txt (if sitemap is enabled)
+    write_robots_txt(project_root, node)
+
+def copy_static_files(project_root):
+    """
+    Copy the static files into the public website, without modification.
+
+    """
+
+    src = os.path.join(project_root, STATIC_ROOT) + "/"
+    dest = os.path.join(project_root, PUBLIC_ROOT) + "/"
+
+    cmd_stack = [CMD_RSYNC, "-a", src, dest]
+
+    log("copying '%s' to '%s'" % (src, dest))
+    cmd_exec(cmd_stack)
+
+def create_project_root(project_root):
+    """
+    Create the project root directory, if it doesn't exist.
+
+    """
+
+    if not os.path.exists(project_root):
+        try:
+            log("creating '" + project_root + "'")
+            os.mkdir(project_root)
+        except Exception as e:
+            raise UrielError("could not create project root '%s'" % \
+                             (project_root))
+
+def call_handler(handler_name, handler_function, *args):
+    """
+    Run a user-defined handler.
+
+    Accepts the handler name, function reference, project_root, node.
+
+    """
+
+    if handler_function is null_handler:
+        return
+
+    log("running handler: %s" % (handler_name))
+
+    try:
+        handler_function(*args)
+    except HandlerError as e:
+        log("%s handler error: %s" % (handler_name, str(e)))
+        sys.exit(EXIT_FAIL)
+    except Exception as e:
+        log("%s handler error: %s" % (handler_name, str(e)))
+        raise
+
+def main():
+    """
+    Main entry point into the program.
+
+    """
+
+    # show usage information if we didn't get exactly one argument
+    if 2 != len(sys.argv):
+        show_usage()
+
+    # get the project root
+    project_root = sys.argv[1]
+
+    # short and long options are not supported, only the project root
+    # if the user passes in -h or --help or similar, show usage and exit
+    if project_root.startswith("-"):
+        show_usage()
+
+    try:
+        # create project root directory (if necessary)
+        create_project_root(project_root)
+
+        # initialize the project root
+        init_project_root(project_root)
+
+        # initialize modules under lib/
+        init_modules(project_root)
+
+        # handler: init
+        call_handler("init", handlers.init, project_root)
+
+        # create a tree of all the file-based nodes (in memory)
+        log("reading node files")
+        node = create_file_node_tree(project_root)
+
+        # handler: before_render_node_tree
+        call_handler("before_render_node_tree",
+                     handlers.before_render_node_tree,
+                     project_root,
+                     node)
+
+        # augment nodes with additional values before rendering
+        augment_node_tree(project_root, node)
+
+        # render nodes using templates (in memory)
+        log("rendering node content")
+        render_node_tree(project_root, node)
+
+        # handler: after_render_node_tree
+        call_handler("after_render_node_tree",
+                     handlers.after_render_node_tree,
+                     project_root,
+                     node)
+
+        # write rendered node pages out to disk
+        write_dynamic_nodes(project_root, node)
+
+        # write additional files
+        write_additional_files(project_root, node)
+
+        # copy static files into the public directory
+        copy_static_files(project_root)
+
+        # handler: cleanup
+        call_handler("cleanup", handlers.cleanup, project_root, node)
+
+    except SojuError as e:
+        log("soju: " + str(e))
+        sys.exit(EXIT_FAIL)
+
+    except UrielError as e:
+        die(str(e))
+
+    sys.exit(EXIT_OK)
+
+if __name__ == "__main__":
+    main()
+
