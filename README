@@ -23,8 +23,8 @@ Usage:
 Organization and Structure
     The project root has the following top-level directories:
 
-        templates   - templates for dynamic content
-        dynamic     - dynamic nodes to merge with templates
+        templates   - templates to merge with dynamic content
+        nodes       - dynamic content nodes to merge with templates
         lib         - user-defined Python code
         static      - static content to copy to the web site unmodified
         public      - rendered web site
