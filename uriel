@@ -1520,7 +1520,7 @@ class Node:
                     tag = tag.strip()
 
                     # validate tag
-                    if not re.match("^[a-z0-9\-]*$", tag):
+                    if not re.match(r"^[a-z0-9\-]*$", tag):
                         raise UrielError(
                             "invalid tag '%s' in node '%s'" % \
                             (tag, self.get_path()))
@@ -1931,7 +1931,7 @@ class FileNode(Node):
         node_modified = os.path.getmtime(node_path)
         self.modified = \
             datetime.datetime.fromtimestamp(node_modified,
-                datetime.datetime.utcnow().astimezone().tzinfo)
+                datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
 
         # read dynamic node file, and parse out headers and body
         body_lines = []
@@ -2032,8 +2032,9 @@ class FileNode(Node):
             # create a new datetime with the date/time we read from
             # the date string, augmented with the local time zone
             if dt.tzinfo is None:
-                tmp_dt = datetime.datetime.fromtimestamp(dt.timestamp(),
-                            datetime.datetime.utcnow().astimezone().tzinfo)
+                tmp_dt = datetime.datetime.fromtimestamp(
+                    dt.timestamp(),
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
 
                 dt = tmp_dt
 
@@ -2082,7 +2083,7 @@ class VirtualNode(Node):
             # use the current date/time/timezone
             now = datetime.datetime.fromtimestamp(
                     datetime.datetime.now().timestamp(),
-                    datetime.datetime.utcnow().astimezone().tzinfo)
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
 
             self.created = now
             self.modified = now
@@ -2514,7 +2515,7 @@ def augment_node_tree(project_root, root_node):
             if not tag_node.has_header("modified"):
                 now = datetime.datetime.fromtimestamp(
                         datetime.datetime.now().timestamp(),
-                        datetime.datetime.utcnow().astimezone().tzinfo)
+                        datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
 
                 tag_node.created = now
                 tag_node.modified = now
