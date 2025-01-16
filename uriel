@@ -1196,6 +1196,12 @@ class Node:
         self.created = None
         self.modified = None
 
+        # performance optimizations
+        self.__url = None
+        self.__title = None
+        # path -> Node
+        self.__node_path_cache = {}
+
         # check for duplicate node path elsewhere in the tree
         if parent_node is not None:
             root_node = parent_node.get_root_node()
@@ -1313,6 +1319,10 @@ class Node:
 
         """
 
+        # cache hit
+        if self.__url is not None:
+            return self.__url
+
         # set node_dir to the directory we want to use in our URL
         # if it's an index node, strip off the "index" part
         if self.get_path().endswith(NODE_INDEX):
@@ -1323,7 +1333,8 @@ class Node:
 
         # if this is the root node, return a /
         if "" == node_dir:
-            return "/"
+            self.__url = "/"
+            return self.__url
 
         # preserve node hierarchy by default
         target_dir = node_dir
@@ -1344,7 +1355,8 @@ class Node:
             target_dir = parent_url + flat_url
 
         # return the target dir, with a leading and trailing slash
-        return "/" + target_dir + "/"
+        self.__url = "/" + target_dir + "/"
+        return self.__url
 
     def get_canonical_url(self):
         """
@@ -1440,12 +1452,17 @@ class Node:
 
         """
 
+        if self.__title is not None:
+            return self.__title
+
         # use the Title header, if we have it
         if self.has_header("title"):
-            return self.get_header("title")
+            self.__title = self.get_header("title")
+            return self.__title
 
         # otherwise fall back on the node name
-        return self.get_display_name()
+        self.__title = self.get_display_name()
+        return self.__title
 
     def get_escaped_title(self):
         """
@@ -1603,7 +1620,7 @@ class Node:
 
         return maybe_space + separator + maybe_space
 
-    def find_node_by_path(self, path, raise_exceptions=True):
+    def find_node_by_path(self, path, raise_exceptions=True, cache_path=True):
         """
         Find the Node that matches the given path.
 
@@ -1620,10 +1637,24 @@ class Node:
         if self.get_path() == path:
             return self
 
+        # if the cache is enabled on this node (usually just the root node)
+        if cache_path:
+            # if the path is in the cache, return it
+            if path in self.__node_path_cache:
+                return self.__node_path_cache[path]
+
         # recurse through child nodes
         for child in self.get_children():
-           candidate = child.find_node_by_path(path, False)
-           if candidate:
+            # try to find the node in the child node
+            candidate = child.find_node_by_path(path, False, False)
+
+            # if we found the given node
+            if candidate:
+                # optionally cache the results
+                if cache_path:
+                    self.__node_path_cache[path] = candidate
+
+                # return the node
                 return candidate
 
         if raise_exceptions:
@@ -1829,6 +1860,12 @@ class Node:
 
         """
 
+        # cache invalidation
+        if "title" == header:
+            self.__title = None
+        if "flat-url" == header:
+            self.__url = None
+
         self.headers[header] = value
 
     def delete_header(self, header):
@@ -1838,6 +1875,12 @@ class Node:
         Inside the program, headers should all be lowercase.
 
         """
+
+        # cache invalidation
+        if "title" == header:
+            self.__title = None
+        if "flat-url" == header:
+            self.__url = None
 
         del(self.headers[header])
 

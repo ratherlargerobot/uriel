@@ -3,6 +3,10 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.0.3 (Jan 16 18:28 2025)
+------------------------------------------------------------------------------
+- Add performance optimizations to Node class
+
 VERSION 1.0.2 (Nov 20 17:07 2024)
 ------------------------------------------------------------------------------
 - Fix SyntaxWarning in tag validation regex on Python 3.12
