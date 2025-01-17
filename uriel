@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 """
-uriel
+uriel 1.0.4
 
 Yet another static website generator.
 
 Named for the archangel Uriel in the novel Unsong, whose job was to perform
 the fantastic and mundane work necessary to keep the world functioning.
 
-Copyright 2021 Nathan Rosenquist
+Copyright 2021-2025 Nathan Rosenquist
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1197,10 +1197,10 @@ class Node:
         self.modified = None
 
         # performance optimizations
-        self.__url = None
-        self.__title = None
+        self.url_cache = None
+        self.title_cache = None
         # path -> Node
-        self.__node_path_cache = {}
+        self.node_path_cache = {}
 
         # check for duplicate node path elsewhere in the tree
         if parent_node is not None:
@@ -1320,8 +1320,8 @@ class Node:
         """
 
         # cache hit
-        if self.__url is not None:
-            return self.__url
+        if self.url_cache is not None:
+            return self.url_cache
 
         # set node_dir to the directory we want to use in our URL
         # if it's an index node, strip off the "index" part
@@ -1333,8 +1333,8 @@ class Node:
 
         # if this is the root node, return a /
         if "" == node_dir:
-            self.__url = "/"
-            return self.__url
+            self.url_cache = "/"
+            return self.url_cache
 
         # preserve node hierarchy by default
         target_dir = node_dir
@@ -1355,8 +1355,8 @@ class Node:
             target_dir = parent_url + flat_url
 
         # return the target dir, with a leading and trailing slash
-        self.__url = "/" + target_dir + "/"
-        return self.__url
+        self.url_cache = "/" + target_dir + "/"
+        return self.url_cache
 
     def get_canonical_url(self):
         """
@@ -1452,17 +1452,17 @@ class Node:
 
         """
 
-        if self.__title is not None:
-            return self.__title
+        if self.title_cache is not None:
+            return self.title_cache
 
         # use the Title header, if we have it
         if self.has_header("title"):
-            self.__title = self.get_header("title")
-            return self.__title
+            self.title_cache = self.get_header("title")
+            return self.title_cache
 
         # otherwise fall back on the node name
-        self.__title = self.get_display_name()
-        return self.__title
+        self.title_cache = self.get_display_name()
+        return self.title_cache
 
     def get_escaped_title(self):
         """
@@ -1640,8 +1640,8 @@ class Node:
         # if the cache is enabled on this node (usually just the root node)
         if cache_path:
             # if the path is in the cache, return it
-            if path in self.__node_path_cache:
-                return self.__node_path_cache[path]
+            if path in self.node_path_cache:
+                return self.node_path_cache[path]
 
         # recurse through child nodes
         for child in self.get_children():
@@ -1652,7 +1652,7 @@ class Node:
             if candidate:
                 # optionally cache the results
                 if cache_path:
-                    self.__node_path_cache[path] = candidate
+                    self.node_path_cache[path] = candidate
 
                 # return the node
                 return candidate
@@ -1852,6 +1852,23 @@ class Node:
 
         return self.headers[header]
 
+    def invalidate_cache_by_header(self, header):
+        """
+        Invalidate the cache for certain performance optimizations.
+
+        """
+
+        if header:
+            # headers affecting __title cache field
+            if "title" == header:
+                self.title_cache = None
+            if "escape-title" == header:
+                self.title_cache = None
+
+            # headers affecting __url cache field
+            if "flat-url" == header:
+                self.url_cache = None
+
     def set_header(self, header, value):
         """
         Set the given header to the specified value.
@@ -1860,11 +1877,7 @@ class Node:
 
         """
 
-        # cache invalidation
-        if "title" == header:
-            self.__title = None
-        if "flat-url" == header:
-            self.__url = None
+        self.invalidate_cache_by_header(header)
 
         self.headers[header] = value
 
@@ -1876,11 +1889,7 @@ class Node:
 
         """
 
-        # cache invalidation
-        if "title" == header:
-            self.__title = None
-        if "flat-url" == header:
-            self.__url = None
+        self.invalidate_cache_by_header(header)
 
         del(self.headers[header])
 
