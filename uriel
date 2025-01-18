@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.0.4
+uriel 1.0.5
 
 Yet another static website generator.
 
@@ -1196,11 +1196,31 @@ class Node:
         self.created = None
         self.modified = None
 
-        # performance optimizations
+        #
+        # cache performance optimizations
+        #
+        # url
         self.url_cache = None
+        # title
         self.title_cache = None
+        # name
+        self.name_cache = None
+        # node path cache (root node only)
         # path -> Node
-        self.node_path_cache = {}
+        self.node_path_cache = None
+        if parent_node is None:
+            self.node_path_cache = {}
+        #
+        # tag node cache
+        self.tag_node_cache = None
+        #
+        # root node cache
+        self.root_node_cache = self
+        if parent_node is not None:
+            self.root_node_cache = parent_node.root_node_cache
+        #
+        # sorted list of tags
+        self.sorted_tags_cache = None
 
         # check for duplicate node path elsewhere in the tree
         if parent_node is not None:
@@ -1293,7 +1313,18 @@ class Node:
 
         """
 
+        # add the child node
         self.children.append(node)
+
+        #self.root_node_cache = self
+        #if parent_node is not None:
+        #    self.root_node_cache = parent_node.root_node_cache
+
+        # sort the child nodes in place
+        self.children = sorted(self.children)
+
+        # update the node path cache on the root node
+        self.root_node_cache.node_path_cache[node.get_path()] = node
 
     def get_children(self):
         """
@@ -1301,7 +1332,8 @@ class Node:
 
         """
 
-        return sorted(self.children)
+        # return the (pre-sorted) child nodes
+        return self.children
 
     def get_url(self):
         """
@@ -1381,6 +1413,9 @@ class Node:
 
         """
 
+        if self.name_cache is not None:
+            return self.name_cache
+
         url = self.get_url()
 
         leaf = "index"
@@ -1390,7 +1425,9 @@ class Node:
             if "" != part:
                 leaf = part
 
-        return leaf
+        self.name_cache = leaf
+
+        return self.name_cache
 
     def get_display_name(self):
         """
@@ -1528,6 +1565,10 @@ class Node:
 
         """
 
+        # return from cache if possible
+        if self.sorted_tags_cache is not None:
+            return self.sorted_tags_cache
+
         tag_set = set()
 
         if self.has_header("tags"):
@@ -1544,7 +1585,9 @@ class Node:
 
                     tag_set.add(tag)
 
-        return sorted(tag_set)
+        self.sorted_tags_cache = sorted(tag_set)
+
+        return self.sorted_tags_cache
 
     def get_dest_dir(self):
         """
@@ -1620,7 +1663,7 @@ class Node:
 
         return maybe_space + separator + maybe_space
 
-    def find_node_by_path(self, path, raise_exceptions=True, cache_path=True):
+    def find_node_by_path(self, path, raise_exceptions=True):
         """
         Find the Node that matches the given path.
 
@@ -1637,25 +1680,12 @@ class Node:
         if self.get_path() == path:
             return self
 
-        # if the cache is enabled on this node (usually just the root node)
-        if cache_path:
-            # if the path is in the cache, return it
-            if path in self.node_path_cache:
-                return self.node_path_cache[path]
-
-        # recurse through child nodes
-        for child in self.get_children():
-            # try to find the node in the child node
-            candidate = child.find_node_by_path(path, False, False)
-
-            # if we found the given node
-            if candidate:
-                # optionally cache the results
-                if cache_path:
-                    self.node_path_cache[path] = candidate
-
-                # return the node
-                return candidate
+        # return the path from the cache
+        # this should always be accurate, since the cache is built
+        # as child nodes are added to the tree
+        if self.root_node_cache:
+            if path in self.root_node_cache.node_path_cache:
+                return self.root_node_cache.node_path_cache[path]
 
         if raise_exceptions:
             raise UrielError("node not found '%s'" % (path))
@@ -1668,12 +1698,7 @@ class Node:
 
         """
 
-        # if we don't have a parent, we're the root
-        if self.get_parent_node() is None:
-            return self
-
-        # recurse into the parent node
-        return self.get_parent_node().get_root_node()
+        return self.root_node_cache
 
     def get_tag_node(self):
         """
@@ -1690,12 +1715,20 @@ class Node:
 
         """
 
-        # get the root node
-        root = self.get_root_node()
+        # return the tag node from the cache, if possible
+        if self.tag_node_cache is not None:
+            return self.tag_node_cache
 
         # find and return the tag node
         if self.has_header("tag-node"):
-            return root.find_node_by_path(self.get_header("tag-node"))
+            # get the root node
+            root = self.get_root_node()
+
+            # find the tag node and cache it
+            self.tag_node_cache = root.find_node_by_path(self.get_header("tag-node"))
+
+            # return the tag node
+            return self.tag_node_cache
 
         return None
 
