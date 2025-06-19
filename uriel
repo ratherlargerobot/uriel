@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.0.5
+uriel 1.0.6
 
 Yet another static website generator.
 
@@ -2397,11 +2397,12 @@ def create_file_node_tree(project_root, parent_path=None, parent_node=None):
 
     return index
 
-def create_tag_node_tree(project_root, root):
+def create_tag_node_tree(project_root, root, use_canonical_url):
     """
     Create the tag node tree.
 
-    Accepts project_root directory, and the root node.
+    Accepts project_root directory, the root node, and a boolean indicating
+    whether we should pre-compute canonical URLs.
 
     Looks for the Tag-Node header in the root node, to determine where to
     place the tag root.
@@ -2440,19 +2441,22 @@ def create_tag_node_tree(project_root, root):
             tag_node.get_url() + escaped_tag + "/" + "\">" + \
             escaped_tag + "</a>" + \
             link_suffix
-
-        c_line = link_prefix + \
-            "<a href=\"" + \
-            tag_node.get_canonical_url() + escaped_tag + "/" + "\">" + \
-            escaped_tag + "</a>" + \
-            link_suffix
-
         lines.append(line)
-        canonical_lines.append(c_line)
+
+        if use_canonical_url:
+            c_line = link_prefix + \
+                "<a href=\"" + \
+                tag_node.get_canonical_url() + escaped_tag + "/" + "\">" + \
+                escaped_tag + "</a>" + \
+                link_suffix
+            canonical_lines.append(c_line)
+
     tag_node.set_header("__tag-list-html",
                         "\n".join(lines))
-    tag_node.set_header("__tag-list-html-canonical",
-                        "\n".join(canonical_lines))
+
+    if use_canonical_url:
+        tag_node.set_header("__tag-list-html-canonical",
+                            "\n".join(canonical_lines))
 
     # RSS-Include: false
     # (omit tag root and child vnodes from RSS feed)
@@ -2490,23 +2494,28 @@ def create_tag_node_tree(project_root, root):
         canonical_lines = []
         for node in sorted(tag_node_index[tag]):
             line = link_prefix + node.get_link() + link_suffix
-            c_line = link_prefix + node.get_canonical_link() + link_suffix
-
             lines.append(line)
-            canonical_lines.append(c_line)
+
+            if use_canonical_url:
+                c_line = link_prefix + node.get_canonical_link() + link_suffix
+                canonical_lines.append(c_line)
+
         vnode.set_header("__tag-list-html",
                          "\n".join(lines))
-        vnode.set_header("__tag-list-html-canonical",
-                         "\n".join(canonical_lines))
+
+        if use_canonical_url:
+            vnode.set_header("__tag-list-html-canonical",
+                             "\n".join(canonical_lines))
 
         tag_node.add_child(vnode)
 
-def create_tag_links(node, use_canonical_url=False):
+def create_tag_links(node, use_canonical_url):
     """
     Create HTML to link to all tags associated with this node, as defined
     in the Tags header for the given node.
 
-    Accepts a Node, and an optional use_canonical_url value (default False).
+    Accepts a Node, and a boolean indicating whether we should
+    pre-compute canonical URLs.
 
     """
 
@@ -2532,29 +2541,37 @@ def create_tag_links(node, use_canonical_url=False):
 
     return "".join(links)
 
-def create_tag_links_recursive(node):
+def create_tag_links_recursive(node, use_canonical_url):
     """
     Walk through the node tree, from the root, and create tag links for
     each node that does not already have something for the {{tag-list:*}}
     parameter.
 
+    Accepts a Node, and a boolean indicating whether we should pre-compute
+    canonical URL links.
+
     """
 
     # leaf node
     if not node.has_header("__tag-list-html"):
-        node.set_header("__tag-list-html", create_tag_links(node))
-    if not node.has_header("__tag-list-html-canonical"):
-        node.set_header("__tag-list-html-canonical",
-                        create_tag_links(node, True))
+        node.set_header("__tag-list-html", create_tag_links(node, False))
+
+    if use_canonical_url:
+        if not node.has_header("__tag-list-html-canonical"):
+            node.set_header("__tag-list-html-canonical",
+                            create_tag_links(node, True))
 
     # recurse
     for child in node.get_children():
-        create_tag_links_recursive(child)
+        create_tag_links_recursive(child, use_canonical_url)
 
-def create_child_node_list_html(node):
+def create_child_node_list_html(node, use_canonical_url):
     """
     Create an HTML fragment of links to all of the child nodes of the given
     Node, and makes it available for use with the {{node-list:*}} parameter.
+
+    Accepts a Node, and a boolean indicating whether we should pre-compute
+    canonical URL links.
 
     """
 
@@ -2568,20 +2585,25 @@ def create_child_node_list_html(node):
 
         # create the link to the child node
         line = link_prefix + child.get_link() + link_suffix
-        c_line = link_prefix + child.get_canonical_link() + link_suffix
-
         lines.append(line)
-        canonical_lines.append(line)
+
+        if use_canonical_url:
+            c_line = link_prefix + child.get_canonical_link() + link_suffix
+            canonical_lines.append(line)
 
     # add the HTML fragment with all the links to the node headers
     node.set_header("__node-list-html",
                     "\n".join(lines))
-    node.set_header("__node-list-html-canonical",
-                    "\n".join(canonical_lines))
+
+    # maybe add another HTML fragment with all the canonical links
+    # to a different node header
+    if use_canonical_url:
+        node.set_header("__node-list-html-canonical",
+                        "\n".join(canonical_lines))
 
     # recurse
     for child in node.get_children():
-        create_child_node_list_html(child)
+        create_child_node_list_html(child, use_canonical_url)
 
 def augment_node_tree(project_root, root_node):
     """
@@ -2590,6 +2612,11 @@ def augment_node_tree(project_root, root_node):
     Accepts the project root directory, and the root Node.
 
     """
+
+    # check to see if we should pre-compute canonical URL links
+    use_canonical_url = False
+    if root_node.has_header("canonical-url"):
+        use_canonical_url = True
 
     # create tag-related things, if Tag-Node is set
     tag_node = root_node.get_tag_node()
@@ -2606,13 +2633,13 @@ def augment_node_tree(project_root, root_node):
                 tag_node.modified = now
 
         # create tag nodes
-        create_tag_node_tree(project_root, root_node)
+        create_tag_node_tree(project_root, root_node, use_canonical_url)
 
         # create links to the tag pages, on all the nodes that have tags
-        create_tag_links_recursive(root_node)
+        create_tag_links_recursive(root_node, use_canonical_url)
 
     # create {{list-node:*}} HTML fragment for each node
-    create_child_node_list_html(root_node)
+    create_child_node_list_html(root_node, use_canonical_url)
 
 def render_node_tree(project_root, node):
     """
@@ -2863,6 +2890,21 @@ def write_rss(project_root, root_node):
     if rss_url is None:
         return
 
+    # get the path to the RSS file to write
+    rss_file = os.path.join(root_node.get_dest_dir(), rss_url)
+
+    # skip creating the file if there's a static file with the same name
+    if os.path.exists(rss_file):
+        log("skipping creation of '%s'" % (rss_file))
+        return
+
+    log("creating '%s'" % (rss_file))
+
+    # Canonical-URL
+    if not root_node.has_header("canonical-url"):
+        err = "Canonical-URL must be set on node '%s' to write RSS feed"
+        raise UrielError(err % (root_node.get_path()))
+
     # RSS-Title / Title
     if root_node.has_header("rss-title"):
         title = root_node.get_header("rss-title")
@@ -2883,19 +2925,9 @@ def write_rss(project_root, root_node):
         err = "RSS-Description must be set on node '%s' to write RSS feed"
         raise UrielError(err % (root_node.get_path()))
 
-    # get the path to the RSS file to write
-    rss_file = os.path.join(root_node.get_dest_dir(), rss_url)
-
-    # skip creating the file if there's a static file with the same name
-    if os.path.exists(rss_file):
-        log("skipping creation of '%s'" % (rss_file))
-        return
-
     # get all of the RSS-eligible nodes
     eligible_node_set = set()
     get_eligible_nodes(root_node, "rss-include", False, eligible_node_set)
-
-    log("creating '%s'" % (rss_file))
 
     # keep track of which nodes we want to include
     nodes_to_write = []
@@ -3098,6 +3130,11 @@ def write_sitemap(project_root, root_node):
     get_eligible_nodes(root_node, "sitemap-include", True, eligible_node_set)
 
     log("creating '%s'" % (sitemap_file))
+
+    # Canonical-URL
+    if not root_node.has_header("canonical-url"):
+        err = "Canonical-URL must be set on node '%s' to write sitemap"
+        raise UrielError(err % (root_node.get_path()))
 
     # keep track of which nodes we want to include
     nodes_to_write = []
