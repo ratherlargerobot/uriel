@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.0.6
+uriel 1.1.0
 
 Yet another static website generator.
 
@@ -32,6 +32,7 @@ import time
 import hashlib
 import calendar
 import datetime
+import shutil
 import subprocess
 
 # the name of the program
@@ -505,6 +506,12 @@ class Page:
         Run the given code in the soju module, and return the result.
 
         """
+
+        # make sure the soju module has been imported
+        if "soju" not in globals():
+            soju_file = os.path.join(self.project_root, LIB_ROOT, "soju.py")
+            raise UrielError("soju module not found, '%s' does not exist" %
+                             (soju_file))
 
         # set up the local environment so the code fragment passed in can
         # refer to these variables without qualifying them
@@ -2247,6 +2254,32 @@ def show_usage():
     sys.stderr.write("Usage: " + PROGRAM_NAME + " <project-root>\n")
     sys.exit(EXIT_FAIL)
 
+def printable_path(path):
+    """
+    Makes a filesystem path look a bit nicer in log messages.
+
+    Accepts a file path
+
+    Returns a nicer looking but equivalent file path
+
+    """
+
+    tmp = path
+
+    # strip leading ./
+    # .///test///static/// -> test///static///
+    tmp = re.sub(r'^\.\/*', r'', tmp)
+
+    # collapse multiple / in a row
+    # test///static/// -> test/static/
+    tmp = re.sub(r'\/{2,}', r'/', tmp)
+
+    # strip trailing /
+    # test/static/ -> test/static
+    tmp = re.sub(r'\/*$', r'', tmp)
+
+    return tmp
+
 def cmd_exec(cmd_stack):
     """
     Execute the given command and arguments.
@@ -2694,7 +2727,7 @@ def write_dynamic_nodes(project_root, node):
 
     # write the nodes
     log("creating pages in '%s' from nodes and templates" % \
-        (os.path.join(project_root, PUBLIC_ROOT)))
+        (printable_path(os.path.join(project_root, PUBLIC_ROOT))))
 
     log(bar)
     log("type    | " + "node".ljust(max_path_len) + " | " + "url")
@@ -2895,10 +2928,10 @@ def write_rss(project_root, root_node):
 
     # skip creating the file if there's a static file with the same name
     if os.path.exists(rss_file):
-        log("skipping creation of '%s'" % (rss_file))
+        log("skipping creation of '%s'" % (printable_path(rss_file)))
         return
 
-    log("creating '%s'" % (rss_file))
+    log("creating '%s'" % (printable_path(rss_file)))
 
     # Canonical-URL
     if not root_node.has_header("canonical-url"):
@@ -3122,14 +3155,14 @@ def write_sitemap(project_root, root_node):
 
     # skip creating the file if there's a static file with the same name
     if os.path.exists(sitemap_file):
-        log("skipping creation of '%s'" % (sitemap_file))
+        log("skipping creation of '%s'" % (printable_path(sitemap_file)))
         return
 
     # get all of the sitemap-eligible nodes
     eligible_node_set = set()
     get_eligible_nodes(root_node, "sitemap-include", True, eligible_node_set)
 
-    log("creating '%s'" % (sitemap_file))
+    log("creating '%s'" % (printable_path(sitemap_file)))
 
     # Canonical-URL
     if not root_node.has_header("canonical-url"):
@@ -3189,7 +3222,7 @@ def write_robots_txt(project_root, root_node):
     # get the path to the robots.txt file
     robots_txt_file = os.path.join(root_node.get_dest_dir(), "robots.txt")
     if os.path.exists(robots_txt_file):
-        log("skipping creation of '%s'" % (robots_txt_file))
+        log("skipping creation of '%s'" % (printable_path(robots_txt_file)))
         return
 
     # get the sitemap URL (without a leading slash)
@@ -3206,7 +3239,7 @@ def write_robots_txt(project_root, root_node):
     # a real robots.txt on a production website might be better off
     # using this as a starting point and copying it into static/
     if not os.path.exists(robots_txt_file):
-        log("creating '%s'" % (robots_txt_file))
+        log("creating '%s'" % (printable_path(robots_txt_file)))
         fw = FileWriter(robots_txt_file)
         fw.write("Sitemap: " + \
                 root_node.get_canonical_url() + sitemap_url + "\n")
@@ -3363,7 +3396,7 @@ def get_default_makefile_contents():
     lines.append("# targets " + (" " * 67) + "#")
     lines.append("#" * 78)
     lines.append("")
-    lines.append(".PHONY: site clean")
+    lines.append(".PHONY: site clean preview")
     lines.append("")
     lines.append("site:")
     lines.append("\t${URIEL} .")
@@ -3372,20 +3405,31 @@ def get_default_makefile_contents():
     lines.append("\trm -rf ${PUBLIC}/")
     lines.append("\trm -rf ${LIB}/__pycache__")
     lines.append("")
+    lines.append("preview: site")
+    lines.append("\tcd ${PUBLIC}/ && python3 -m http.server")
+    lines.append("")
     lines.append("")
 
     return "\n".join(lines)
 
-def init_project_root(project_root):
+def init_project_root(project_root, project_root_just_created):
     """
     (Re)initialize the rendered web site public directory with only the
     static content, deleting everything else.
 
-    Create any missing directories required for the project:
+    Accepts the project root directory, and a boolean indicating whether the
+    project root directory was just created for the first time.
+
+    Create any missing directories and files required for the project:
         static      - static files to include in the website
         nodes       - dynamic node pages
         templates   - templates to merge with dynamic nodes
         public      - rendered website
+
+    If the project root was just created (and therefore this is the initial
+    creation of this project), then some additional non-required but helpful
+    files will be created as well. If these files are deleted, they will
+    not be recreated when uriel is run against the project again.
 
     """
 
@@ -3396,63 +3440,109 @@ def init_project_root(project_root):
     lib = os.path.join(project_root, LIB_ROOT)
     public = os.path.join(project_root, PUBLIC_ROOT)
 
-    # create all of the necessary project directories, if they don't exist
-    for dir in [static, nodes, templates, lib, public]:
-        if not os.path.isdir(dir):
-            log("creating '" + dir + "'")
+    # create all of the required project directories, if they don't exist
+    for dirname in [nodes, templates]:
+        if not os.path.isdir(dirname):
+            log("creating '%s'" % (printable_path(dirname)))
             try:
-                os.mkdir(dir)
+                os.mkdir(dirname)
             except Exception as e:
                 err = "could not create directory '%s': '%s'"
                 raise UrielError(err % (dir, str(e)))
 
-    # (re)initialize public directory with only the static content
-    src = static + "/"
-    dest = public + "/"
-    log("copying '" + src + "' to '" + dest + "', " + \
-        "overwriting previous contents")
-    cmd_stack = [CMD_RSYNC, "-a", "--delete", src, dest]
-    cmd_exec(cmd_stack)
+    # create all of the optional project directories, if they don't exist
+    if project_root_just_created:
+        for dirname in [static, lib]:
+            if not os.path.isdir(dirname):
+                log("creating '%s'" % (printable_path(dirname)))
+                try:
+                    os.mkdir(dirname)
+                except Exception as e:
+                    err = "could not create directory '%s': '%s'"
+                    raise UrielError(err % (dirname, str(e)))
+
+    # if we have a static directory, rsync it over the public directory,
+    # deleting any previously generated contents in public
+    if os.path.exists(static):
+        # (re)initialize public directory with only the static content
+        src = static + "/"
+        dest = public + "/"
+
+        cmd_stack = [CMD_RSYNC, "-a", "--delete", src, dest]
+
+        log("copying '%s' to '%s', overwriting previous contents" %
+            (printable_path(src), printable_path(dest)))
+        cmd_exec(cmd_stack)
+
+    # if we don't have static/, we need to get public/ into a good known
+    # state, by deleting it and recreating it
+    else:
+        log("skipping static file copy, '%s' not found" %
+            (printable_path(static)))
+
+        # if we have a public directory, but no static directory, it means
+        # that we effectively want to have an empty public directory, since
+        # everything that could exist in there would have been created from
+        # a previous run. the first step is to delete the public directory.
+        if os.path.exists(public):
+            log("deleting '%s'" % (printable_path(public)))
+
+            try:
+                shutil.rmtree(public)
+            except Exception as e:
+                err = "could not delete directory '%s': '%s'"
+                raise UrielError(err % (public, str(e)))
+
+        log("creating '%s'" % (printable_path(public)))
+
+        # create a new public directory
+        try:
+            os.mkdir(public)
+        except Exception as e:
+            err = "could not create directory '%s': '%s'"
+            raise UrielError(err % (public, str(e)))
 
     # create a simple default template, if it doesn't already exist
     default_template = os.path.join(templates, DEFAULT_TEMPLATE)
     if not os.path.exists(default_template):
-        log("creating '" + default_template + "'")
+        log("creating '" + printable_path(default_template) + "'")
         fw = FileWriter(default_template)
         fw.write(get_default_template_contents())
         fw.close()
 
-    # create a simple default home page, if it doesn't already exist
+    # create a simple default home page node, if it doesn't already exist
     default_node = os.path.join(nodes, NODE_INDEX)
     if not os.path.exists(default_node):
-        log("creating '" + default_node + "'")
+        log("creating '" + printable_path(default_node) + "'")
         fw = FileWriter(default_node)
         fw.write(get_default_index_node_contents())
         fw.close()
 
-    # create a simple default soju file
-    default_soju = os.path.join(lib, "soju.py")
-    if not os.path.exists(default_soju):
-        log("creating '" + default_soju + "'")
-        fw = FileWriter(default_soju)
-        fw.write(get_default_soju_contents())
-        fw.close()
+    # optional files
+    if project_root_just_created:
+        # create a simple default soju file
+        default_soju = os.path.join(lib, "soju.py")
+        if not os.path.exists(default_soju):
+            log("creating '" + printable_path(default_soju) + "'")
+            fw = FileWriter(default_soju)
+            fw.write(get_default_soju_contents())
+            fw.close()
 
-    # create a simple default handlers file
-    default_handlers = os.path.join(lib, "handlers.py")
-    if not os.path.exists(default_handlers):
-        log("creating '" + default_handlers + "'")
-        fw = FileWriter(default_handlers)
-        fw.write(get_default_handlers_contents())
-        fw.close()
+        # create a simple default handlers file
+        default_handlers = os.path.join(lib, "handlers.py")
+        if not os.path.exists(default_handlers):
+            log("creating '" + printable_path(default_handlers) + "'")
+            fw = FileWriter(default_handlers)
+            fw.write(get_default_handlers_contents())
+            fw.close()
 
-    # create a simple Makefile
-    default_makefile = os.path.join(project_root, "Makefile")
-    if not os.path.exists(default_makefile):
-        log("creating '" + default_makefile + "'")
-        fw = FileWriter(default_makefile)
-        fw.write(get_default_makefile_contents())
-        fw.close()
+        # create a simple Makefile
+        default_makefile = os.path.join(project_root, "Makefile")
+        if not os.path.exists(default_makefile):
+            log("creating '" + printable_path(default_makefile) + "'")
+            fw = FileWriter(default_makefile)
+            fw.write(get_default_makefile_contents())
+            fw.close()
 
 def get_uriel_module():
     """
@@ -3461,14 +3551,6 @@ def get_uriel_module():
     """
 
     return sys.modules[__name__]
-
-def null_handler(*args):
-    """
-    Null handler to install in handlers module for missing methods.
-
-    """
-
-    pass
 
 def init_modules(project_root):
     """
@@ -3479,48 +3561,60 @@ def init_modules(project_root):
     # get the path to the lib directory
     lib_dir = os.path.join(project_root, LIB_ROOT)
 
+    # if the lib directory was deleted, skip initializing modules
+    if not os.path.exists(lib_dir):
+        log("skipping module initialization, '%s' not found" %
+            (printable_path(lib_dir)))
+        return
+
     # add the project lib dir to our module import path
     sys.path.insert(0, lib_dir)
 
-    # import modules
-    log("initializing soju")
-    import soju
-    log("initializing handlers")
-    import handlers
+    # initialize soju module
+    lib_soju_file = os.path.join(lib_dir, "soju.py")
+    if os.path.exists(lib_soju_file):
+        log("initializing soju")
+        import soju
 
-    # export relevant symbols to soju
-    soju.uriel = get_uriel_module()
-    soju.SojuError = SojuError
-    def soju_log(s):
-        return log("soju: " + str(s))
-    soju.log = soju_log
-    soju.escape = escape
+        # export relevant symbols to soju
+        soju.uriel = get_uriel_module()
+        soju.SojuError = SojuError
+        def soju_log(s):
+            return log("soju: " + str(s))
+        soju.log = soju_log
+        soju.escape = escape
 
-    # export relevant symbols to handlers
-    handlers.uriel = get_uriel_module()
-    handlers.Page = Page
-    handlers.Node = Node
-    handlers.FileNode = FileNode
-    handlers.VirtualNode = VirtualNode
-    handlers.HandlerError = HandlerError
-    def handlers_log(s):
-        return log("handler: " + str(s))
-    handlers.log = handlers_log
-    handlers.escape = escape
+        # make this module available to the rest of the program
+        globals()["soju"] = soju
 
-    # install default handlers
-    if "init" not in dir(handlers):
-        handlers.init = null_handler
-    if "before_render_node_tree" not in dir(handlers):
-        handlers.before_render_node_tree = null_handler
-    if "after_render_node_tree" not in dir(handlers):
-        handlers.after_render_node_tree = null_handler
-    if "cleanup" not in dir(handlers):
-        handlers.cleanup = null_handler
+    else:
+        log("skipping module initialization, '%s' not found" %
+            (printable_path(lib_soju_file)))
 
-    # make these modules available to the rest of the program
-    globals()["soju"] = soju
-    globals()["handlers"] = handlers
+    # initialize handlers module
+    lib_handlers_file = os.path.join(lib_dir, "handlers.py")
+    if os.path.exists(lib_handlers_file):
+        log("initializing handlers")
+        import handlers
+
+        # export relevant symbols to handlers
+        handlers.uriel = get_uriel_module()
+        handlers.Page = Page
+        handlers.Node = Node
+        handlers.FileNode = FileNode
+        handlers.VirtualNode = VirtualNode
+        handlers.HandlerError = HandlerError
+        def handlers_log(s):
+            return log("handler: " + str(s))
+        handlers.log = handlers_log
+        handlers.escape = escape
+
+        # make this module available to the rest of the program
+        globals()["handlers"] = handlers
+
+    else:
+        log("skipping module initialization, '%s' not found" %
+            (printable_path(lib_handlers_file)))
 
 def write_additional_files(project_root, node):
     """
@@ -3543,29 +3637,53 @@ def copy_static_files(project_root):
 
     """
 
+    # create path to src directory
     src = os.path.join(project_root, STATIC_ROOT) + "/"
+
+    # if we don't have a static directory, just skip this step
+    if not os.path.exists(src):
+        # if we got here, this would be the second time the user has
+        # been notified that this directory doesn't exist, so skip
+        # the log message as well
+        return
+
+    # create path to dest directory
     dest = os.path.join(project_root, PUBLIC_ROOT) + "/"
 
     cmd_stack = [CMD_RSYNC, "-a", src, dest]
 
-    log("copying '%s' to '%s'" % (src, dest))
+    log("copying '%s' to '%s'" %
+        (printable_path(src), printable_path(dest)))
     cmd_exec(cmd_stack)
 
 def create_project_root(project_root):
     """
     Create the project root directory, if it doesn't exist.
 
+    Returns True if the project root directory didn't exist before and was
+    newly created.
+
+    Returns False if the project root directory already existed.
+
+    Raises a UrielError if we tried to create the project root, but failed.
+
     """
 
     if not os.path.exists(project_root):
         try:
-            log("creating '" + project_root + "'")
+            log("creating '%s'" % (printable_path(project_root)))
             os.mkdir(project_root)
         except Exception as e:
             raise UrielError("could not create project root '%s'" % \
                              (project_root))
 
-def call_handler(handler_name, handler_function, *args):
+        # we just created the project root directory
+        return True
+
+    # the project root directory already existed
+    return False
+
+def call_handler(handler_name, *args):
     """
     Run a user-defined handler.
 
@@ -3573,8 +3691,16 @@ def call_handler(handler_name, handler_function, *args):
 
     """
 
-    if handler_function is null_handler:
+    # is the handlers module loaded?
+    if "handlers" not in globals():
         return
+
+    # is the specified handler defined in the handlers module?
+    if handler_name not in dir(globals()["handlers"]):
+        return
+
+    # create a reference to the user-defined handler function we want to call
+    handler_function = eval("globals()['handlers']." + handler_name)
 
     log("running handler: %s" % (handler_name))
 
@@ -3607,16 +3733,16 @@ def main():
 
     try:
         # create project root directory (if necessary)
-        create_project_root(project_root)
+        project_root_just_created = create_project_root(project_root)
 
         # initialize the project root
-        init_project_root(project_root)
+        init_project_root(project_root, project_root_just_created)
 
         # initialize modules under lib/
         init_modules(project_root)
 
         # handler: init
-        call_handler("init", handlers.init, project_root)
+        call_handler("init", project_root)
 
         # create a tree of all the file-based nodes (in memory)
         log("reading node files")
@@ -3624,7 +3750,6 @@ def main():
 
         # handler: before_render_node_tree
         call_handler("before_render_node_tree",
-                     handlers.before_render_node_tree,
                      project_root,
                      node)
 
@@ -3637,7 +3762,6 @@ def main():
 
         # handler: after_render_node_tree
         call_handler("after_render_node_tree",
-                     handlers.after_render_node_tree,
                      project_root,
                      node)
 
@@ -3651,7 +3775,7 @@ def main():
         copy_static_files(project_root)
 
         # handler: cleanup
-        call_handler("cleanup", handlers.cleanup, project_root, node)
+        call_handler("cleanup", project_root, node)
 
     except SojuError as e:
         log("soju: " + str(e))
