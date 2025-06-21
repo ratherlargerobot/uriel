@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.1.1
+uriel 1.1.2
 
 Yet another static website generator.
 
@@ -25,15 +25,17 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 
-import re
-import os
-import sys
-import time
-import hashlib
+import ast
 import calendar
 import datetime
+import hashlib
+import os
+import re
 import shutil
 import subprocess
+import sys
+import time
+import traceback
 
 # the name of the program
 PROGRAM_NAME = "uriel"
@@ -415,7 +417,8 @@ class Page:
             raise UrielError(reason)
 
         else:
-            log("  %s" % (reason))
+            indent += 1
+            log("%s%s" % (self.indent_spaces(indent), reason))
 
     def node_body_loop_error(self, token):
         """
@@ -581,11 +584,27 @@ class Page:
         # don't export the "self" reference from this method into eval code
         del(self)
 
-        # run the code in the soju module, and return the result
+        # check whether the syntax of the code inside of the soju token value
+        # is syntactically valid python. this does not execute the code yet,
+        # and the symbols don't necessarily have to exist. it just checks
+        # for things like mismatched parenthesis, and that sort of thing,
+        # so we can report them without a full stack trace.
+        #
+        # by explicitly checking this before we run the code, and not
+        # just catching SyntaxError when the code is executed, we still
+        # allow SyntaxError exceptions within the user-defined code to bubble
+        # up, in case they eval code of their own in a function, etc.
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            raise SojuError("syntax error: " + e.msg)
+
+        # execute the user-defined code, and save the result
         result = eval("soju." + code)
 
+        # if the user-defined code didn't return a string, report the error
         if type(result) is not str:
-            err = "user-defined function '%s' returned '%s' instead of string"
+            err = "%s returned %s instead of string"
             raise SojuError(err % (code, str(type(result))))
 
         return result
@@ -1017,14 +1036,74 @@ class Page:
 
         """
 
+        # try to run the user-defined soju code, and return the value
         try:
             return self.get_soju_result(token.value)
-        except Exception as e:
-            self.line_error(token, str(e), False)
 
-            # let the stack trace bubble up,
-            # so the user can debug their code
-            raise
+        # if we get a SojuError, log it, and raise a new SojuError
+        # that summarizes where the user should look to start debugging
+        except SojuError as e:
+            # prepare the error message we want to log
+            # if we have a user-provided error message from a SojuError
+            # exception, surround it with quotes
+            # otherwise, use the name of the exception class, without quotes
+            soju_error_string = str(e)
+            if "" == soju_error_string:
+                soju_error_string = get_exception_reason(e)
+            else:
+                soju_error_string = "'" + soju_error_string + "'"
+
+            # log the error within the context of how we got here
+            self.line_error(token, soju_error_string, False)
+
+            # create summary error message
+            summary_error = "error in function call to 'soju." + \
+                            token.value + "': " + soju_error_string
+
+            # raise new chained exception with summary error message
+            raise SojuError(summary_error) from e
+
+        # for unexpected exceptions originating from user-defined soju code,
+        # show the subset of the stack trace that applies to their code,
+        # and raise a chained summary exception
+        except Exception as e:
+            # get a suitable error string to represent this error
+            # this will either be the error string from the exception,
+            # wrapped in quotes, or the name of the exception type itself
+            error_string = str(e)
+            if "" == error_string:
+                error_string = get_exception_reason(e)
+            else:
+                error_string = "'" + error_string + "'"
+
+            # log the error within the context of how we got here
+            self.line_error(token, error_string, False)
+
+            # extract a subset of the traceback from the exception we
+            # caught, starting with the entry point into the user-defined
+            # soju code
+            soju_traceback_lines = []
+            started_user_traceback = False
+            for traceback_line in traceback.format_tb(e.__traceback__):
+                if "soju.py" in traceback_line:
+                    started_user_traceback = True
+
+                if started_user_traceback:
+                    soju_traceback_lines.append(traceback_line.rstrip())
+
+            # print out a custom stack trace starting with the soju call,
+            # so the user can debug their code with a minimum of
+            # unnecessary noise from the machinery of the uriel program
+            log("Traceback (most recent call last):")
+            for line in soju_traceback_lines:
+                log(line)
+
+            # create summary error message
+            summary_error = "error in function call to 'soju." + \
+                            token.value + "': " + error_string
+
+            # raise a new chained exception with summary error message
+            raise SojuError(summary_error) from e
 
     def merge_token(self, token):
         """
@@ -2337,6 +2416,23 @@ def printable_path(path):
     tmp = re.sub(r'\/*$', r'', tmp)
 
     return tmp
+
+def get_exception_reason(e):
+    """
+    Get the reason associated with an exception, or if that isn't present,
+    default to the type of the exception.
+
+    Accepts an Exception (or a subclass of Exception)
+
+    Returns a non-blank reason string derived from the exception
+
+    """
+
+    reason = str(e)
+    if "" == reason:
+        reason = e.__class__.__name__
+
+    return reason
 
 def cmd_exec(cmd_stack):
     """
@@ -3836,11 +3932,14 @@ def main():
         call_handler("cleanup", project_root, node)
 
     except SojuError as e:
-        log("soju: " + str(e))
+        log("soju: " + get_exception_reason(e))
         sys.exit(EXIT_FAIL)
 
     except UrielError as e:
-        die(str(e))
+        die(get_exception_reason(e))
+
+    except KeyboardInterrupt:
+        sys.exit(EXIT_FAIL)
 
     sys.exit(EXIT_OK)
 

@@ -3,7 +3,12 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
-VERSION 1.1.1 (Jun 21 21:09 2025)
+VERSION 1.1.2 (Jun 21 19:35 2025)
+------------------------------------------------------------------------------
+- Improved error messages for errors originating in user-defined soju code
+- Handle KeyboardInterrupt exceptions cleanly
+
+VERSION 1.1.1 (Jun 20 21:09 2025)
 ------------------------------------------------------------------------------
 - Fix minor bug where more than one parameter error could be printed
 - Change parameter error formatting to use nicer indenting rules
