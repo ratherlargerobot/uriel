@@ -3,6 +3,13 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.1.1 (Jun 21 21:09 2025)
+------------------------------------------------------------------------------
+- Fix minor bug where more than one parameter error could be printed
+- Change parameter error formatting to use nicer indenting rules
+- Indicate in parameter error when the node body is the source of the error
+- Add the node name to all "node not found" error messages
+
 VERSION 1.1.0 (Jun 20 00:08 2025)
 ------------------------------------------------------------------------------
 - Make as many project files and directories optional as reasonably possible
