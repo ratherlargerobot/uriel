@@ -3,6 +3,10 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.2.1 (Jun 21 01:08)
+------------------------------------------------------------------------------
+- Improve soju traceback error message when functions do not exist
+
 VERSION 1.2.0 (Jun 21 11:51)
 ------------------------------------------------------------------------------
 - Removed rsync dependency, uriel now has no dependencies other than Python

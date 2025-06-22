@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.2.0
+uriel 1.2.1
 
 Yet another static website generator.
 
@@ -1090,9 +1090,10 @@ class Page:
             # print out a custom stack trace starting with the soju call,
             # so the user can debug their code with a minimum of
             # unnecessary noise from the machinery of the uriel program
-            log("Traceback (most recent call last):")
-            for line in soju_traceback_lines:
-                log(line)
+            if len(soju_traceback_lines) > 0:
+                log("Traceback (most recent call last):")
+                for line in soju_traceback_lines:
+                    log(line)
 
             # create summary error message
             summary_error = "error in function call to 'soju." + \
