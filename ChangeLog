@@ -3,6 +3,10 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.2.0 (Jun 21 11:51)
+------------------------------------------------------------------------------
+- Removed rsync dependency, uriel now has no dependencies other than Python
+
 VERSION 1.1.2 (Jun 21 19:35 2025)
 ------------------------------------------------------------------------------
 - Improved error messages for errors originating in user-defined soju code

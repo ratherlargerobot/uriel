@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.1.2
+uriel 1.2.0
 
 Yet another static website generator.
 
@@ -39,9 +39,6 @@ import traceback
 
 # the name of the program
 PROGRAM_NAME = "uriel"
-
-# rsync command
-CMD_RSYNC = "rsync"
 
 # exit codes
 EXIT_OK = 0
@@ -857,9 +854,8 @@ class Page:
         # construct the absolute path to the hashed file
         dest_hash_abspath = os.path.join(dest_dir, hash_filename)
 
-        # rsync source file to dest hash file
-        cmd_stack = [CMD_RSYNC, "-a", static_url_abspath, dest_hash_abspath]
-        cmd_exec(cmd_stack)
+        # copy source file to dest hash file
+        copy_file(static_url_abspath, dest_hash_abspath)
 
         # cache the results
         static_hash_urls[static_url_abspath] = dest_hash_url
@@ -2434,27 +2430,195 @@ def get_exception_reason(e):
 
     return reason
 
-def cmd_exec(cmd_stack):
+def copy_file(src, dest):
     """
-    Execute the given command and arguments.
+    Copy the source file to the destination file.
 
-    Accepts cmd_stack, a list of strings with the command and arguments.
-
-    Returns nothing.
-
-    Raises a UrielError if an error occurs, or if the command exits with
-    an exit code other than 0.
+    Raises a UrielError if an error occurs.
 
     """
 
     try:
-        completed_process = subprocess.run(cmd_stack)
-    except FileNotFoundError as e:
-        raise UrielError("command not found: '%s'" % (cmd_stack[0]))
+        shutil.copy2(src, dest, follow_symlinks=False)
+    except Exception as e:
+        raise UrielError("error copying '%s' to '%s': '%s'" %
+                         (src, dest, str(e)))
 
-    if 0 != completed_process.returncode:
-        raise UrielError("command failed, returning %d: '%s'" % \
-                        (completed_process.returncode, " ".join(cmd_stack)))
+def copy_file_if_different(src, dest):
+    # if the source file doesn't exist, raise an error
+    if not os.path.exists(src):
+        raise UrielError("source file does not exist: '%s'" % (src))
+
+    # if the destination file doesn't exist, just copy src to dest
+    if not os.path.exists(dest):
+        copy_file(src, dest)
+
+    # we have both source and destination files
+    # decide whether we really want to expend the energy copying the file
+    else:
+        src_stat = os.stat(src)
+        dest_stat = os.stat(dest)
+
+        # try to skip copying the file, if we can get away with it
+        skip_copy = True
+
+        # compare symlink status
+        if skip_copy:
+            if os.path.islink(src) != os.path.islink(dest):
+                skip_copy = False
+
+                # remove the dest file now, so copy is straightforward
+                os.unlink(dest)
+
+        # compare file sizes
+        if skip_copy:
+            if src_stat.st_size != dest_stat.st_size:
+                skip_copy = False
+
+        # compare file permissions
+        if skip_copy:
+            if src_stat.st_mode != dest_stat.st_mode:
+                skip_copy = False
+
+        # compare file modification times
+        if skip_copy:
+            if src_stat.st_mtime != dest_stat.st_mtime:
+                skip_copy = False
+
+        # if anything is different, copy the file
+        if not skip_copy:
+            copy_file(src, dest)
+
+def copy_files_recursive(src, dest):
+    """
+    Recursively copy the source directory into the destination directory.
+
+    """
+
+    try:
+        # if the source path is a directory
+        if os.path.isdir(src):
+            # if we don't have a destination that is also a directory
+            if not os.path.isdir(dest):
+                # create the destination directory
+                os.mkdir(dest)
+
+                # get the permissions and timestamps from src,
+                # and apply them to dest
+                st = os.stat(src)
+                os.chmod(dest, st.st_mode)
+                os.utime(dest, times=(st.st_atime, st.st_mtime))
+
+            # go through the files and directories in the source
+            for dirent in os.listdir(src):
+                # calculate subdir paths
+                src_path = os.path.join(src, dirent)
+                dest_path = os.path.join(dest, dirent)
+
+                # if this is a directory, recurse
+                if os.path.isdir(src_path):
+                    copy_files_recursive(src_path, dest_path)
+
+                # if this is a file, copy it from src to dest
+                else:
+                    copy_file_if_different(src_path, dest_path)
+
+        # if we got called with files as arguments,
+        # just copy the source file to the dest file
+        else:
+            copy_file_if_different(src_path, dest_path)
+
+    except Exception as e:
+        raise UrielError("error copying '%s' to '%s': '%s'" %
+                         (src, dest, str(e)))
+
+def copy_files_recursive_overwrite(src, dest):
+    """
+    Recursively copy the source directory into the destination directory,
+    deleting anything in the destination directory that is not present
+    in the source directory.
+
+    """
+
+    try:
+        # if the source path is a directory
+        if os.path.isdir(src):
+            # if we don't have a destination that is also a directory
+            if not os.path.isdir(dest):
+                # is the destination a file, when the source is a
+                # directory? if so, remove it now
+                if os.path.exists(dest):
+                    os.unlink(dest)
+
+                # create the destination directory
+                os.mkdir(dest)
+
+                # get the permissions and timestamps from src,
+                # and apply them to dest
+                st = os.stat(src)
+                os.chmod(dest, st.st_mode)
+                os.utime(dest, times=(st.st_atime, st.st_mtime))
+
+            # get the list of entries in the source directory
+            # these will be copied over from src to dest
+            src_copy_list = os.listdir(src)
+
+            # get the list of entries in the destination directory
+            # these will be deleted from dest, unless they are
+            # removed from this list
+            dest_delete_list = os.listdir(dest)
+
+            # remove entries from the delete list if they are found in src
+            for src_file in src_copy_list:
+                if src_file in dest_delete_list:
+                    dest_delete_list.remove(src_file)
+
+            # copy everything on the copy list
+            for dirent in src_copy_list:
+                # calculate subdir paths
+                src_path = os.path.join(src, dirent)
+                dest_path = os.path.join(dest, dirent)
+
+                # if this is a directory, recurse
+                if os.path.isdir(src_path):
+                    copy_files_recursive_overwrite(src_path, dest_path)
+
+                # if this is a file, copy it from src to dest
+                else:
+                    copy_file_if_different(src_path, dest_path)
+
+            # delete everything on the delete list
+            for dirent in dest_delete_list:
+                dest_delete_path = os.path.join(dest, dirent)
+
+                # delete path is a directory
+                if os.path.isdir(dest_delete_path):
+                    shutil.rmtree(dest_delete_path)
+
+                # delete path is a file
+                else:
+                    os.unlink(dest_delete_path)
+
+        # if we got called with files as arguments,
+        # just copy the source file to the dest file
+        else:
+            copy_file_if_different(src, dest)
+
+    except Exception as e:
+        raise UrielError("error copying '%s' to '%s': '%s'" %
+                         (src, dest, str(e)))
+
+def delete_directory_recursive(path):
+    """
+    Recursively delete the given directory.
+
+    """
+
+    try:
+        shutil.rmtree(path)
+    except Exception as e:
+        err = "could not delete directory '%s': '%s'"
+        raise UrielError(err % (path, str(e)))
 
 def require_unique_url(url, unique_urls):
     """
@@ -3615,18 +3779,14 @@ def init_project_root(project_root, project_root_just_created):
                     err = "could not create directory '%s': '%s'"
                     raise UrielError(err % (dirname, str(e)))
 
-    # if we have a static directory, rsync it over the public directory,
+    # if we have a static directory, copy it over the public directory,
     # deleting any previously generated contents in public
     if os.path.exists(static):
-        # (re)initialize public directory with only the static content
-        src = static + "/"
-        dest = public + "/"
-
-        cmd_stack = [CMD_RSYNC, "-a", "--delete", src, dest]
-
         log("copying '%s' to '%s', overwriting previous contents" %
-            (printable_path(src), printable_path(dest)))
-        cmd_exec(cmd_stack)
+            (printable_path(static), printable_path(public)))
+
+        # (re)initialize public directory with only the static content
+        copy_files_recursive_overwrite(static, public)
 
     # if we don't have static/, we need to get public/ into a good known
     # state, by deleting it and recreating it
@@ -3641,11 +3801,8 @@ def init_project_root(project_root, project_root_just_created):
         if os.path.exists(public):
             log("deleting '%s'" % (printable_path(public)))
 
-            try:
-                shutil.rmtree(public)
-            except Exception as e:
-                err = "could not delete directory '%s': '%s'"
-                raise UrielError(err % (public, str(e)))
+            # delete the directory
+            delete_directory_recursive(public)
 
         log("creating '%s'" % (printable_path(public)))
 
@@ -3792,7 +3949,7 @@ def copy_static_files(project_root):
     """
 
     # create path to src directory
-    src = os.path.join(project_root, STATIC_ROOT) + "/"
+    src = os.path.join(project_root, STATIC_ROOT)
 
     # if we don't have a static directory, just skip this step
     if not os.path.exists(src):
@@ -3802,13 +3959,13 @@ def copy_static_files(project_root):
         return
 
     # create path to dest directory
-    dest = os.path.join(project_root, PUBLIC_ROOT) + "/"
-
-    cmd_stack = [CMD_RSYNC, "-a", src, dest]
+    dest = os.path.join(project_root, PUBLIC_ROOT)
 
     log("copying '%s' to '%s'" %
         (printable_path(src), printable_path(dest)))
-    cmd_exec(cmd_stack)
+
+    # copy the files
+    copy_files_recursive(src, dest)
 
 def create_project_root(project_root):
     """

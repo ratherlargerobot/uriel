@@ -556,22 +556,16 @@ Nodes
 
 Static Content
     Static content to merge into the rendered web site, without modification.
-    The rsync command is used to manage this synchronization process.
 
     When uriel runs, the public directory is initialized to only contain
     the static content, completely overwriting and deleting whatever was in
-    the public directory before. It looks like this:
-
-        rsync -a --delete static/ public/
+    the public directory before.
 
     Next, the dynamic content is written. The rendered pages, RSS feed,
     sitemap, etc.
 
     Finally, the static content is copied over again, but this time it will
-    only overwrite any conflicting content in the public directory. It looks
-    like this:
-
-        rsync -a static/ public/
+    only overwrite any conflicting content in the public directory.
 
 Public
     The public directory contains the rendered web site, ready to be hosted on
@@ -607,9 +601,9 @@ User-Defined Python Code
     code, and basically improve the system beyond recognition.
 
     The core of uriel is not likely to change much. It does not have any
-    external dependencies beyond python3 and the rsync program. Goals for
-    the core program include minimalism, simplicity, stability, and longevity.
-    I want this to still work 20 years from now.
+    external dependencies beyond python3. Goals for the core program include
+    minimalism, simplicity, stability, and longevity. I want this to still
+    work 20 years from now.
 
     By providing these extension mechanisms, an individual site can customize
     virtually everything about the system. Think of the core program as being
