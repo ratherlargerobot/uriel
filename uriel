@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.2.1
+uriel 1.2.2
 
 Yet another static website generator.
 
@@ -243,7 +243,7 @@ class TemplateStack:
 
         self.templates = []
 
-    def push(self, template, node_path):
+    def push(self, template, node_path, in_node_body):
         """
         Add a template to the stack.
 
@@ -254,16 +254,66 @@ class TemplateStack:
         # if an include loop is detected, show a stack trace and raise an error
         if template in self.templates:
             log("include loop error:")
-            log("  %s/%s" % (NODES_ROOT, node_path))
+
+            # indent errors as we work our way down
+            # from the node, through the templates, to wherever the problem is
+            indent = 1
+
+            # node
+            log("%s%s/%s" % (indent_spaces(indent), NODES_ROOT, node_path))
+
+            # highlight the range of the loop
+            loop_started = False
+
+            indent += 1
+            triple_arrow = ">>>" + (((indent * 2) - 3) * " ")
+            single_arrow = "  >" + (((indent * 2) - 3) * " ")
 
             while self.has_more_elements():
                 t = self.shift()
-                log("  %s/%s" % (TEMPLATES_ROOT, t))
 
-            log("  %s/%s" % (TEMPLATES_ROOT, template))
+                if t == template:
+                    loop_started = True
+                    log("%s%s/%s <<< LOOP STARTS HERE" %
+                        (triple_arrow, TEMPLATES_ROOT, t))
+                elif loop_started:
+                    log("%s%s/%s" % (single_arrow, TEMPLATES_ROOT, t))
+                else:
+                    log("%s%s/%s" % (indent_spaces(indent), TEMPLATES_ROOT, t))
+
+            # if we're back in the node body, indicate that with a parameter,
+            # followed by the node path
+            if in_node_body:
+                # {{node:body}}
+                indent += 1
+                triple_arrow = ">>>" + (((indent * 2) - 3) * " ")
+                single_arrow = "  >" + (((indent * 2) - 3) * " ")
+                log("%s{{node:body}}" % (single_arrow))
+
+                # node path
+                indent += 1
+                triple_arrow = ">>>" + (((indent * 2) - 3) * " ")
+                single_arrow = "  >" + (((indent * 2) - 3) * " ")
+                log("%s%s/%s" % (single_arrow, NODES_ROOT, node_path))
+
+                # {{include:template}}
+                indent += 1
+                triple_arrow = ">>>" + (((indent * 2) - 3) * " ")
+                single_arrow = "  >" + (((indent * 2) - 3) * " ")
+                log("%s{{include:%s}}" % (single_arrow, template))
+
+                # indent the final template that comes after this
+                indent += 1
+                triple_arrow = ">>>" + (((indent * 2) - 3) * " ")
+                single_arrow = "  >" + (((indent * 2) - 3) * " ")
+
+            # log the first instance of the repeated template loop
+            log("%s%s/%s <<< WOULD REPEAT FOREVER" %
+                (triple_arrow, TEMPLATES_ROOT, template))
 
             raise UrielError(
-                "include loop detected in template: '%s'" % (template))
+                "include loop detected in: '%s/%s'" %
+                (TEMPLATES_ROOT, template))
 
         self.templates.append(template)
 
@@ -340,18 +390,6 @@ class Page:
         # remember whether we want to include the canonical URL in links
         self.use_canonical_url = use_canonical_url
 
-    def indent_spaces(self, indent):
-        """
-        Get a string with blank spaces, according to the specified indenting.
-
-        Accepts a number of indentations.
-
-        Returns a string with two spaces for each indentation.
-
-        """
-
-        return "  " * indent
-
     def line_error(self, token, reason, raise_exception=True):
         """
         Log a parameter error stack trace.
@@ -373,7 +411,7 @@ class Page:
 
             # node
             log("%s%s/%s" %
-                (self.indent_spaces(indent),
+                (indent_spaces(indent),
                  NODES_ROOT,
                  self.node.get_path()))
 
@@ -383,7 +421,7 @@ class Page:
                 while self.template_stack.has_more_elements():
                     template = self.template_stack.shift()
                     log("%s%s/%s" %
-                        (self.indent_spaces(indent),
+                        (indent_spaces(indent),
                          TEMPLATES_ROOT,
                          template))
 
@@ -397,13 +435,13 @@ class Page:
             if has_template and (self.node_body_semaphore > 0):
                 indent += 1
                 log("%s%s/%s" %
-                    (self.indent_spaces(indent),
+                    (indent_spaces(indent),
                      NODES_ROOT,
                      self.node.get_path()))
 
             # token
             indent += 1
-            log("%s'%s'" % (self.indent_spaces(indent), token.original_string))
+            log("%s'%s'" % (indent_spaces(indent), token.original_string))
 
         if raise_exception:
             # remember that line_error() raised an exception
@@ -415,7 +453,7 @@ class Page:
 
         else:
             indent += 1
-            log("%s%s" % (self.indent_spaces(indent), reason))
+            log("%s%s" % (indent_spaces(indent), reason))
 
     def node_body_loop_error(self, token):
         """
@@ -425,15 +463,51 @@ class Page:
 
         """
 
+        # we don't have all of the information we need here to highlight
+        # exactly where the loop started and stopped, but we can at least
+        # print out the node, templates, and token that were involved.
+        #
+        # to highlight exactly where the loop started and stopped, we
+        # would need more information about what included what, and where,
+        # and not just a node and a template stack.
+        #
+        # includes can come from templates or the node body.
+        # a typical template will include the node body in the template.
+        # it's only a loop if the node itself eventually includes the node
+        # body again, but without adding a lot more tracking information
+        # just for error reporting on this one case, this is the best we can
+        # can reasonably do with the information available here
+
         log("node body include loop error:")
-        log("  %s/%s" % (NODES_ROOT, self.node.get_path()))
 
-        while self.template_stack.has_more_elements():
-            template = self.template_stack.shift()
-            log("  %s/%s" % (TEMPLATES_ROOT, template))
+        # indent errors as we work our way down
+        # from the node, through the templates, to wherever the problem is
+        indent = 1
 
-        log("  %s/%s" % (NODES_ROOT, self.node.get_path()))
-        log("  '%s'" % (token.original_string))
+        # keep track of whether we have any templates at all
+        has_templates = self.template_stack.has_more_elements()
+
+        # node path
+        log("%s%s/%s" %
+            (indent_spaces(indent), NODES_ROOT, self.node.get_path()))
+
+        # templates
+        if has_templates:
+            indent += 1
+            while self.template_stack.has_more_elements():
+                template = self.template_stack.shift()
+                log("%s%s/%s" %
+                    (indent_spaces(indent), TEMPLATES_ROOT, template))
+
+        # node path again (if we had any templates, otherwise it's redundant)
+        if has_templates:
+            indent += 1
+            log("%s%s/%s" %
+                (indent_spaces(indent), NODES_ROOT, self.node.get_path()))
+
+        # {{node:body}}
+        indent += 1
+        log("%s'%s'" % (indent_spaces(indent), token.original_string))
 
         raise UrielError(
             "node body include loop detected in node: '%s'" % \
@@ -679,7 +753,8 @@ class Page:
         """
 
         if token.has_unidentified_parameter():
-            self.line_error(token, "unidentified parameter")
+            self.line_error(token,
+                            "unidentified parameter: '%s'" % (token.value))
 
         return token.value
 
@@ -717,6 +792,17 @@ class Page:
 
         """
 
+        # get the path to the template file
+        template_file = os.path.join(self.project_root,
+                                     TEMPLATES_ROOT,
+                                     token.value)
+
+        if not os.path.exists(template_file):
+            self.line_error(
+                token,
+                "include file not found: '%s'" %
+                (os.path.join(TEMPLATES_ROOT, token.value)))
+
         return self.merge_template(token.value)
 
     def merge_token_created(self, token):
@@ -726,13 +812,15 @@ class Page:
         """
 
         if self.node.created is None:
-            self.line_error(token, "Created header not set")
+            self.line_error(token, "'Created' header not set")
 
         try:
             formatted_date = self.node.created.strftime(token.value)
             return escape(formatted_date)
         except ValueError:
-            self.line_error(token, "invalid date format string")
+            self.line_error(token,
+                            "invalid date format string: '%s'" %
+                            (token.value))
 
     def merge_token_modified(self, token):
         """
@@ -741,13 +829,15 @@ class Page:
         """
 
         if self.node.modified is None:
-            self.line_error(token, "Modified header not set")
+            self.line_error(token, "'Modified' header not set")
 
         try:
             formatted_date = self.node.modified.strftime(token.value)
             return escape(formatted_date)
         except ValueError:
-            self.line_error(token, "invalid date format string")
+            self.line_error(token,
+                            "invalid date format string: '%s'" %
+                            (token.value))
 
     def merge_token_breadcrumbs(self, token):
         """
@@ -758,9 +848,12 @@ class Page:
         if "*" == token.value:
             return self.create_breadcrumbs()
 
-        self.line_error(token, "invalid rvalue parameter")
+        self.line_error(
+            token,
+            "invalid value for breadcrumbs parameter: '%s'" %
+            (token.value))
 
-    def get_static_url_abspath(self, url):
+    def get_static_url_abspath(self, token, url):
         """
         Get the absolute path on disk to the given static URL path.
 
@@ -768,7 +861,10 @@ class Page:
 
         # disallow ../ links for static URLs
         if -1 != url.find("../"):
-            self.line_error(token, "../ not allowed")
+            self.line_error(
+                token,
+                "directory traversal not allowed in static URL: '%s'" %
+                (url))
 
         # if the static url path starts with a slash, and is
         # relative to the root of the site, start the directory path
@@ -795,11 +891,13 @@ class Page:
         url = token.value
 
         # get the path on disk to the URL path
-        static_url_abspath = self.get_static_url_abspath(url)
+        static_url_abspath = self.get_static_url_abspath(token, url)
 
         # make sure the file or directory exists on the filesystem
         if not os.path.exists(static_url_abspath):
-            self.line_error(token, "file not found: '%s'" % (url))
+            self.line_error(token,
+                            "file not found: '%s'" %
+                            (os.path.join(STATIC_ROOT, url)))
 
         return self.get_static_url(self.node, url)
 
@@ -812,7 +910,7 @@ class Page:
         url = token.value
 
         # get the full path on disk to the URL path
-        static_url_abspath = self.get_static_url_abspath(url)
+        static_url_abspath = self.get_static_url_abspath(token, url)
 
         # if we already generated this file, return the cached reference
         if static_url_abspath in static_hash_urls:
@@ -820,12 +918,15 @@ class Page:
 
         # make sure the file exists
         if not os.path.exists(static_url_abspath):
-            self.line_error(token, "file not found: '%s'" % (url))
+            self.line_error(token,
+                            "file not found: '%s'" %
+                            (os.path.join(STATIC_ROOT, url)))
 
         # make sure the path is actually a file
         if not os.path.isfile(static_url_abspath):
             self.line_error(token,
-                            "path exists, but is not a file: '%s'" % (url))
+                            "path exists, but is not a file: '%s'" %
+                            (os.path.join(STATIC_ROOT, url)))
 
         # get the destination directory we want to write the hash file into
         dest_dir = os.path.dirname(static_url_abspath)
@@ -870,13 +971,15 @@ class Page:
 
         # only support {{rss:url}}
         if "url" != token.value:
-            self.line_error(token, "invalid rvalue parameter")
+            self.line_error(token,
+                            "invalid value for rss parameter: '%s'" %
+                            (token.value))
 
         # make sure required headers are present
         if not self.node.has_header("rss-url"):
-            self.line_error(token, "RSS-URL header not set")
+            self.line_error(token, "'RSS-URL' header not set")
         if not self.node.has_header("canonical-url"):
-            self.line_error(token, "Canonical-URL header not set")
+            self.line_error(token, "'Canonical-URL' header not set")
 
         # get relative RSS URL
         rss_url = self.node.get_header("rss-url")
@@ -895,25 +998,28 @@ class Page:
 
         """
 
-        body = self.node.get_body()
-
-        # if the format is set to text, add HTML line breaks
-        if self.node.has_header("format"):
-            format = self.node.get_header("format")
-            if "text" == format:
-                body = self.text_to_html(body)
-            elif "html" == format:
-                # default
-                pass
-            else:
-                self.line_error(token, "unknown format")
-
         # if we're in a {{node:body}} loop, show an error
         if self.node_body_semaphore != 0:
             self.node_body_loop_error(token)
 
         # entering {{node:body}} merge
         self.node_body_semaphore += 1
+
+        # if the format is set to text, add HTML line breaks
+        if self.node.has_header("format"):
+            node_format = self.node.get_header("format")
+            if "text" == node_format:
+                body = self.text_to_html(body)
+            elif "html" == node_format:
+                # default
+                pass
+            else:
+                self.line_error(
+                    Token("Format: %s" % (node_format)),
+                    "unknown 'Format' header value: '%s'" % (node_format))
+
+        # get node body
+        body = self.node.get_body()
 
         # merge node body contents
         merged_body = self.merge_multiline(body)
@@ -945,7 +1051,9 @@ class Page:
         elif "body" == token.value:
             return self.merge_token_node_body(token)
         else:
-            self.line_error(token, "invalid rvalue parameter")
+            self.line_error(token,
+                            "invalid value for node parameter: '%s'" %
+                            (token.value))
 
     def merge_token_node_url(self, token):
         """
@@ -1009,7 +1117,9 @@ class Page:
             return self.get_maybe_canonical_html_fragment(
                 self.node, "__node-list-html")
 
-        self.line_error(token, "invalid rvalue parameter")
+        self.line_error(token,
+                        "invalid value for node-list parameter: '%s'" %
+                        (token.value))
 
     def merge_token_tag_list(self, token):
         """
@@ -1022,9 +1132,14 @@ class Page:
                 return self.get_maybe_canonical_html_fragment(
                     self.node, "__tag-list-html")
             else:
-                self.line_error(token, "Tags not set on this node")
+                # __tag-list-html is an internal header, that is set
+                # elsewhere on nodes with tags defined. show a useful
+                # error here instead of something obtuse.
+                self.line_error(token, "'Tags' header not set on this node")
 
-        self.line_error(token, "invalid rvalue parameter")
+        self.line_error(token,
+                        "invalid value for tag-list parameter: '%s'" %
+                        (token.value))
 
     def merge_token_soju(self, token):
         """
@@ -1182,7 +1297,10 @@ class Page:
 
         # unknown
         else:
-            self.line_error(token, "invalid parameter or value")
+            self.line_error(
+                token,
+                "invalid parameter or value: '%s'" %
+                (token.original_string))
 
     def merge_line(self, line):
         """
@@ -1279,12 +1397,17 @@ class Page:
                 for line in f.readlines():
                     lines.append(line)
         except FileNotFoundError:
-            token = Token("Template: " + self.node.get_header("template"))
+            # the code that validates {{include:*}} parameters from other
+            # templates should have already verified that the file exists.
+            # if it fails now, we probably didn't ever have a template at all
+            token = Token("Template: " + template)
             self.line_error(token,
                             "template not found: '" + template + "'")
 
         # add the template to the stack
-        self.template_stack.push(template, self.node.get_path())
+        self.template_stack.push(template,
+                                 self.node.get_path(),
+                                 self.node_body_semaphore)
 
         # get the result as a string with the template and node merged together
         result = self.merge_lines(lines)
@@ -1301,7 +1424,15 @@ class Page:
 
         """
 
-        return self.merge_template(self.template)
+        # render the page, starting with the template defined in the node
+        rendered = self.merge_template(self.template)
+
+        # make sure the last character in the rendered HTML file is a newline
+        if "" != rendered:
+            if "\n" != rendered[-1]:
+                rendered += "\n"
+
+        return rendered
 
     def __str__(self):
         return str(self.node) + " [" + self.template + "]"
@@ -1866,7 +1997,8 @@ class Node:
             root = self.get_root_node()
 
             # find the tag node and cache it
-            self.tag_node_cache = root.find_node_by_path(self.get_header("tag-node"))
+            self.tag_node_cache = \
+                root.find_node_by_path(self.get_header("tag-node"))
 
             # return the tag node
             return self.tag_node_cache
@@ -2414,6 +2546,18 @@ def printable_path(path):
 
     return tmp
 
+def indent_spaces(indent):
+    """
+    Get a string with blank spaces, according to the specified indenting.
+
+    Accepts a number of indentations.
+
+    Returns a string with two spaces for each indentation.
+
+    """
+
+    return "  " * indent
+
 def get_exception_reason(e):
     """
     Get the reason associated with an exception, or if that isn't present,
@@ -2440,10 +2584,54 @@ def copy_file(src, dest):
     """
 
     try:
+        # if either the source or dest file is a symlink,
+        # delete the destination file first
+        if os.path.islink(src) or os.path.islink(dest):
+            os.unlink(dest)
+
+        # if the destination path is a directory, we don't want
+        # to copy the source file into a directory with the same name
+        if os.path.isdir(dest):
+            raise UrielError(
+                "error copying '%s' to '%s': destination path is a directory" %
+                (src, dest))
+
+        # copy the file (or create a symlink)
         shutil.copy2(src, dest, follow_symlinks=False)
+
+    except UrielError as e:
+        raise
+
+    except FileNotFoundError as e:
+        raise UrielError("error copying '%s' to '%s': file not found" %
+                         (src, dest))
+
+    except PermissionError as e:
+        raise UrielError("error copying '%s' to '%s': permission denied" %
+                         (src, dest))
+
+    except IsADirectoryError as e:
+        # was the source path a directory?
+        if os.path.isdir(src):
+            raise UrielError(
+                "error copying '%s' to '%s': source path is a directory" %
+                (src, dest))
+
+        # was the destination path a directory?
+        if os.path.isdir(dest):
+            raise UrielError(
+                "error copying '%s' to '%s': destination path is a directory" %
+                (src, dest))
+
+        # in case the checks above both fail
+        raise UrielError(
+            "error copying '%s' to '%s': '%s'" %
+            (src, dest, get_exception_reason(e)))
+
     except Exception as e:
-        raise UrielError("error copying '%s' to '%s': '%s'" %
-                         (src, dest, str(e)))
+        raise UrielError(
+            "error copying '%s' to '%s': '%s'" %
+            (src, dest, get_exception_reason(e)))
 
 def copy_file_if_different(src, dest):
     # if the source file doesn't exist, raise an error
@@ -2467,9 +2655,6 @@ def copy_file_if_different(src, dest):
         if skip_copy:
             if os.path.islink(src) != os.path.islink(dest):
                 skip_copy = False
-
-                # remove the dest file now, so copy is straightforward
-                os.unlink(dest)
 
         # compare file sizes
         if skip_copy:
@@ -2499,16 +2684,23 @@ def copy_files_recursive(src, dest):
     try:
         # if the source path is a directory
         if os.path.isdir(src):
-            # if we don't have a destination that is also a directory
-            if not os.path.isdir(dest):
-                # create the destination directory
+            # if the destination path exists
+            if os.path.exists(dest):
+                # if the destination path is a symlink or a file,
+                # remove it and create the destination directory
+                if os.path.islink(dest) or not os.path.isdir(dest):
+                    os.unlink(dest)
+                    os.mkdir(dest)
+
+            # the destination path does not exist, create it
+            else:
                 os.mkdir(dest)
 
-                # get the permissions and timestamps from src,
-                # and apply them to dest
-                st = os.stat(src)
-                os.chmod(dest, st.st_mode)
-                os.utime(dest, times=(st.st_atime, st.st_mtime))
+            # get the permissions and timestamps from src,
+            # and apply them to dest
+            st = os.stat(src)
+            os.chmod(dest, st.st_mode)
+            os.utime(dest, times=(st.st_atime, st.st_mtime))
 
             # go through the files and directories in the source
             for dirent in os.listdir(src):
@@ -2527,11 +2719,11 @@ def copy_files_recursive(src, dest):
         # if we got called with files as arguments,
         # just copy the source file to the dest file
         else:
-            copy_file_if_different(src_path, dest_path)
+            copy_file_if_different(src, dest)
 
     except Exception as e:
         raise UrielError("error copying '%s' to '%s': '%s'" %
-                         (src, dest, str(e)))
+                         (src, dest, get_exception_reason(e)))
 
 def copy_files_recursive_overwrite(src, dest):
     """
@@ -2544,21 +2736,23 @@ def copy_files_recursive_overwrite(src, dest):
     try:
         # if the source path is a directory
         if os.path.isdir(src):
-            # if we don't have a destination that is also a directory
-            if not os.path.isdir(dest):
-                # is the destination a file, when the source is a
-                # directory? if so, remove it now
-                if os.path.exists(dest):
+            # if the destination path exists
+            if os.path.exists(dest):
+                # if the destination path is a symlink or a file,
+                # remove it and create the destination directory
+                if os.path.islink(dest) or not os.path.isdir(dest):
                     os.unlink(dest)
+                    os.mkdir(dest)
 
-                # create the destination directory
+            # the destination path does not exist, create it
+            else:
                 os.mkdir(dest)
 
-                # get the permissions and timestamps from src,
-                # and apply them to dest
-                st = os.stat(src)
-                os.chmod(dest, st.st_mode)
-                os.utime(dest, times=(st.st_atime, st.st_mtime))
+            # get the permissions and timestamps from src,
+            # and apply them to dest
+            st = os.stat(src)
+            os.chmod(dest, st.st_mode)
+            os.utime(dest, times=(st.st_atime, st.st_mtime))
 
             # get the list of entries in the source directory
             # these will be copied over from src to dest
@@ -2566,7 +2760,7 @@ def copy_files_recursive_overwrite(src, dest):
 
             # get the list of entries in the destination directory
             # these will be deleted from dest, unless they are
-            # removed from this list
+            # removed from this list due to also appearing in src
             dest_delete_list = os.listdir(dest)
 
             # remove entries from the delete list if they are found in src
@@ -2594,7 +2788,13 @@ def copy_files_recursive_overwrite(src, dest):
 
                 # delete path is a directory
                 if os.path.isdir(dest_delete_path):
-                    shutil.rmtree(dest_delete_path)
+                    # if it's actually a symlink in disguise, unlink it
+                    if os.path.islink(dest_delete_path):
+                        os.unlink(dest_delete_path)
+
+                    # otherwise, recursively delete the dest delete directory
+                    else:
+                        shutil.rmtree(dest_delete_path)
 
                 # delete path is a file
                 else:
@@ -2607,7 +2807,7 @@ def copy_files_recursive_overwrite(src, dest):
 
     except Exception as e:
         raise UrielError("error copying '%s' to '%s': '%s'" %
-                         (src, dest, str(e)))
+                         (src, dest, get_exception_reason(e)))
 
 def delete_directory_recursive(path):
     """
@@ -2618,8 +2818,9 @@ def delete_directory_recursive(path):
     try:
         shutil.rmtree(path)
     except Exception as e:
-        err = "could not delete directory '%s': '%s'"
-        raise UrielError(err % (path, str(e)))
+        raise UrielError(
+            "could not delete directory '%s': '%s'" %
+            (path, get_exception_reason(e)))
 
 def require_unique_url(url, unique_urls):
     """
@@ -3247,7 +3448,8 @@ def write_rss(project_root, root_node):
 
     # skip creating the file if there's a static file with the same name
     if os.path.exists(rss_file):
-        log("skipping creation of '%s'" % (printable_path(rss_file)))
+        log("skipping creation of '%s': file exists" %
+            (printable_path(rss_file)))
         return
 
     log("creating '%s'" % (printable_path(rss_file)))
@@ -3383,7 +3585,7 @@ def write_rss(project_root, root_node):
         page = Page(project_root, node, use_canonical_url=True)
 
         # get node body
-        rendered_node_body = page.render()
+        rendered_node_body = page.render().rstrip()
         if add_node_title_header:
             description = \
                 "<h1>" + escape(node.get_title()) + "</h1>\n\n" + \
@@ -3474,7 +3676,8 @@ def write_sitemap(project_root, root_node):
 
     # skip creating the file if there's a static file with the same name
     if os.path.exists(sitemap_file):
-        log("skipping creation of '%s'" % (printable_path(sitemap_file)))
+        log("skipping creation of '%s': file exists" %
+            (printable_path(sitemap_file)))
         return
 
     # get all of the sitemap-eligible nodes
@@ -3541,7 +3744,8 @@ def write_robots_txt(project_root, root_node):
     # get the path to the robots.txt file
     robots_txt_file = os.path.join(root_node.get_dest_dir(), "robots.txt")
     if os.path.exists(robots_txt_file):
-        log("skipping creation of '%s'" % (printable_path(robots_txt_file)))
+        log("skipping creation of '%s': file exists" %
+            (printable_path(robots_txt_file)))
         return
 
     # get the sitemap URL (without a leading slash)
@@ -4019,10 +4223,10 @@ def call_handler(handler_name, *args):
     try:
         handler_function(*args)
     except HandlerError as e:
-        log("%s handler error: %s" % (handler_name, str(e)))
+        log("%s handler error: %s" % (handler_name, get_exception_reason(e)))
         sys.exit(EXIT_FAIL)
     except Exception as e:
-        log("%s handler error: %s" % (handler_name, str(e)))
+        log("%s handler error: %s" % (handler_name, get_exception_reason(e)))
         raise
 
 def main():
@@ -4103,4 +4307,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

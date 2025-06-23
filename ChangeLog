@@ -3,6 +3,13 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.2.2 (Jun 22 23:14)
+------------------------------------------------------------------------------
+- Make sure non-blank rendered HTML pages always end with a newline character
+- Strip trailing newlines from content in RSS item description fields
+- Improved numerous error messages
+- Improved corner cases in file copying code, especially involving symlinks
+
 VERSION 1.2.1 (Jun 21 01:08)
 ------------------------------------------------------------------------------
 - Improve soju traceback error message when functions do not exist
