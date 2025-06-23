@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.2.2
+uriel 1.2.3
 
 Yet another static website generator.
 
@@ -1461,12 +1461,18 @@ class Node:
         self.nodes_root = os.path.join(project_root, NODES_ROOT)
         self.path = path
         self.parent_node = parent_node
-        self.headers = {}
         self.body = None
-        self.children = []
-        self.tag_node_index = None
         self.created = None
         self.modified = None
+
+        # list of child Node instances
+        self.children = []
+
+        # header -> value
+        self.headers = {}
+
+        # tag -> set of Node matching that tag
+        self.tag_node_index = None
 
         #
         # cache performance optimizations
@@ -1493,6 +1499,11 @@ class Node:
         #
         # sorted list of tags
         self.sorted_tags_cache = None
+        #
+        # map of tag -> Node representing that tag (e.g. /tag/<SOME_TAG>)
+        self.tag_vnode_cache = None
+        if parent_node is None:
+            self.tag_vnode_cache = {}
 
         # check for duplicate node path elsewhere in the tree
         if parent_node is not None:
@@ -2057,6 +2068,7 @@ class Node:
 
         # if we don't have a tag index, create it
         if tag_node_index is None:
+            # tag -> set of Node matching that tag
             tag_node_index = {}
 
         # go through the tags for this node
@@ -2087,10 +2099,21 @@ class Node:
 
         """
 
+        # performance optimization:
+        # check the global tag vnode cache first,
+        # and just return the node from there if possible
+        if tag in self.root_node_cache.tag_vnode_cache:
+            return self.root_node_cache.tag_vnode_cache[tag]
+
+        # search for the vnode by tag
         tag_root = self.get_tag_node()
         if tag_root is not None:
             for vnode in tag_root.get_children():
                 if vnode.get_name() == tag:
+                    # performance optimization:
+                    # add the vnode to the tag vnode cache
+                    self.root_node_cache.tag_vnode_cache[tag] = vnode
+
                     return vnode
 
         return None
