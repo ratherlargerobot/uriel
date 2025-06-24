@@ -3,6 +3,10 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.2.4 (Jun 24 19:15)
+------------------------------------------------------------------------------
+- Assorted minor performance optimizations
+
 VERSION 1.2.3 (Jun 23 19:08)
 ------------------------------------------------------------------------------
 - Optimize performance when dealing with large numbers of tags and nodes

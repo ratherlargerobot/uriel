@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.2.3
+uriel 1.2.4
 
 Yet another static website generator.
 
@@ -141,6 +141,29 @@ class Token:
     TAG_LIST = "tag-list"
     SOJU = "soju"
 
+    # allowed lvalue keywords inside of a {{ parameter }}
+    # (e.g. {{some_keyword:*}}
+    # (all are allowed except "literal")
+    KEYWORDS = set([
+        VALUE,
+        VALUE_UNESCAPED,
+        INCLUDE,
+        CREATED,
+        MODIFIED,
+        BREADCRUMBS,
+        STATIC_URL,
+        STATIC_HASH_URL,
+        RSS,
+        NODE,
+        NODE_URL,
+        NODE_NAME,
+        NODE_TITLE,
+        NODE_LINK,
+        NODE_LIST,
+        TAG_LIST,
+        SOJU,
+    ])
+
     def __init__(self, s):
         """
         Accepts a fragment of text, which may or may not be a parameter.
@@ -170,34 +193,10 @@ class Token:
                 keyword = None
                 value = s
 
-            # allowed keywords inside of a {{ parameter }}
-            # (all are allowed except "literal")
-            words = [
-                Token.VALUE,
-                Token.VALUE_UNESCAPED,
-                Token.INCLUDE,
-                Token.CREATED,
-                Token.MODIFIED,
-                Token.BREADCRUMBS,
-                Token.STATIC_URL,
-                Token.STATIC_HASH_URL,
-                Token.RSS,
-                Token.NODE,
-                Token.NODE_URL,
-                Token.NODE_NAME,
-                Token.NODE_TITLE,
-                Token.NODE_LINK,
-                Token.NODE_LIST,
-                Token.TAG_LIST,
-                Token.SOJU,
-            ]
-
             # turn the parameter key into a token type
             self.type = None
-            for word in words:
-                if keyword == word:
-                    self.type = word
-                    break
+            if keyword in Token.KEYWORDS:
+                self.type = keyword
 
             # if we didn't find a token type that we understood,
             # make a note of it, but pass the entire value on as a literal
@@ -1396,6 +1395,7 @@ class Page:
             with open(template_file) as f:
                 for line in f.readlines():
                     lines.append(line)
+
         except FileNotFoundError:
             # the code that validates {{include:*}} parameters from other
             # templates should have already verified that the file exists.
@@ -1467,6 +1467,7 @@ class Node:
 
         # list of child Node instances
         self.children = []
+        self.child_nodes_presorted = False
 
         # header -> value
         self.headers = {}
@@ -1527,8 +1528,7 @@ class Node:
             #      a chance to be set.
 
             # +
-            keys = reversed(sorted(self.get_header_keys()))
-            for key in keys:
+            for key in reversed(self.get_header_keys()):
                 if key.startswith("+"):
                     plus_key = key
                     stripped_key = key[1:]
@@ -1537,8 +1537,7 @@ class Node:
                     self.delete_header(plus_key)
 
             # -
-            keys = reversed(sorted(self.get_header_keys()))
-            for key in keys:
+            for key in reversed(self.get_header_keys()):
                 if key.startswith("-"):
                     minus_key = key
                     stripped_key = key[1:]
@@ -1599,12 +1598,8 @@ class Node:
         # add the child node
         self.children.append(node)
 
-        #self.root_node_cache = self
-        #if parent_node is not None:
-        #    self.root_node_cache = parent_node.root_node_cache
-
-        # sort the child nodes in place
-        self.children = sorted(self.children)
+        # invalidate the pre-sorted flag
+        self.child_nodes_presorted = False
 
         # update the node path cache on the root node
         self.root_node_cache.node_path_cache[node.get_path()] = node
@@ -1614,6 +1609,12 @@ class Node:
         Get a list of child Node entries immediately under this Node.
 
         """
+
+        # if the child nodes have not already been pre-sorted,
+        # sort them now, in place, and remember that we did
+        if not self.child_nodes_presorted:
+            self.children = sorted(self.children)
+            self.child_nodes_presorted = True
 
         # return the (pre-sorted) child nodes
         return self.children
@@ -2363,8 +2364,7 @@ class FileNode(Node):
                     body_lines.append(line)
 
         # process "-" headers
-        headers = sorted(self.get_header_keys())
-        for key in headers:
+        for key in self.get_header_keys():
             # if a header starts with a "-", and has a value of "*",
             # it's an instruction to remove that header from this Node
             # (e.g. -Foo: *)
@@ -2382,8 +2382,7 @@ class FileNode(Node):
                         (self.get_path(), key, value))
 
         # process other special headers
-        headers = sorted(self.get_header_keys())
-        for key in headers:
+        for key in self.get_header_keys():
             value = self.get_header(key)
 
             # Created
@@ -2935,6 +2934,7 @@ def create_file_node_tree(project_root, parent_path=None, parent_node=None):
     else:
         dir_path = os.path.join(project_root, NODES_ROOT)
         index = FileNode(project_root, NODE_INDEX)
+        is_root_node = True
 
     # create all the rest of the nodes
     for dirent in sorted(os.listdir(dir_path)):
@@ -3154,7 +3154,7 @@ def create_child_node_list_html(node, use_canonical_url):
     # __Node-List-HTML / __Node-List-HTML-Canonical
     lines = []
     canonical_lines = []
-    for child in sorted(node.get_children()):
+    for child in node.get_children():
         # get link prefix/suffix
         link_prefix = node.get_link_prefix()
         link_suffix = node.get_link_suffix()
