@@ -22,9 +22,7 @@ If you want to install it in a centralized location for all users on a
 machine:
 
 ```bash
-sudo cp uriel /usr/local/bin/uriel
-sudo chown root:root /usr/local/bin/uriel
-sudo chmod 755 /usr/local/bin/uriel
+sudo make install
 ```
 
 ## Usage
@@ -593,8 +591,8 @@ entirely possible to build a complete website without any user-defined code.
 However, if you want to go deeper, there are numerous opportunities for
 site-specific customization.
 
-When a project is created (or if the files go missing), the following files
-are created under the project root:
+When a project is created, the following files are created under the project
+root:
 
 - `lib/soju.py`
 - `lib/handlers.py`

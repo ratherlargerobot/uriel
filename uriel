@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.2.4
+uriel 1.3.0
 
 Yet another static website generator.
 
@@ -221,8 +221,19 @@ class Token:
 
         return self.unidentified_parameter
 
+    def __eq__(self, other):
+        if self.type == other.type:
+            if self.value == other.value:
+                if self.original_string == other.original_string:
+                    return True
+
+        return False
+
     def __str__(self):
         return "[token type=" + self.type + ", value='" + self.value + "']"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class TemplateStack:
@@ -318,11 +329,11 @@ class TemplateStack:
 
     def pop(self):
         """
-        Remove the most recent template from the stack.
+        Remove the most recent template from the stack and return it.
 
         """
 
-        self.templates.pop()
+        return self.templates.pop()
 
     def shift(self):
         """
@@ -398,6 +409,9 @@ class Page:
 
         """
 
+        # if this is the first time this method has raised an exception,
+        # print out debugging information to highlight the precise
+        # location where the user can troubleshoot the error
         if not self.line_error_exception_raised:
             # are we using a template? (or is the template "null")
             has_template = self.template_stack.has_more_elements()
@@ -442,6 +456,7 @@ class Page:
             indent += 1
             log("%s'%s'" % (indent_spaces(indent), token.original_string))
 
+        # if we were asked to raise an exception, raise it now
         if raise_exception:
             # remember that line_error() raised an exception
             # in case we end up here again before we exit
@@ -450,6 +465,7 @@ class Page:
             # raise the exception
             raise UrielError(reason)
 
+        # otherwise, print out the error as a log message
         else:
             indent += 1
             log("%s%s" % (indent_spaces(indent), reason))
@@ -471,7 +487,9 @@ class Page:
         # and not just a node and a template stack.
         #
         # includes can come from templates or the node body.
-        # a typical template will include the node body in the template.
+        # a typical template stack will include the node body somewhere in
+        # one of the templates.
+        #
         # it's only a loop if the node itself eventually includes the node
         # body again, but without adding a lot more tracking information
         # just for error reporting on this one case, this is the best we can
@@ -550,6 +568,12 @@ class Page:
 
             # no more parameters
             else:
+                # if we're already at the end of the line,
+                # don't create an empty token
+                if index == len(line):
+                    break
+
+                # add the rest of the line as a token
                 tokens.append(Token(line[index:]))
                 break
 
@@ -728,7 +752,7 @@ class Page:
         Get the canonical or non-canonical HTML fragment associated with the
         given header basename.
 
-        Accepts Node, and header basename (e.g. __Node-List-HTML)
+        Accepts Node, and header basename (e.g. __node-list-html)
 
         Returns the value from the given header, or the version of the
         header that has canonical URLs.
@@ -964,7 +988,7 @@ class Page:
 
     def merge_token_rss(self, token):
         """
-        Merge a {{rss:*}} token and return the results.
+        Merge an {{rss:*}} token and return the results.
 
         """
 
@@ -1008,7 +1032,7 @@ class Page:
         if self.node.has_header("format"):
             node_format = self.node.get_header("format")
             if "text" == node_format:
-                body = self.text_to_html(body)
+                self.node.set_body(self.text_to_html(self.node.body))
             elif "html" == node_format:
                 # default
                 pass
@@ -1462,6 +1486,7 @@ class Node:
         self.path = path
         self.parent_node = parent_node
         self.body = None
+        self.rendered_body = None
         self.created = None
         self.modified = None
 
@@ -1497,6 +1522,8 @@ class Node:
         self.root_node_cache = self
         if parent_node is not None:
             self.root_node_cache = parent_node.root_node_cache
+        else:
+            self.root_node_cache.node_path_cache["index"] = self
         #
         # sorted list of tags
         self.sorted_tags_cache = None
@@ -2189,13 +2216,13 @@ class Node:
         """
 
         if header:
-            # headers affecting __title cache field
+            # headers affecting title_cache field
             if "title" == header:
                 self.title_cache = None
             if "escape-title" == header:
                 self.title_cache = None
 
-            # headers affecting __url cache field
+            # headers affecting url_cache field
             if "flat-url" == header:
                 self.url_cache = None
 
@@ -2239,6 +2266,36 @@ class Node:
         """
 
         return sorted(self.headers.items())
+
+    def get_datetime_from_date_str(self, date_str):
+        """
+        Get a datetime.datetime instance from the provided date string.
+
+        The date string must be in the ISO 8601 date format.
+
+        """
+
+        try:
+            # turn the date string into a datetime instance
+            dt = datetime.datetime.fromisoformat(date_str)
+
+            # if the datetime instance doesn't have a time zone,
+            # create a new datetime with the date/time we read from
+            # the date string, augmented with the local time zone
+            if dt.tzinfo is None:
+                tmp_dt = datetime.datetime.fromtimestamp(
+                    dt.timestamp(),
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+
+                dt = tmp_dt
+
+            # return the datetime with time zone
+            return dt
+
+        except Exception as e:
+            err = "invalid date header value in node " + \
+                  "'%s': '%s'"
+            raise UrielError(err % (self.get_path(), date_str))
 
     def __lt__(self, other):
         """
@@ -2396,36 +2453,6 @@ class FileNode(Node):
         # remember the body as a string
         self.body = "\n".join(body_lines)
 
-    def get_datetime_from_date_str(self, date_str):
-        """
-        Get a datetime.datetime instance from the provided date string.
-
-        The date string must be in the ISO 8601 date format.
-
-        """
-
-        try:
-            # turn the date string into a datetime instance
-            dt = datetime.datetime.fromisoformat(date_str)
-
-            # if the datetime instance doesn't have a time zone,
-            # create a new datetime with the date/time we read from
-            # the date string, augmented with the local time zone
-            if dt.tzinfo is None:
-                tmp_dt = datetime.datetime.fromtimestamp(
-                    dt.timestamp(),
-                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
-
-                dt = tmp_dt
-
-            # return the datetime with time zone
-            return dt
-
-        except Exception as e:
-            err = "invalid date header value in node " + \
-                  "'%s': '%s'"
-            raise UrielError(err % (self.get_path(), date_str))
-
     def get_node_type(self):
         return "file"
 
@@ -2506,6 +2533,14 @@ class FileWriter:
         self.f.close()
 
 
+def sys_exit(exit_code):
+    """
+    Exit the program, with the given exit code.
+
+    """
+
+    sys.exit(exit_code)
+
 def log(s):
     """
     Log the program name and the given string to stderr.
@@ -2530,7 +2565,7 @@ def die(s):
     """
 
     warn(s)
-    sys.exit(EXIT_FAIL)
+    sys_exit(EXIT_FAIL)
 
 def show_usage():
     """
@@ -2538,9 +2573,9 @@ def show_usage():
 
     """
 
-    sys.stderr.write(PROGRAM_NAME + ": Yet Another Static Site Generator\n")
-    sys.stderr.write("Usage: " + PROGRAM_NAME + " <project-root>\n")
-    sys.exit(EXIT_FAIL)
+    log(PROGRAM_NAME + ": Yet Another Static Site Generator")
+    log("Usage: " + PROGRAM_NAME + " <project-root>")
+    sys_exit(EXIT_FAIL)
 
 def printable_path(path):
     """
@@ -2551,6 +2586,11 @@ def printable_path(path):
     Returns a nicer looking but equivalent file path
 
     """
+
+    # special case, if we were given a /, just return it
+    # (never mind that we should never be dealing with the root filesystem)
+    if "/" == path:
+        return path
 
     tmp = path
 
@@ -2656,9 +2696,12 @@ def copy_file(src, dest):
             (src, dest, get_exception_reason(e)))
 
 def copy_file_if_different(src, dest):
-    # if the source file doesn't exist, raise an error
-    if not os.path.exists(src):
-        raise UrielError("source file does not exist: '%s'" % (src))
+    # if the source file doesn't exist, or is a directory, raise an error
+    if (not os.path.isfile(src)) and (not os.path.islink(src)):
+        if not os.path.exists(src):
+            raise UrielError("source file does not exist: '%s'" % (src))
+        else:
+            raise UrielError("source file can not be a directory: '%s'" % (src))
 
     # if the destination file doesn't exist, just copy src to dest
     if not os.path.exists(dest):
@@ -2707,7 +2750,7 @@ def copy_files_recursive(src, dest):
         # if the source path is a directory
         if os.path.isdir(src):
             # if the destination path exists
-            if os.path.exists(dest):
+            if os.path.exists(dest) or os.path.islink(dest):
                 # if the destination path is a symlink or a file,
                 # remove it and create the destination directory
                 if os.path.islink(dest) or not os.path.isdir(dest):
@@ -2759,7 +2802,7 @@ def copy_files_recursive_overwrite(src, dest):
         # if the source path is a directory
         if os.path.isdir(src):
             # if the destination path exists
-            if os.path.exists(dest):
+            if os.path.exists(dest) or os.path.islink(dest):
                 # if the destination path is a symlink or a file,
                 # remove it and create the destination directory
                 if os.path.islink(dest) or not os.path.isdir(dest):
@@ -2843,21 +2886,6 @@ def delete_directory_recursive(path):
         raise UrielError(
             "could not delete directory '%s': '%s'" %
             (path, get_exception_reason(e)))
-
-def require_unique_url(url, unique_urls):
-    """
-    Require the given URL to be unique in the given set of unique URLs.
-
-    Raises UrielError if the URL is not unique.
-
-    Adds the URL to the set.
-
-    """
-
-    if url in unique_urls:
-        raise UrielError("URL is not unique: '" + url + "'")
-
-    unique_urls.add(url)
 
 def escape(text):
     """
@@ -3165,7 +3193,7 @@ def create_child_node_list_html(node, use_canonical_url):
 
         if use_canonical_url:
             c_line = link_prefix + child.get_canonical_link() + link_suffix
-            canonical_lines.append(line)
+            canonical_lines.append(c_line)
 
     # add the HTML fragment with all the links to the node headers
     node.set_header("__node-list-html",
@@ -3262,11 +3290,12 @@ def write_dynamic_nodes(project_root, node):
     """
 
     # get the maximum URL and path string lengths
-    # (the max lengths are set to the length of our header names below)
     (max_url_len, max_path_len) = get_max_url_path_len(node, 3, 4)
 
     # not a metasyntactic variable, an actual horizontal display bar
-    bar = ("-" * 10) + ("-" * max_path_len) + "-+-" + ("-" * max_url_len)
+    bar = ("-" * 7) + "-+-" + \
+          ("-" * max_path_len) + "-+-" + \
+          ("-" * max_url_len)
 
     # write the nodes
     log("creating pages in '%s' from nodes and templates" % \
@@ -3296,6 +3325,10 @@ def write_nodes(project_root, node, max_url_len, max_path_len, unique_urls):
     if not os.path.exists(dir):
         os.makedirs(dir)
 
+    # log this node being written
+    #
+    # node types in the first column are "file" or "virtual",
+    # so a maximum of 7 characters
     log("%s | %s | %s" % \
         (node.get_node_type().ljust(7),
          node.get_path().ljust(max_path_len),
@@ -3851,7 +3884,7 @@ def get_default_soju_contents():
     lines = []
 
     lines.append("#" * 78)
-    lines.append("# soju.py" + (" " * 68))
+    lines.append("# soju.py" + (" " * 68) + "#")
     lines.append("#" * 78)
     lines.append("")
     lines.append("# The following symbols are imported using magic:")
@@ -4246,29 +4279,23 @@ def call_handler(handler_name, *args):
     try:
         handler_function(*args)
     except HandlerError as e:
-        log("%s handler error: %s" % (handler_name, get_exception_reason(e)))
-        sys.exit(EXIT_FAIL)
+        die("%s handler error: %s" % (handler_name, get_exception_reason(e)))
     except Exception as e:
         log("%s handler error: %s" % (handler_name, get_exception_reason(e)))
         raise
 
-def main():
+def handle_project(project_root):
     """
-    Main entry point into the program.
+    Handle whatever needs to be done for the project.
+
+    If the project_root does not exist, then create a new project.
+
+    If the project_root does exist, then build it.
+
+    Exits the program upon completion, with a 0 exit code for
+    success, and a 1 exit code on failure.
 
     """
-
-    # show usage information if we didn't get exactly one argument
-    if 2 != len(sys.argv):
-        show_usage()
-
-    # get the project root
-    project_root = sys.argv[1]
-
-    # short and long options are not supported, only the project root
-    # if the user passes in -h or --help or similar, show usage and exit
-    if project_root.startswith("-"):
-        show_usage()
 
     try:
         # create project root directory (if necessary)
@@ -4318,15 +4345,36 @@ def main():
 
     except SojuError as e:
         log("soju: " + get_exception_reason(e))
-        sys.exit(EXIT_FAIL)
+        sys_exit(EXIT_FAIL)
 
     except UrielError as e:
         die(get_exception_reason(e))
 
     except KeyboardInterrupt:
-        sys.exit(EXIT_FAIL)
+        sys_exit(EXIT_FAIL)
 
-    sys.exit(EXIT_OK)
+    sys_exit(EXIT_OK)
+
+def main():
+    """
+    Main entry point into the program.
+
+    """
+
+    # show usage information if we didn't get exactly one argument
+    if 2 != len(sys.argv):
+        show_usage()
+
+    # get the project root
+    project_root = sys.argv[1]
+
+    # short and long options are not supported, only the project root
+    # if the user passes in -h or --help or similar, show usage and exit
+    if project_root.startswith("-"):
+        show_usage()
+
+    # now that we have the project root, handle this run for the project
+    handle_project(project_root)
 
 if __name__ == "__main__":
     main()
