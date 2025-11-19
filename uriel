@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.1
+uriel 1.3.3
 
 Yet another static website generator.
 
@@ -3518,10 +3518,6 @@ def write_rss(project_root, root_node):
         err = "RSS-Title or Title must be set on node '%s' to write RSS feed"
         raise UrielError(err % (root_node.get_path()))
 
-    # RSS-Add-Node-Title-Header
-    add_node_title_header = \
-        root_node.get_boolean_header_value("rss-add-node-title-header", True)
-
     # RSS-Description
     if root_node.has_header("rss-description"):
         description = root_node.get_header("rss-description")
@@ -3630,6 +3626,10 @@ def write_rss(project_root, root_node):
         if node.has_header("template"):
             template = node.get_header("template")
         node.set_header("template", "null")
+
+        # RSS-Add-Node-Title-Header
+        add_node_title_header = \
+            node.get_boolean_header_value("rss-add-node-title-header", True)
 
         # create page
         page = Page(project_root, node, use_canonical_url=True)

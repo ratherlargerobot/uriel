@@ -2747,6 +2747,7 @@ class TestFunctionWriteRss(unittest.TestCase):
 
             bar = uriel.VirtualNode(project_root, "foo/bar", foo)
             bar.set_header("rss-include", "true")
+            bar.set_header("rss-add-node-title-header", "false")
             bar.set_body("bar")
 
             root.add_child(foo)
@@ -2764,7 +2765,7 @@ class TestFunctionWriteRss(unittest.TestCase):
 
                 lines = contents.split("\n")
 
-                self.assertEqual(26, len(lines))
+                self.assertEqual(24, len(lines))
                 self.assertEqual(
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
                     lines[0])
@@ -2795,52 +2796,46 @@ class TestFunctionWriteRss(unittest.TestCase):
                     "        <link>https://example.com/foo/bar/</link>",
                     lines[9])
                 self.assertEqual(
-                    "        <description><![CDATA[<h1>Bar</h1>",
+                    "        <description><![CDATA[bar]]></description>",
                     lines[10])
-                self.assertEqual(
-                    "",
-                    lines[11])
-                self.assertEqual(
-                    "bar]]></description>",
-                    lines[12])
-                self.assertTrue("<pubDate>" in lines[13])
-                self.assertTrue("</pubDate>" in lines[13])
+                self.assertTrue("<pubDate>" in lines[11])
+                self.assertTrue("</pubDate>" in lines[11])
                 self.assertEqual(
                     "    </item>",
-                    lines[14])
+                    lines[12])
 
                 self.assertEqual(
                     "    <item>",
-                    lines[15])
+                    lines[13])
                 self.assertEqual(
                     "        <title>Foo</title>",
-                    lines[16])
+                    lines[14])
                 self.assertEqual(
                     "        <link>https://example.com/foo/</link>",
-                    lines[17])
+                    lines[15])
                 self.assertEqual(
                     "        <description><![CDATA[<h1>Foo</h1>",
-                    lines[18])
+                    lines[16])
                 self.assertEqual(
                     "",
-                    lines[19])
+                    lines[17])
                 self.assertEqual(
                     "foo]]></description>",
-                    lines[20])
-                self.assertTrue("<pubDate>" in lines[21])
-                self.assertTrue("</pubDate>" in lines[21])
+                    lines[18])
+                self.assertTrue("<pubDate>" in lines[19])
+                self.assertTrue("</pubDate>" in lines[19])
                 self.assertEqual(
                     "    </item>",
-                    lines[22])
+                    lines[20])
                 self.assertEqual(
                     "</channel>",
-                    lines[23])
+                    lines[21])
                 self.assertEqual(
                     "</rss>",
-                    lines[24])
+                    lines[22])
                 self.assertEqual(
                     "",
-                    lines[25])
+                    lines[23])
 
 
 class TestFunctionGetSitemapUrl(unittest.TestCase):

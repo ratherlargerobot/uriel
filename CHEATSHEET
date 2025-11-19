@@ -15,6 +15,7 @@ ALL NODES
     Link-Suffix: </p>
     Tags: [no default]                              foo, bar, baz, quux
     RSS-Include: false
+    RSS-Add-Node-Title-Header: true
     Sitemap-Include: true
 
 ROOT NODE
@@ -22,7 +23,6 @@ ROOT NODE
     Tag-Node: [no default]                          path/to/tag/node
     RSS-URL: [no default]                           /rss.xml
     RSS-Title: <value of Title>
-    RSS-Add-Node-Title-Header: true
     RSS-Description: [no default]
     RSS-Image-URL: [no default]
     RSS-Image-Width: [no default]

@@ -501,15 +501,15 @@ be used as values, other parts of the system recognize them.
 | **Tags** | Optional comma-separated list of tags for a node. The node will be included in an auto-generated tag index for each tag it is associated with. |
 | **Tag-Node** | Defines the file-based node which will serve as the root of the dynamically generated tag links.<br><br>This only has an effect when it is set on the root node. If this is not set, the tag index will not be created. |
 | **Canonical-URL** | The canonical URL for the web site, without the path portion, e.g. https://www.example.com |
-| **RSS-URL** | The relative URL path to use when generating the RSS feed, relative to the root of the site, e.g. /rss.xml<br><br>If this is not set, the RSS feed will not be generated.<br><br>This must be set on the root node. |
-| **RSS-Title** | Title to use in the RSS feed. If not set, the "Title" header from the root node will be used instead. |
-| **RSS-Add-Node-Title-Header** | If set, the node title will be included as an HTML `<h1>` header before the node body in the RSS description. "true" and "false" are the only valid settings. The default value is true. |
-| **RSS-Description** | Description text to include in the RSS feed. |
-| **RSS-Image-URL** | The relative or absolute URL to use for the RSS image to present as the icon for this site.<br><br>Optional. |
-| **RSS-Image-Width** | The width of the RSS image. |
-| **RSS-Image-Height** | The height of the RSS image. |
+| **RSS-URL** | The relative URL path to use when generating the RSS feed, relative to the root of the site, e.g. /rss.xml<br><br>If this is not set, the RSS feed will not be generated.<br><br>This must be set on the root node to have any effect. |
+| **RSS-Title** | Title to use in the RSS feed. If not set, the "Title" header from the root node will be used instead.<br><br>This must be set on the root node to have any effect. |
+| **RSS-Description** | Description text to include in the RSS feed.<br><br>This must be set on the root node to have any effect. |
+| **RSS-Image-URL** | The relative or absolute URL to use for the RSS image to present as the icon for this site.<br><br>Optional.<br><br>This must be set on the root node to have any effect. |
+| **RSS-Image-Width** | The width of the RSS image.<br><br>This must be set on the root node to have any effect. |
+| **RSS-Image-Height** | The height of the RSS image.<br><br>This must be set on the root node to have any effect. |
 | **RSS-Include** | If set, this header controls whether a node is eligible for inclusion in the RSS feed. "true" and "false" are the only valid settings. The default value is false. |
-| **Sitemap-URL** | The relative URL path to use when generating the sitemap XML file, relative to the root of the site, e.g. /sitemap.xml<br><br>A sitemap can only list URL paths that are at or below its level, so it is recommended to put it in the root directory. |
+| **RSS-Add-Node-Title-Header** | If set, the node title will be included as an HTML `<h1>` header before the node body in the RSS description. "true" and "false" are the only valid settings. The default value is true. |
+| **Sitemap-URL** | The relative URL path to use when generating the sitemap XML file, relative to the root of the site, e.g. /sitemap.xml<br><br>A sitemap can only list URL paths that are at or below its level, so it is recommended to put it in the root directory.<br><br>This must be set on the root node to have any effect. |
 | **Sitemap-Include** | If set, this header controls whether a node is eligible for inclusion in the sitemap. "true" and "false" are the only valid settings. The default value is true. |
 
 ### Header Inheritance and Modification

@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import datetime
 import importlib
+import importlib.util
 
 ##############################################################################
 # CLASSES                                                                    #
