@@ -1,4 +1,4 @@
-.TH "uriel" "1" "November 2025" "uriel 1.3.4" "User Commands"
+.TH "uriel" "1" "November 2025" "uriel 1.3.5" "User Commands"
 
 .SH NAME
 
@@ -19,24 +19,30 @@ https://nathanrosenquist.com/uriel/
 
 .SH OVERVIEW
 
-Uriel is designed to create static web sites, using a combination of content nodes and HTML templates. The results are merged into a static web site, which can be hosted pretty much anywhere.
+Uriel is designed to create static web sites, using a combination of content
+nodes and HTML templates. The results are merged into a static web site, which
+can be hosted pretty much anywhere.
 
-This man page is not a comprehensive reference. It is intended to act more like a cheat sheet, as an additional supplement to the full documentation.
+This man page is not a comprehensive reference. It is intended to act more
+like a cheat sheet, as an additional supplement to the full documentation.
 
 .SH USAGE
 
 \fBuriel\fP <project-root>
 
-If the project root is a directory that does not exist, it will be created and initialized with new project files. Subsequent invocations of the uriel command against the project root will regenerate the static files of the web site from the project files.
+If the project root is a directory that does not exist, it will be created and
+initialized with new project files. Subsequent invocations of the \fBuriel\fP
+command against the project root will regenerate the static files of the web
+site from the project files.
 
 .SH HEADERS
 
 Node files support headers. You can define and reference any custom headers
 you want. Some headers also have special meanings, and are interpreted
-directly by uriel.
+directly by \fBuriel\fP.
 
-Some special headers can be set on any node, while others will only have any
-special effect if they are set on the root node (\fIindex\fP).
+Some special headers can be set on any node, while others will only take
+effect if they are set on the root node (\fIindex\fP).
 
 .B All Nodes
 .TS
@@ -45,21 +51,21 @@ l | l | l
 lB | l | l.
 Header@Default@Notes
 
-Title@@Page title
-Escape-Title@true@
-Template@default.html@
+Title@<inferred>@Page title
+Escape-Title@true@HTML escape title
+Template@default.html@Template file
 Format@html@"html" or "text"
-Created@@date -Is
-Modified@node mtime@date -Is
-Breadcrumb-Separator@&raquo;@
-Breadcrumb-Separator-Spaces@true@
-Flat-URL@false@
-Link-Prefix@<p>@
-Link-Suffix@</p>@
+Created@@date -Is / date +%FT%T
+Modified@node mtime@date -Is / date +%FT%T
+Breadcrumb-Separator@&raquo;@Between breadcrumbs
+Breadcrumb-Separator-Spaces@true@Spaces around separator
+Flat-URL@false@Move URL path to top
+Link-Prefix@<p>@For lists of links
+Link-Suffix@</p>@For lists of links
 Tags@@foo, bar, baz, quux
-RSS-Include@false@
-RSS-Add-Node-Title-Header@true@
-Sitemap-Include@true@
+RSS-Include@false@Include node in RSS
+RSS-Add-Node-Title-Header@true@Add node title to RSS
+Sitemap-Include@true@Include node in sitemap
 .TE
 
 .B Root Node
@@ -71,13 +77,13 @@ Header@Default@Notes
 
 Canonical-URL@@https://example.com
 Tag-Node@@tag
-RSS-URL@@
-RSS-Title@<value of Title>@
-RSS-Description@@
-RSS-Image-URL@@
-RSS-Image-Width@@
-RSS-Image-Height@@
-RSS-Description@@/sitemap.xml
+RSS-URL@@/rss.xml
+RSS-Title@<value of Title>@Site name
+RSS-Description@@Site description
+RSS-Image-URL@@/rss-icon.png
+RSS-Image-Width@@32
+RSS-Image-Height@@32
+Sitemap-URL@@/sitemap.xml
 .TE
 
 .B Inheritance
@@ -126,13 +132,13 @@ Parameter@Notes
 
 {{node:body}}@Entire node body contents
 {{include:default.html}}@include:path/to/template.html
-{{value:foo}}@value:<lowercase-header-name>
-{{value-unescaped:foo}}@value-unescaped:<lowercase-header-name>
+{{value:foo}}@rvalue is <lowercase-header-name>
+{{value-unescaped:foo}}@rvalue is <lowercase-header-name>
 {{breadcrumbs:*}}@HTML navigation breadcrumbs
 {{created:%B %d, %Y}}@man strftime
 {{modified:%B %d, %Y}}@man strftime
 {{static-url:foo.jpg}}@a.jpg, i/a.jpg, /a.jpg
-{{static-hash-url:foo.jpg}}@a.jpg, i/a.jpg, /a.jpg
+{{static-hash-url:foo.css}}@a.css, c/a.css, /a.css
 {{rss:url}}@Canonical RSS URL
 {{node:url}}@Node URL
 {{node:name}}@Node name (e.g. foo/bar)
@@ -158,9 +164,9 @@ l | l
 lB | l.
 Directory@Notes
 
-templates@Templates to merge with dynamic content
+templates@Templates to merge with dynamic content nodes
 nodes@Dynamic content nodes to merge with templates
-lib@User-defined Python code
+lib@User-defined Python code (soju.py, handlers.py)
 static@Static content to copy to the web site unmodified
 public@Rendered web site
 .TE
@@ -170,7 +176,8 @@ public@Rendered web site
 
 .SH LICENSE
 
-Uriel is distributed under the GNU General Public License (Version 3). See the file COPYING for details.
+Uriel is distributed under the GNU General Public License (Version 3).
+See the file COPYING for details.
 
 .SH AUTHOR
 
