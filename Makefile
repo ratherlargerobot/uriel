@@ -16,6 +16,7 @@ install:
 	cp uriel ${PREFIX}/bin/uriel
 	chown root:root ${PREFIX}/bin/uriel
 	chmod 755 ${PREFIX}/bin/uriel
+	mkdir -p ${PREFIX}/share/man/man1/
 	cp uriel.1 ${PREFIX}/share/man/man1/
 	chown root:root ${PREFIX}/share/man/man1/uriel.1
 
