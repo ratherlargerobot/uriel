@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.6
+uriel 1.3.7
 
 Yet another static website generator.
 
@@ -1213,25 +1213,8 @@ class Page:
             # log the error within the context of how we got here
             self.line_error(token, error_string, False)
 
-            # extract a subset of the traceback from the exception we
-            # caught, starting with the entry point into the user-defined
-            # soju code
-            soju_traceback_lines = []
-            started_user_traceback = False
-            for traceback_line in traceback.format_tb(e.__traceback__):
-                if "soju.py" in traceback_line:
-                    started_user_traceback = True
-
-                if started_user_traceback:
-                    soju_traceback_lines.append(traceback_line.rstrip())
-
-            # print out a custom stack trace starting with the soju call,
-            # so the user can debug their code with a minimum of
-            # unnecessary noise from the machinery of the uriel program
-            if len(soju_traceback_lines) > 0:
-                log("Traceback (most recent call last):")
-                for line in soju_traceback_lines:
-                    log(line)
+            # log filtered traceback
+            log_filtered_traceback(e, "soju.py")
 
             # create summary error message
             summary_error = "error in function call to 'soju." + \
@@ -2630,6 +2613,46 @@ def get_exception_reason(e):
         reason = e.__class__.__name__
 
     return reason
+
+def log_filtered_traceback(e, filter_string):
+    """
+    Log a filtered Python traceback to stderr.
+
+    The traceback will be filtered, so that it omits the first part of the
+    traceback, and only starts being printed when the filter_string is
+    encountered.
+
+    The idea here is that we can print out the part of the traceback that
+    a user is actually interested in (in their user-defined code), and
+    filter out the parts that come from the calling chain in the uriel
+    program itself.
+
+    Accepts an exception object, and a filter string (e.g. "soju.py")
+
+    Prints a filtered traceback to stderr, starting with the line that
+    matches the filter string.
+
+    """
+
+    # extract a subset of the traceback from the exception we
+    # caught, starting with the entry point into the user-defined
+    # code
+    filtered_traceback_lines = []
+    started_user_traceback = False
+    for traceback_line in traceback.format_tb(e.__traceback__):
+        if filter_string in traceback_line:
+            started_user_traceback = True
+
+        if started_user_traceback:
+            filtered_traceback_lines.append(traceback_line.rstrip())
+
+    # print out a custom stack trace starting with the user-defined code,
+    # so the user can debug their code with a minimum of
+    # unnecessary noise from the machinery of the uriel program
+    if len(filtered_traceback_lines) > 0:
+        log("Traceback (most recent call last):")
+        for line in filtered_traceback_lines:
+            log(line)
 
 def copy_file(src, dest):
     """
@@ -4314,25 +4337,8 @@ def call_handler(handler_name, *args):
         # log the immediate error
         log(summary_error)
 
-        # extract a subset of the traceback from the exception we
-        # caught, starting with the entry point into the user-defined
-        # handler code
-        handler_traceback_lines = []
-        started_user_traceback = False
-        for traceback_line in traceback.format_tb(e.__traceback__):
-            if "handlers.py" in traceback_line:
-                started_user_traceback = True
-
-            if started_user_traceback:
-                handler_traceback_lines.append(traceback_line.rstrip())
-
-        # print out a custom stack trace starting with the handler call,
-        # so the user can debug their code with a minimum of
-        # unnecessary noise from the machinery of the uriel program
-        if len(handler_traceback_lines) > 0:
-            log("Traceback (most recent call last):")
-            for line in handler_traceback_lines:
-                log(line)
+        # log filtered traceback
+        log_filtered_traceback(e, "handlers.py")
 
         # log the exception type (and the error string, if available)
         error_string_rvalue = str(e)

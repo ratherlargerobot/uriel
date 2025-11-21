@@ -317,6 +317,89 @@ class TestFunctionGetExceptionReason(unittest.TestCase):
         self.assertEqual("foo", reason)
 
 
+class TestLogFilteredTraceback(unittest.TestCase):
+    """
+    Tests the log_filtered_traceback() function.
+
+    """
+
+    # N.B. this whole test is somewhat contrived, as it behaves a bit
+    #      differently than the code under test normally does.
+    #
+    # we are filtering tracebacks here, printing them to stderr,
+    # but only after a filter_string appears in a line in the traceback.
+    #
+    # in real code, the filter string is something like "soju.py",
+    # where we know the expected project structure, and the filter_string
+    # is the entry point into the user-defined code.
+    #
+    # here, we're running in a unit test, without any user-defined code.
+    # so instead, we raise a chained exception, and filter on another
+    # somewhat arbitrary string based on the method names.
+    #
+    # this still exercises the code, but the usage is a bit different.
+
+    # N.B. each line of a traceback contains a \n, so it's actually two lines
+    #      first is the file, then a newline, then the error from the file
+
+    def raise_e1(self):
+        raise Exception()
+
+    def raise_e2(self, e1):
+        raise Exception() from e1
+
+    def test_log_filtered_traceback(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        """
+
+        UNFILTERED TRACEBACK EXAMPLE (3 lines):
+
+Traceback (most recent call last):
+  File "/path/to/uriel/tests/uriel_functions.py", line 358, in test_log_filtered_traceback
+    self.raise_e2(e1)
+  File "/path/to/uriel/tests/uriel_functions.py", line 346, in raise_e2
+    raise Exception() from e1
+
+
+        FILTERED TRACEBACK EXAMPLE (filtered on "in raise_e2", 2 lines):
+
+Traceback (most recent call last):
+  File "/path/to/uriel/tests/uriel_functions.py", line 349, in raise_e2
+    raise Exception() from e1
+
+        """
+
+        # capture the chained exception, so we can log it
+        chained_exception = None
+
+        # create the chained exception
+        # we only call helper methods here so that the method names will show
+        # up as strings we can filter on for the test
+        try:
+            try:
+                self.raise_e1()
+            except Exception as e1:
+                self.raise_e2(e1)
+        except Exception as e2:
+            chained_exception = e2
+
+        # log the filtered traceback to the uriel container stderr
+        uriel.log_filtered_traceback(chained_exception, "in raise_e2")
+
+        # since this is a filtered traceback, we expect 2 lines
+        self.assertEqual(2, len(c.stderr))
+
+        # the first line is the traceback header message
+        self.assertEqual("Traceback (most recent call last):", c.stderr[0])
+
+        # the second line is the filtered part of the traceback message
+        # N.B. each traceback line has a \n and prints as two lines
+        self.assertTrue(", in raise_e2" in c.stderr[1])
+        self.assertTrue("    raise Exception() from e1" in c.stderr[1])
+
+
 class TestFunctionCopyFile(unittest.TestCase):
     """
     Tests the copy_file() function.
