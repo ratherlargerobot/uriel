@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.5
+uriel 1.3.6
 
 Yet another static website generator.
 
@@ -4270,13 +4270,79 @@ def call_handler(handler_name, *args):
 
     log("running handler: %s" % (handler_name))
 
+    # try to run the user-defined handler function
     try:
         handler_function(*args)
+
+    # if we get a HandlerError, log it, and raise the exception
     except HandlerError as e:
-        die("%s handler error: %s" % (handler_name, get_exception_reason(e)))
+        # get a suitable error string to represent this error
+        # this will either be the error string from the exception,
+        # wrapped in quotes, or the name of the exception type itself
+        error_string = str(e)
+        if "" == error_string:
+            error_string = get_exception_reason(e)
+        else:
+            error_string = "'" + error_string + "'"
+
+        # create summary error message
+        summary_error = "error in handler function %s(): %s" % \
+                        (handler_name, error_string)
+
+        # log the error
+        log(summary_error)
+
+        # raise new chained exception with summary error message
+        raise HandlerError(summary_error) from e
+
+    # for unexpected exceptions originating from user-defined handler code,
+    # show the subset of the stack trace that applies to their code,
+    # and raise a chained summary exception
     except Exception as e:
-        log("%s handler error: %s" % (handler_name, get_exception_reason(e)))
-        raise
+        # get a suitable error string to represent this error
+        # this will either be the error string from the exception,
+        # wrapped in quotes, or the name of the exception type itself
+        error_string = str(e)
+        if "" == error_string:
+            error_string = get_exception_reason(e)
+        else:
+            error_string = "'" + error_string + "'"
+
+        # create summary error message
+        summary_error = "%s handler error: %s" % (handler_name, error_string)
+
+        # log the immediate error
+        log(summary_error)
+
+        # extract a subset of the traceback from the exception we
+        # caught, starting with the entry point into the user-defined
+        # handler code
+        handler_traceback_lines = []
+        started_user_traceback = False
+        for traceback_line in traceback.format_tb(e.__traceback__):
+            if "handlers.py" in traceback_line:
+                started_user_traceback = True
+
+            if started_user_traceback:
+                handler_traceback_lines.append(traceback_line.rstrip())
+
+        # print out a custom stack trace starting with the handler call,
+        # so the user can debug their code with a minimum of
+        # unnecessary noise from the machinery of the uriel program
+        if len(handler_traceback_lines) > 0:
+            log("Traceback (most recent call last):")
+            for line in handler_traceback_lines:
+                log(line)
+
+        # log the exception type (and the error string, if available)
+        error_string_rvalue = str(e)
+        if "" == error_string_rvalue:
+            log(type(e).__name__)
+        else:
+            log(type(e).__name__ + ": '" + error_string_rvalue + "'")
+
+        # raise the original exception
+        raise HandlerError(summary_error) from e
 
 def handle_project(project_root):
     """
@@ -4339,6 +4405,10 @@ def handle_project(project_root):
 
     except SojuError as e:
         log("soju: " + get_exception_reason(e))
+        sys_exit(EXIT_FAIL)
+
+    except HandlerError as e:
+        # call_handler() takes care of error logging
         sys_exit(EXIT_FAIL)
 
     except UrielError as e:
