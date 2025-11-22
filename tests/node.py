@@ -1797,7 +1797,7 @@ class TestFileNode(unittest.TestCase):
         uriel = c.uriel
 
         with TempDir() as project_root:
-            self.assertRaises(FileNotFoundError,
+            self.assertRaises(uriel.UrielError,
                               uriel.FileNode,
                               project_root, "index")
 

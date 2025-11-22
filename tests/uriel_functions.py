@@ -3898,13 +3898,14 @@ class TestFunctionCallHandler(unittest.TestCase):
                 if "uriel" in sys.modules:
                     del(sys.modules["uriel"])
 
-            self.assertRaises(uriel.HandlerError, uriel.call_handler, "raise_handler_error")
+            self.assertRaises(uriel.HandlerError, uriel.call_handler,
+                              "raise_handler_error")
 
-            self.assertEqual(4, len(c.stderr))
+            self.assertEqual(3, len(c.stderr))
             self.assertTrue("soju.py" in c.stderr[0])
             self.assertEqual("initializing handlers", c.stderr[1])
-            self.assertEqual("running handler: raise_handler_error", c.stderr[2])
-            self.assertEqual("error in handler function raise_handler_error(): 'HHH'", c.stderr[3])
+            self.assertEqual("running handler: raise_handler_error",
+                             c.stderr[2])
 
     def test_call_handler_function_raises_exception(self):
         c = UrielContainer()
@@ -3932,16 +3933,16 @@ class TestFunctionCallHandler(unittest.TestCase):
                 if "uriel" in sys.modules:
                     del(sys.modules["uriel"])
 
-            self.assertRaises(uriel.HandlerError, uriel.call_handler, "raise_exception")
+            self.assertRaises(uriel.HandlerError, uriel.call_handler,
+                              "raise_exception")
 
-            self.assertEqual(7, len(c.stderr))
+            self.assertEqual(6, len(c.stderr))
             self.assertTrue("soju.py" in c.stderr[0])
             self.assertEqual("initializing handlers", c.stderr[1])
             self.assertEqual("running handler: raise_exception", c.stderr[2])
-            self.assertEqual("raise_exception handler error: 'EEE'", c.stderr[3])
-            self.assertEqual("Traceback (most recent call last):", c.stderr[4])
-            self.assertTrue("  File " in c.stderr[5])
-            self.assertEqual("Exception: 'EEE'", c.stderr[6])
+            self.assertEqual("Traceback (most recent call last):", c.stderr[3])
+            self.assertTrue("  File " in c.stderr[4])
+            self.assertEqual("Exception: 'EEE'", c.stderr[5])
 
 
 class TestFunctionHandleProject(unittest.TestCase):
