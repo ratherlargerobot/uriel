@@ -3,6 +3,10 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.3.8 (Nov 21 21:12 2025)
+------------------------------------------------------------------------------
+- Add improved error message if node subdirectory exists without index file
+
 VERSION 1.3.7 (Nov 21 17:04 2025)
 ------------------------------------------------------------------------------
 - Add log_filtered_traceback() function

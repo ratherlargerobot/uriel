@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.7
+uriel 1.3.8
 
 Yet another static website generator.
 
@@ -2971,12 +2971,24 @@ def create_file_node_tree(project_root, parent_path=None, parent_node=None):
     # if this is not the root node, create the index for this subdirectory
     if parent_path:
         dir_path = os.path.join(project_root, NODES_ROOT, parent_path)
+        node_path = os.path.join(parent_path, NODE_INDEX)
+
+        # we have a directory, and we hope that an index file is inside
+        # if the index file isn't there, show a descriptive error
+        dirent_path = os.path.join(dir_path, NODE_INDEX)
+        if not os.path.exists(dirent_path):
+            raise UrielError(
+                "directory '%s' exists, but '%s/%s' node not found" % \
+                (dir_path, dir_path, NODE_INDEX))
+
         index = FileNode(project_root,
-                         os.path.join(parent_path, NODE_INDEX),
+                         node_path,
                          parent_node)
 
     # special case: create the root node
     else:
+        # unlike the index nodes in subdirectories,
+        # uriel will recreate the root index file if it goes missing
         dir_path = os.path.join(project_root, NODES_ROOT)
         index = FileNode(project_root, NODE_INDEX)
         is_root_node = True
