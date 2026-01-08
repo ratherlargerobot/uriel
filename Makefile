@@ -1,4 +1,4 @@
-.PHONY: default test clean install
+.PHONY: default test clean install mypy check
 
 PREFIX=/usr/local
 
@@ -8,9 +8,15 @@ default:
 test:
 	./testsuite.py
 
+check: test mypy
+
+mypy:
+	mypy uriel
+
 clean:
 	rm -rf __pycache__
 	rm -rf tests/__pycache__
+	rm -rf .mypy_cache
 
 install:
 	cp uriel ${PREFIX}/bin/uriel

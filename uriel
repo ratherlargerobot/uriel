@@ -25,6 +25,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 """
 
+# imports
 import ast
 import calendar
 import datetime
@@ -36,6 +37,16 @@ import subprocess
 import sys
 import time
 import traceback
+
+# type hinting imports
+from types import ModuleType
+from typing import Any
+from typing import Dict
+from typing import List
+from typing import Self
+from typing import Set
+from typing import Tuple
+from typing import Optional
 
 # the name of the program
 PROGRAM_NAME = "uriel"
@@ -76,7 +87,7 @@ RSS_MAX_ENTRIES = 20
 SITEMAP_MAX_ENTRIES = 50000
 
 # static URL path -> hash URL path
-static_hash_urls = {}
+static_hash_urls: Dict[str, str] = {}
 
 class UrielError(Exception):
     """
@@ -102,6 +113,22 @@ class HandlerError(Exception):
     """
     Represents an error from user-defined handler code that should not throw
     a stack trace.
+
+    """
+
+    pass
+
+
+class ImpossibleError(Exception):
+    """
+    An exception that should never actually be thrown in practice.
+
+    If this does get thrown, it means there was a unexpected bug in the
+    program.
+
+    This is also used to provide a hint to the type checking machinery that
+    a method will not return a value, since a function or method it called
+    will throw an exception.
 
     """
 
@@ -164,7 +191,7 @@ class Token:
         SOJU,
     ])
 
-    def __init__(self, s):
+    def __init__(self, s: str) -> None:
         """
         Accepts a fragment of text, which may or may not be a parameter.
 
@@ -212,7 +239,7 @@ class Token:
             self.type = Token.LITERAL
             self.value = s
 
-    def has_unidentified_parameter(self):
+    def has_unidentified_parameter(self) -> bool:
         """
         Does this token contain something that looks syntactically like a
         substitution parameter, but not one that we recognize?
@@ -221,7 +248,10 @@ class Token:
 
         return self.unidentified_parameter
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Token):
+            return NotImplemented
+
         if self.type == other.type:
             if self.value == other.value:
                 if self.original_string == other.original_string:
@@ -229,10 +259,12 @@ class Token:
 
         return False
 
-    def __str__(self):
-        return "[token type=" + self.type + ", value='" + self.value + "']"
+    def __str__(self) -> str:
+        return "[token type=" + \
+            str(self.type) + ", value='" + \
+            str(self.value) + "']"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
 
@@ -245,19 +277,20 @@ class TemplateStack:
 
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """
         Constructor.
 
         """
 
-        self.templates = []
+        self.templates: List[str] = []
 
-    def push(self, template, node_path, in_node_body):
+    def push(self, template: str, node_path: str, in_node_body: int) -> None:
         """
         Add a template to the stack.
 
-        Accepts the template to add to the stack, and the node path.
+        Accepts the template to add to the stack, the node path,
+        and a node body semaphore.
 
         """
 
@@ -327,7 +360,7 @@ class TemplateStack:
 
         self.templates.append(template)
 
-    def pop(self):
+    def pop(self) -> str:
         """
         Remove the most recent template from the stack and return it.
 
@@ -335,7 +368,7 @@ class TemplateStack:
 
         return self.templates.pop()
 
-    def shift(self):
+    def shift(self) -> str:
         """
         Remove the first template from the stack and return it.
 
@@ -347,7 +380,7 @@ class TemplateStack:
 
         return template
 
-    def has_more_elements(self):
+    def has_more_elements(self) -> bool:
         """
         Does this stack still have more templates that can be removed?
 
@@ -368,7 +401,11 @@ class Node:
 
     """
 
-    def __init__(self, project_root, path, parent_node=None):
+    def __init__(self,
+                 project_root: str,
+                 path: str,
+                 parent_node=None) -> None:
+
         """
         Accepts the project root directory.
 
@@ -378,55 +415,58 @@ class Node:
 
         """
 
-        self.project_root = project_root
-        self.nodes_root = os.path.join(project_root, NODES_ROOT)
-        self.path = path
-        self.parent_node = parent_node
-        self.body = None
-        self.rendered_body = None
-        self.created = None
-        self.modified = None
+        self.project_root: str = project_root
+        self.nodes_root: str = os.path.join(project_root, NODES_ROOT)
+        self.path: str = path
+        self.parent_node: Optional[Node] = parent_node
+        self.body: Optional[str] = None
+        self.rendered_body: Optional[str] = None
+        self.created: Optional[datetime.datetime] = None
+        self.modified: Optional[datetime.datetime] = None
 
         # list of child Node instances
-        self.children = []
-        self.child_nodes_presorted = False
+        self.children: List[Self] = []
+        self.child_nodes_presorted: bool = False
 
         # header -> value
-        self.headers = {}
+        self.headers: Dict[str, str] = {}
 
         # tag -> set of Node matching that tag
-        self.tag_node_index = None
+        self.tag_node_index: Optional[Dict[str, Set[Node]]] = None
 
         #
         # cache performance optimizations
         #
         # url
-        self.url_cache = None
+        self.url_cache: Optional[str] = None
         # title
-        self.title_cache = None
+        self.title_cache: Optional[str] = None
         # name
-        self.name_cache = None
-        # node path cache (root node only)
-        # path -> Node
-        self.node_path_cache = None
-        if parent_node is None:
-            self.node_path_cache = {}
+        self.name_cache: Optional[str] = None
         #
-        # tag node cache
-        self.tag_node_cache = None
-        #
-        # root node cache
+        # root node cache (always points to the root node, on every node)
         self.root_node_cache = self
         if parent_node is not None:
             self.root_node_cache = parent_node.root_node_cache
+        #
+        # node path cache
+        # (only exists on the root node, all child nodes have references)
+        # path -> Node
+        self.node_path_cache: Dict[str, Node] = {}
+        if parent_node is None:
+            # if this is the root node, add ourselves to the cache
+            self.node_path_cache["index"] = self
         else:
-            self.root_node_cache.node_path_cache["index"] = self
+            self.node_path_cache = self.root_node_cache.node_path_cache
+        #
+        # tag node cache
+        self.tag_node_cache: Optional[Node] = None
         #
         # sorted list of tags
-        self.sorted_tags_cache = None
+        self.sorted_tags_cache: Optional[List[str]] = None
         #
         # map of tag -> Node representing that tag (e.g. /tag/<SOME_TAG>)
-        self.tag_vnode_cache = None
+        self.tag_vnode_cache: Optional[Dict[str, Node]] = None
         if parent_node is None:
             self.tag_vnode_cache = {}
 
@@ -488,7 +528,7 @@ class Node:
         elif self.has_header("modified"):
             self.delete_header("modified")
 
-    def get_parent_node(self):
+    def get_parent_node(self) -> Optional["Node"]:
         """
         Get the parent Node, or None if this is the root.
 
@@ -496,7 +536,7 @@ class Node:
 
         return self.parent_node
 
-    def get_path(self):
+    def get_path(self) -> str:
         """
         Get the node path.
 
@@ -504,7 +544,7 @@ class Node:
 
         return self.path
 
-    def get_node_type(self):
+    def get_node_type(self) -> str:
         """
         Get the Node type as a string (e.g. "file", "virtual").
 
@@ -515,7 +555,7 @@ class Node:
 
         raise Exception("not implemented in abstract parent class")
 
-    def add_child(self, node):
+    def add_child(self, node: Self) -> None:
         """
         Add the given Node as a child of this Node.
 
@@ -530,7 +570,7 @@ class Node:
         # update the node path cache on the root node
         self.root_node_cache.node_path_cache[node.get_path()] = node
 
-    def get_children(self):
+    def get_children(self) -> List[Self]:
         """
         Get a list of child Node entries immediately under this Node.
 
@@ -545,7 +585,7 @@ class Node:
         # return the (pre-sorted) child nodes
         return self.children
 
-    def get_url(self):
+    def get_url(self) -> str:
         """
         Get the URL path for this Node.
 
@@ -589,18 +629,21 @@ class Node:
             target_dir = flat_url
 
         # if this node doesn't have a flat URL, one of its parents might
-        elif self.get_parent_node() is not None:
-            # get the parent URL (without the slash)
-            parent_url = self.get_parent_node().get_url()[1:]
+        else:
+            parent_node = self.get_parent_node()
+            if parent_node is not None:
+                # get the parent URL (without the slash)
+                parent_url = parent_node.get_url()[1:]
 
-            # set our target dir to the parent URL plus the flat URL
-            target_dir = parent_url + flat_url
+                # set our target dir to the parent URL plus the flat URL
+                target_dir = parent_url + flat_url
 
         # return the target dir, with a leading and trailing slash
         self.url_cache = "/" + target_dir + "/"
+
         return self.url_cache
 
-    def get_canonical_url(self):
+    def get_canonical_url(self) -> str:
         """
         Get the canonical URL for this Node.
 
@@ -613,7 +656,7 @@ class Node:
 
         return self.get_header("canonical-url") + self.get_url()
 
-    def get_name(self):
+    def get_name(self) -> str:
         """
         Get the name of this Node.
 
@@ -639,7 +682,7 @@ class Node:
 
         return self.name_cache
 
-    def get_display_name(self):
+    def get_display_name(self) -> str:
         """
         Get the display name of the node.
 
@@ -691,7 +734,7 @@ class Node:
         # return all of the subdivided parts, separated by spaces
         return " ".join(parts)
 
-    def get_title(self):
+    def get_title(self) -> str:
         """
         Get the title of the node, as set by the Title header.
 
@@ -711,7 +754,7 @@ class Node:
         self.title_cache = self.get_display_name()
         return self.title_cache
 
-    def get_escaped_title(self):
+    def get_escaped_title(self) -> str:
         """
         Get the escaped title of the node, as set by the Title header.
 
@@ -727,7 +770,7 @@ class Node:
 
         return self.get_title()
 
-    def get_link(self):
+    def get_link(self) -> str:
         """
         Get a link to this node, using its title as the link text.
 
@@ -736,7 +779,7 @@ class Node:
         return "<a href=\"" + self.get_url() + "\">" + \
                self.get_escaped_title() + "</a>"
 
-    def get_canonical_link(self):
+    def get_canonical_link(self) -> str:
         """
         Get a canonical link to this node, using its title as the link text.
 
@@ -745,7 +788,7 @@ class Node:
         return "<a href=\"" + self.get_canonical_url() + "\">" + \
                self.get_escaped_title() + "</a>"
 
-    def get_link_prefix(self):
+    def get_link_prefix(self) -> str:
         """
         Get the HTML prefix to use in generated lists of links.
 
@@ -756,7 +799,7 @@ class Node:
 
         return "<p>"
 
-    def get_link_suffix(self):
+    def get_link_suffix(self) -> str:
         """
         Get the HTML suffix to use in generated lists of links.
 
@@ -767,7 +810,7 @@ class Node:
 
         return "</p>"
 
-    def get_tags(self):
+    def get_tags(self) -> List[str]:
         """
         Get the set of tags associated with this Node.
 
@@ -799,7 +842,7 @@ class Node:
 
         return self.sorted_tags_cache
 
-    def get_dest_dir(self):
+    def get_dest_dir(self) -> str:
         """
         Get the destination directory in the public website that will
         contain this page.
@@ -818,7 +861,7 @@ class Node:
 
         return os.path.join(self.project_root, PUBLIC_ROOT, target_url)
 
-    def get_dest_file(self):
+    def get_dest_file(self) -> str:
         """
         Get the destination file in the public website that will
         contain this page.
@@ -827,7 +870,7 @@ class Node:
 
         return os.path.join(self.get_dest_dir(), HTML_INDEX)
 
-    def get_boolean_header_value(self, header, default):
+    def get_boolean_header_value(self, header: str, default: bool) -> bool:
         """
         Get the boolean value for a header as True or False.
 
@@ -853,7 +896,7 @@ class Node:
 
         return default
 
-    def get_breadcrumb_separator(self):
+    def get_breadcrumb_separator(self) -> str:
         """
         Get the breadcrumb separator for this node.
 
@@ -873,7 +916,10 @@ class Node:
 
         return maybe_space + separator + maybe_space
 
-    def find_node_by_path(self, path, raise_exceptions=True):
+    def find_node_by_path(self,
+                          path:str,
+                          raise_exceptions: bool = True) -> Optional["Node"]:
+
         """
         Find the Node that matches the given path.
 
@@ -902,7 +948,7 @@ class Node:
 
         return None
 
-    def get_root_node(self):
+    def get_root_node(self) -> "Node":
         """
         Get the root Node, walking up the tree from whichever Node this is.
 
@@ -910,7 +956,7 @@ class Node:
 
         return self.root_node_cache
 
-    def get_tag_node(self):
+    def get_tag_node(self) -> Optional["Node"]:
         """
         Get the tag node, by looking at the value of the Tag-Node header,
         and then returning the matching node.
@@ -943,7 +989,9 @@ class Node:
 
         return None
 
-    def set_tag_node_index(self, tag_node_index):
+    def set_tag_node_index(self,
+            tag_node_index: Optional[Dict[str, Set["Node"]]]) -> None:
+
         """
         Set (or replace) the tag node index on the root Node.
 
@@ -955,7 +1003,7 @@ class Node:
         # overwrite the tag node index on the root node
         root.tag_node_index = tag_node_index
 
-    def get_tag_node_index(self):
+    def get_tag_node_index(self) -> Dict[str, Set["Node"]]:
         """
         Get the tag node index.
 
@@ -974,7 +1022,11 @@ class Node:
 
         return tag_node_index
 
-    def create_tag_node_index(self, node=None, tag_node_index=None):
+    def create_tag_node_index(self,
+            node: Optional["Node"] = None,
+            tag_node_index: Optional[Dict[str, Set["Node"]]] = None) \
+                -> Dict[str, Set["Node"]]:
+
         """
         Create tag / node index.
 
@@ -1019,7 +1071,7 @@ class Node:
 
         return tag_node_index
 
-    def get_vnode_for_tag(self, tag):
+    def get_vnode_for_tag(self, tag: str) -> Optional["Node"]:
         """
         Get the virtual node that represents the given tag
         (e.g. the node for /tag/$SOME_TAG/)
@@ -1029,8 +1081,9 @@ class Node:
         # performance optimization:
         # check the global tag vnode cache first,
         # and just return the node from there if possible
-        if tag in self.root_node_cache.tag_vnode_cache:
-            return self.root_node_cache.tag_vnode_cache[tag]
+        if self.root_node_cache.tag_vnode_cache is not None:
+            if tag in self.root_node_cache.tag_vnode_cache:
+                return self.root_node_cache.tag_vnode_cache[tag]
 
         # search for the vnode by tag
         tag_root = self.get_tag_node()
@@ -1039,13 +1092,14 @@ class Node:
                 if vnode.get_name() == tag:
                     # performance optimization:
                     # add the vnode to the tag vnode cache
-                    self.root_node_cache.tag_vnode_cache[tag] = vnode
+                    if self.root_node_cache.tag_vnode_cache is not None:
+                        self.root_node_cache.tag_vnode_cache[tag] = vnode
 
                     return vnode
 
         return None
 
-    def get_body(self):
+    def get_body(self) -> Optional[str]:
         """
         Get the unrendered Node body as a multi-line string.
 
@@ -1053,7 +1107,7 @@ class Node:
 
         return self.body
 
-    def get_rendered_body(self):
+    def get_rendered_body(self) -> Optional[str]:
         """
         Get the rendered Node body as a multi-line string.
 
@@ -1061,7 +1115,7 @@ class Node:
 
         return self.rendered_body
 
-    def set_body(self, body):
+    def set_body(self, body: Optional[str]) -> None:
         """
         Set the unrendered Node body. Accepts a multi-line string.
 
@@ -1069,7 +1123,7 @@ class Node:
 
         self.body = body
 
-    def set_rendered_body(self, rendered_body):
+    def set_rendered_body(self, rendered_body: Optional[str]) -> None:
         """
         Replace the contents of the Node body (e.g. with a rendered version).
 
@@ -1077,7 +1131,7 @@ class Node:
 
         self.rendered_body = rendered_body
 
-    def has_header(self, header):
+    def has_header(self, header: str) -> bool:
         """
         Does the given header exist on this node?
 
@@ -1090,7 +1144,7 @@ class Node:
 
         return False
 
-    def get_header(self, header):
+    def get_header(self, header: str) -> str:
         """
         Get the value associated with the given header.
 
@@ -1100,7 +1154,7 @@ class Node:
 
         return self.headers[header]
 
-    def invalidate_cache_by_header(self, header):
+    def invalidate_cache_by_header(self, header: str) -> None:
         """
         Invalidate the cache for certain performance optimizations.
 
@@ -1117,7 +1171,7 @@ class Node:
             if "flat-url" == header:
                 self.url_cache = None
 
-    def set_header(self, header, value):
+    def set_header(self, header: str, value: str) -> None:
         """
         Set the given header to the specified value.
 
@@ -1129,7 +1183,7 @@ class Node:
 
         self.headers[header] = value
 
-    def delete_header(self, header):
+    def delete_header(self, header: str) -> None:
         """
         Delete the given header.
 
@@ -1141,7 +1195,7 @@ class Node:
 
         del(self.headers[header])
 
-    def get_header_keys(self):
+    def get_header_keys(self) -> List[str]:
         """
         Get each of the header keys.
 
@@ -1149,7 +1203,7 @@ class Node:
 
         return sorted(self.headers.keys())
 
-    def get_header_key_values(self):
+    def get_header_key_values(self) -> List[Tuple[str, str]]:
         """
         Get each key/value element of the headers as a series of two-element
         tuples.
@@ -1158,7 +1212,7 @@ class Node:
 
         return sorted(self.headers.items())
 
-    def get_datetime_from_date_str(self, date_str):
+    def get_datetime_from_date_str(self, date_str: str) -> datetime.datetime:
         """
         Get a datetime.datetime instance from the provided date string.
 
@@ -1227,7 +1281,7 @@ class Node:
         # and finally by URL (which is unique)
         return self.get_url() < other.get_url()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.get_path()
 
 
@@ -1243,7 +1297,11 @@ class FileNode(Node):
 
     """
 
-    def __init__(self, project_root, path, parent_node=None):
+    def __init__(self,
+                 project_root: str,
+                 path: str,
+                 parent_node: Optional[Node] = None) -> None:
+
         """
         Accepts the project root directory.
 
@@ -1352,7 +1410,7 @@ class FileNode(Node):
         # remember the body as a string
         self.body = "\n".join(body_lines)
 
-    def get_node_type(self):
+    def get_node_type(self) -> str:
         return "file"
 
 
@@ -1368,7 +1426,11 @@ class VirtualNode(Node):
 
     """
 
-    def __init__(self, project_root, path, parent_node=None):
+    def __init__(self,
+                 project_root: str,
+                 path: str,
+                 parent_node: Optional[Node] = None) -> None:
+
         """
         Accepts the project root directory.
 
@@ -1382,9 +1444,10 @@ class VirtualNode(Node):
         super().__init__(project_root, path, parent_node=parent_node)
 
         # set the date, either to the parent node value, or to now
-        if self.get_parent_node():
-            self.created = self.get_parent_node().created
-            self.modified = self.get_parent_node().modified
+        parent_node = self.get_parent_node()
+        if parent_node:
+            self.created = parent_node.created
+            self.modified = parent_node.modified
         else:
             # use the current date/time/timezone
             now = datetime.datetime.fromtimestamp(
@@ -1394,7 +1457,7 @@ class VirtualNode(Node):
             self.created = now
             self.modified = now
 
-    def get_node_type(self):
+    def get_node_type(self) -> str:
         return "virtual"
 
 
@@ -1404,7 +1467,11 @@ class Page:
 
     """
 
-    def __init__(self, project_root, node, use_canonical_url=False):
+    def __init__(self,
+                 project_root: str,
+                 node: Node,
+                 use_canonical_url: bool = False) -> None:
+
         """
         Accepts the project root, the template, and a Node.
 
@@ -1415,7 +1482,7 @@ class Page:
         """
 
         self.project_root = project_root
-        self.node = node
+        self.node: Node = node
 
         # it is possible for line_error() to be called more than once
         # during the exception handling process. however, we only
@@ -1439,7 +1506,11 @@ class Page:
         # remember whether we want to include the canonical URL in links
         self.use_canonical_url = use_canonical_url
 
-    def line_error(self, token, reason, raise_exception=True):
+    def line_error(self,
+                   token: Token,
+                   reason: str,
+                   raise_exception: bool = True) -> None:
+
         """
         Log a parameter error stack trace.
 
@@ -1509,7 +1580,7 @@ class Page:
             indent += 1
             log("%s%s" % (indent_spaces(indent), reason))
 
-    def node_body_loop_error(self, token):
+    def node_body_loop_error(self, token: Token) -> None:
         """
         Log a {{node:body}} inclusion loop error stack trace.
 
@@ -1569,7 +1640,7 @@ class Page:
             "node body include loop detected in node: '%s'" % \
             (self.node.get_path()))
 
-    def tokenize(self, line):
+    def tokenize(self, line: str) -> List[Token]:
         """
         Accepts a single line of text as input.
 
@@ -1618,7 +1689,7 @@ class Page:
 
         return tokens
 
-    def text_to_html(self, text):
+    def text_to_html(self, text: str) -> str:
         """
         Turn a multi-line text string into a multi-line string with
         <br> tags at the end of each line.
@@ -1629,7 +1700,7 @@ class Page:
 
         return "<br>\n".join(lines)
 
-    def get_node_by_path(self, token, path):
+    def get_node_by_path(self, token: Token, path: str) -> Node:
         """
         Get the Node that corresponds with the given path.
 
@@ -1645,14 +1716,14 @@ class Page:
         root = self.node.get_root_node()
 
         # find the node that matches the path, and return it
-        try:
-            node = root.find_node_by_path(path)
-        except UrielError as e:
+        node = root.find_node_by_path(path, raise_exceptions=False)
+        if node is None:
             self.line_error(token, "node not found: '%s'" % (path))
+            raise ImpossibleError()
 
         return node
 
-    def create_breadcrumbs(self):
+    def create_breadcrumbs(self) -> str:
         """
         Create a breadcrumbs HTML fragment for the Node associated with
         this Page.
@@ -1695,7 +1766,7 @@ class Page:
 
         return "".join(breadcrumbs)
 
-    def get_soju_result(self, code):
+    def get_soju_result(self, code: str) -> str:
         """
         Run the given code in the soju module, and return the result.
 
@@ -1742,7 +1813,7 @@ class Page:
 
         return result
 
-    def get_node_url(self, node):
+    def get_node_url(self, node: Node) -> str:
         """
         Get the URL for the node.
 
@@ -1755,7 +1826,7 @@ class Page:
         # non-canonical
         return node.get_url()
 
-    def get_node_link(self, node):
+    def get_node_link(self, node: Node) -> str:
         """
         Get a link to the node, using the node title as the link text.
 
@@ -1768,7 +1839,7 @@ class Page:
         # non-canonical
         return node.get_link()
 
-    def get_static_url(self, node, url):
+    def get_static_url(self, node: Node, url: str) -> str:
         """
         Get the static URL, in relation to the node.
 
@@ -1786,7 +1857,10 @@ class Page:
         # non-canonical
         return url
 
-    def get_maybe_canonical_html_fragment(self, node, header_basename):
+    def get_maybe_canonical_html_fragment(self,
+                                          node: Node,
+                                          header_basename: str) -> str:
+
         """
         Get the canonical or non-canonical HTML fragment associated with the
         given header basename.
@@ -1808,7 +1882,7 @@ class Page:
 
         return node.get_header(header)
 
-    def merge_token_literal(self, token):
+    def merge_token_literal(self, token: Token) -> str:
         """
         Merge a literal token and return the results.
 
@@ -1820,7 +1894,7 @@ class Page:
 
         return token.value
 
-    def merge_token_value(self, token):
+    def merge_token_value(self, token: Token) -> str:
         """
         Merge a {{value:*}} token and return the results.
 
@@ -1834,8 +1908,9 @@ class Page:
             self.line_error(token,
                             "header '%s' not set on this node" % \
                             (token.value))
+            raise ImpossibleError()
 
-    def merge_token_value_unescaped(self, token):
+    def merge_token_value_unescaped(self, token: Token) -> str:
         """
         Merge a {{value-unescaped:*}} token and return the results.
 
@@ -1847,8 +1922,9 @@ class Page:
             self.line_error(token,
                             "header '%s' not set on this node" % \
                             (token.value))
+            raise ImpossibleError()
 
-    def merge_token_include(self, token):
+    def merge_token_include(self, token: Token) -> str:
         """
         Merge an {{include:*}} token and return the results.
 
@@ -1867,7 +1943,7 @@ class Page:
 
         return self.merge_template(token.value)
 
-    def merge_token_created(self, token):
+    def merge_token_created(self, token: Token) -> str:
         """
         Merge a {{created:*}} token and return the results.
 
@@ -1875,6 +1951,7 @@ class Page:
 
         if self.node.created is None:
             self.line_error(token, "'Created' header not set")
+            raise ImpossibleError()
 
         try:
             formatted_date = self.node.created.strftime(token.value)
@@ -1883,8 +1960,9 @@ class Page:
             self.line_error(token,
                             "invalid date format string: '%s'" %
                             (token.value))
+            raise ImpossibleError()
 
-    def merge_token_modified(self, token):
+    def merge_token_modified(self, token: Token) -> str:
         """
         Merge a {{modified:*}} token and return the results.
 
@@ -1892,6 +1970,7 @@ class Page:
 
         if self.node.modified is None:
             self.line_error(token, "'Modified' header not set")
+            raise ImpossibleError()
 
         try:
             formatted_date = self.node.modified.strftime(token.value)
@@ -1900,8 +1979,9 @@ class Page:
             self.line_error(token,
                             "invalid date format string: '%s'" %
                             (token.value))
+            raise ImpossibleError()
 
-    def merge_token_breadcrumbs(self, token):
+    def merge_token_breadcrumbs(self, token: Token) -> str:
         """
         Merge a {{breadcrumbs:*}} token and return the results.
 
@@ -1914,8 +1994,9 @@ class Page:
             token,
             "invalid value for breadcrumbs parameter: '%s'" %
             (token.value))
+        raise ImpossibleError()
 
-    def get_static_url_abspath(self, token, url):
+    def get_static_url_abspath(self, token: Token, url: str) -> str:
         """
         Get the absolute path on disk to the given static URL path.
 
@@ -1944,7 +2025,7 @@ class Page:
 
         return os.path.abspath(static_url_dirent)
 
-    def merge_token_static_url(self, token):
+    def merge_token_static_url(self, token: Token) -> str:
         """
         Merge a {{static-url:*}} token and return the results.
 
@@ -1963,7 +2044,7 @@ class Page:
 
         return self.get_static_url(self.node, url)
 
-    def merge_token_static_hash_url(self, token):
+    def merge_token_static_hash_url(self, token: Token) -> str:
         """
         Merge a {{static-hash-url:*}} token and return the results.
 
@@ -2030,7 +2111,7 @@ class Page:
 
         return dest_hash_url
 
-    def merge_token_rss(self, token):
+    def merge_token_rss(self, token: Token) -> str:
         """
         Merge an {{rss:*}} token and return the results.
 
@@ -2059,7 +2140,7 @@ class Page:
 
         return rss_canonical_url
 
-    def merge_token_node_body(self, token):
+    def merge_token_node_body(self, token: Token) -> str:
         """
         Merge a {{node:body}} token and return the results.
 
@@ -2076,7 +2157,9 @@ class Page:
         if self.node.has_header("format"):
             node_format = self.node.get_header("format")
             if "text" == node_format:
-                self.node.set_body(self.text_to_html(self.node.body))
+                _body = self.node.get_body()
+                if _body is not None:
+                    self.node.set_body(self.text_to_html(_body))
             elif "html" == node_format:
                 # default
                 pass
@@ -2089,14 +2172,17 @@ class Page:
         body = self.node.get_body()
 
         # merge node body contents
-        merged_body = self.merge_multiline(body)
+        if body is not None:
+            merged_body = self.merge_multiline(body)
+        else:
+            raise ImpossibleError("body can not be null")
 
         # leaving {{node:body}} merge
         self.node_body_semaphore -= 1
 
         return merged_body
 
-    def merge_token_node(self, token):
+    def merge_token_node(self, token: Token) -> str:
         """
         Merge a {{node:*}} token and return the results.
 
@@ -2121,8 +2207,9 @@ class Page:
             self.line_error(token,
                             "invalid value for node parameter: '%s'" %
                             (token.value))
+            raise ImpossibleError()
 
-    def merge_token_node_url(self, token):
+    def merge_token_node_url(self, token: Token) -> str:
         """
         Merge a {{node-url:*}} token and return the results.
 
@@ -2135,7 +2222,7 @@ class Page:
 
         return self.get_node_url(target_node)
 
-    def merge_token_node_name(self, token):
+    def merge_token_node_name(self, token: Token) -> str:
         """
         Merge a {{node-name:*}} token and return the results.
 
@@ -2148,7 +2235,7 @@ class Page:
 
         return escape(target_node.get_name())
 
-    def merge_token_node_title(self, token):
+    def merge_token_node_title(self, token: Token) -> str:
         """
         Merge a {{node-title:*}} token and return the results.
 
@@ -2161,7 +2248,7 @@ class Page:
 
         return target_node.get_escaped_title()
 
-    def merge_token_node_link(self, token):
+    def merge_token_node_link(self, token: Token) -> str:
         """
         Merge a {{node-link:*}} token and return the results.
 
@@ -2174,7 +2261,7 @@ class Page:
 
         return self.get_node_link(target_node)
 
-    def merge_token_node_list(self, token):
+    def merge_token_node_list(self, token: Token) -> str:
         """
         Merge a {{node-list:*}} token and return the results.
 
@@ -2187,8 +2274,9 @@ class Page:
         self.line_error(token,
                         "invalid value for node-list parameter: '%s'" %
                         (token.value))
+        raise ImpossibleError()
 
-    def merge_token_tag_list(self, token):
+    def merge_token_tag_list(self, token: Token) -> str:
         """
         Merge a {{tag-list:*}} token and return the results.
 
@@ -2207,8 +2295,9 @@ class Page:
         self.line_error(token,
                         "invalid value for tag-list parameter: '%s'" %
                         (token.value))
+        raise ImpossibleError()
 
-    def merge_token_soju(self, token):
+    def merge_token_soju(self, token: Token) -> str:
         """
         Merge a {{soju:*}} token and return the results.
 
@@ -2267,7 +2356,7 @@ class Page:
             # raise a new chained exception with summary error message
             raise SojuError(summary_error) from e
 
-    def merge_token(self, token):
+    def merge_token(self, token: Token) -> str:
         """
         Merge the contents of a single token, and return the results.
 
@@ -2351,8 +2440,9 @@ class Page:
                 token,
                 "invalid parameter or value: '%s'" %
                 (token.original_string))
+            raise ImpossibleError()
 
-    def merge_line(self, line):
+    def merge_line(self, line: str) -> str:
         """
         Accepts a single line of text as input.
 
@@ -2388,7 +2478,7 @@ class Page:
         # return the rendered tokens as a multi-line string
         return "".join(rendered)
 
-    def merge_lines(self, lines):
+    def merge_lines(self, lines: List[str]) -> str:
         """
         Accepts a list of string.
 
@@ -2406,7 +2496,7 @@ class Page:
 
         return "\n".join(merged_lines)
 
-    def merge_multiline(self, multiline):
+    def merge_multiline(self, multiline: str) -> str:
         """
         Accepts a multi-line string.
 
@@ -2418,7 +2508,7 @@ class Page:
 
         return self.merge_lines(lines)
 
-    def merge_template(self, template):
+    def merge_template(self, template: str) -> str:
         """
         Accepts a template as input.
 
@@ -2475,7 +2565,7 @@ class Page:
         # return the result
         return result
 
-    def render(self):
+    def render(self) -> str:
         """
         Render the combination of this Page, using its template and Node.
 
@@ -2491,7 +2581,7 @@ class Page:
 
         return rendered
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.node) + " [" + self.template + "]"
 
 
@@ -2501,7 +2591,7 @@ class FileWriter:
 
     """
 
-    def __init__(self, path, mode="w"):
+    def __init__(self, path: str, mode: str = "w") -> None:
         """
         Accepts the path to the file, and an optional write mode.
 
@@ -2525,7 +2615,7 @@ class FileWriter:
             err = "could not create file '%s': '%s'"
             raise UrielError(err % (path, str(e)))
 
-    def write(self, content):
+    def write(self, content: str) -> None:
         """
         Writes the content to the file.
 
@@ -2537,7 +2627,7 @@ class FileWriter:
             err = "error writing file '%s': '%s'"
             raise UrielError(err % (self.path, str(e)))
 
-    def close(self):
+    def close(self) -> None:
         """
         Closes the file.
 
@@ -2551,7 +2641,7 @@ class FileWriter:
             raise UrielError(err % (self.path, str(e)))
 
 
-def sys_exit(exit_code):
+def sys_exit(exit_code: int) -> None:
     """
     Exit the program, with the given exit code.
 
@@ -2559,7 +2649,7 @@ def sys_exit(exit_code):
 
     sys.exit(exit_code)
 
-def log(s):
+def log(s: str) -> None:
     """
     Log the program name and the given string to stderr.
 
@@ -2568,7 +2658,7 @@ def log(s):
     sys.stderr.write(str(s) + "\n")
     sys.stderr.flush()
 
-def warn(s):
+def warn(s: str) -> None:
     """
     Log the given string as a warning to stderr.
 
@@ -2576,7 +2666,7 @@ def warn(s):
 
     log(PROGRAM_NAME + ": " + str(s))
 
-def die(s):
+def die(s: str) -> None:
     """
     Log the given string as an error to stderr, and exit.
 
@@ -2585,7 +2675,24 @@ def die(s):
     warn(s)
     sys_exit(EXIT_FAIL)
 
-def show_usage():
+def print_impossible_error() -> None:
+    """
+    Log a message confirming that the error the user encountered is most
+    definitely a uriel bug.
+
+    """
+
+    warn("-" * 71)
+    warn("CONGRATULATIONS!")
+    warn("")
+    warn("You found a bug in the uriel program!")
+    warn("")
+    warn("Please consider reporting it, so it can be fixed.")
+    warn("")
+    warn("Sorry for the inconvenience.")
+    warn("-" * 71)
+
+def show_usage() -> None:
     """
     Show command-line usage information for the program, and exit.
 
@@ -2595,7 +2702,7 @@ def show_usage():
     log("Usage: " + PROGRAM_NAME + " <project-root>")
     sys_exit(EXIT_FAIL)
 
-def printable_path(path):
+def printable_path(path: str) -> str:
     """
     Makes a filesystem path look a bit nicer in log messages.
 
@@ -2626,7 +2733,7 @@ def printable_path(path):
 
     return tmp
 
-def indent_spaces(indent):
+def indent_spaces(indent: int) -> str:
     """
     Get a string with blank spaces, according to the specified indenting.
 
@@ -2638,7 +2745,7 @@ def indent_spaces(indent):
 
     return "  " * indent
 
-def get_exception_reason(e):
+def get_exception_reason(e: Exception) -> str:
     """
     Get the reason associated with an exception, or if that isn't present,
     default to the type of the exception.
@@ -2655,7 +2762,7 @@ def get_exception_reason(e):
 
     return reason
 
-def log_filtered_traceback(e, filter_string):
+def log_filtered_traceback(e: Exception, filter_string: str) -> None:
     """
     Log a filtered Python traceback to stderr.
 
@@ -2695,7 +2802,7 @@ def log_filtered_traceback(e, filter_string):
         for line in filtered_traceback_lines:
             log(line)
 
-def copy_file(src, dest):
+def copy_file(src: str, dest: str) -> None:
     """
     Copy the source file to the destination file.
 
@@ -2753,13 +2860,21 @@ def copy_file(src, dest):
             "error copying '%s' to '%s': '%s'" %
             (src, dest, get_exception_reason(e)))
 
-def copy_file_if_different(src, dest):
+def copy_file_if_different(src: str, dest: str) -> None:
+    """
+    Copy the source file to the destination file, if they are different.
+
+    Raises a UrielError if an error occurs.
+
+    """
+
     # if the source file doesn't exist, or is a directory, raise an error
     if (not os.path.isfile(src)) and (not os.path.islink(src)):
         if not os.path.exists(src):
             raise UrielError("source file does not exist: '%s'" % (src))
         else:
-            raise UrielError("source file can not be a directory: '%s'" % (src))
+            raise UrielError("source file can not be a directory: '%s'" % \
+                             (src))
 
     # if the destination file doesn't exist, just copy src to dest
     if not os.path.exists(dest):
@@ -2798,9 +2913,11 @@ def copy_file_if_different(src, dest):
         if not skip_copy:
             copy_file(src, dest)
 
-def copy_files_recursive(src, dest):
+def copy_files_recursive(src: str, dest: str) -> None:
     """
     Recursively copy the source directory into the destination directory.
+
+    Raises a UrielError if an error occurs.
 
     """
 
@@ -2848,11 +2965,13 @@ def copy_files_recursive(src, dest):
         raise UrielError("error copying '%s' to '%s': '%s'" %
                          (src, dest, get_exception_reason(e)))
 
-def copy_files_recursive_overwrite(src, dest):
+def copy_files_recursive_overwrite(src: str, dest: str) -> None:
     """
     Recursively copy the source directory into the destination directory,
     deleting anything in the destination directory that is not present
     in the source directory.
+
+    Raises a UrielError if an error occurs.
 
     """
 
@@ -2932,9 +3051,11 @@ def copy_files_recursive_overwrite(src, dest):
         raise UrielError("error copying '%s' to '%s': '%s'" %
                          (src, dest, get_exception_reason(e)))
 
-def delete_directory_recursive(path):
+def delete_directory_recursive(path: str) -> None:
     """
     Recursively delete the given directory.
+
+    Raises a UrielError if an error occurs.
 
     """
 
@@ -2945,7 +3066,7 @@ def delete_directory_recursive(path):
             "could not delete directory '%s': '%s'" %
             (path, get_exception_reason(e)))
 
-def escape(text):
+def escape(text: str) -> str:
     """
     Escape HTML.
 
@@ -2964,7 +3085,7 @@ def escape(text):
 
     return "".join(chars)
 
-def escape_xml(text):
+def escape_xml(text: str) -> str:
     """
     Escape XML.
 
@@ -2983,7 +3104,10 @@ def escape_xml(text):
 
     return "\n".join(escaped_lines)
 
-def create_file_node_tree(project_root, parent_path=None, parent_node=None):
+def create_file_node_tree(project_root: str,
+                          parent_path: Optional[str] = None,
+                          parent_node: Optional[Node] = None) -> FileNode:
+
     """
     Create Node entries for all of the dynamic pages.
 
@@ -3087,7 +3211,10 @@ def create_file_node_tree(project_root, parent_path=None, parent_node=None):
 
     return index
 
-def create_tag_node_tree(project_root, root, use_canonical_url):
+def create_tag_node_tree(project_root: str,
+                         root: Node,
+                         use_canonical_url: bool) -> None:
+
     """
     Create the tag node tree.
 
@@ -3199,7 +3326,7 @@ def create_tag_node_tree(project_root, root, use_canonical_url):
 
         tag_node.add_child(vnode)
 
-def create_tag_links(node, use_canonical_url):
+def create_tag_links(node: Node, use_canonical_url: bool) -> str:
     """
     Create HTML to link to all tags associated with this node, as defined
     in the Tags header for the given node.
@@ -3209,7 +3336,7 @@ def create_tag_links(node, use_canonical_url):
 
     """
 
-    links = []
+    links: List[str] = []
 
     # go through all of the tags for this node
     for tag in sorted(node.get_tags()):
@@ -3219,6 +3346,8 @@ def create_tag_links(node, use_canonical_url):
 
         # get the vnode for this tag
         tag_vnode = node.get_vnode_for_tag(tag)
+        if tag_vnode is None:
+            raise ImpossibleError("tag vnode can not be null")
 
         if use_canonical_url:
             url = tag_vnode.get_canonical_url()
@@ -3231,7 +3360,7 @@ def create_tag_links(node, use_canonical_url):
 
     return "".join(links)
 
-def create_tag_links_recursive(node, use_canonical_url):
+def create_tag_links_recursive(node: Node, use_canonical_url: bool) -> None:
     """
     Walk through the node tree, from the root, and create tag links for
     each node that does not already have something for the {{tag-list:*}}
@@ -3255,7 +3384,7 @@ def create_tag_links_recursive(node, use_canonical_url):
     for child in node.get_children():
         create_tag_links_recursive(child, use_canonical_url)
 
-def create_child_node_list_html(node, use_canonical_url):
+def create_child_node_list_html(node: Node, use_canonical_url: bool) -> None:
     """
     Create an HTML fragment of links to all of the child nodes of the given
     Node, and makes it available for use with the {{node-list:*}} parameter.
@@ -3295,7 +3424,7 @@ def create_child_node_list_html(node, use_canonical_url):
     for child in node.get_children():
         create_child_node_list_html(child, use_canonical_url)
 
-def augment_node_tree(project_root, root_node):
+def augment_node_tree(project_root: str, root_node: Node) -> None:
     """
     Augment the node tree with additional computed values before rendering.
 
@@ -3331,7 +3460,7 @@ def augment_node_tree(project_root, root_node):
     # create {{list-node:*}} HTML fragment for each node
     create_child_node_list_html(root_node, use_canonical_url)
 
-def render_node_tree(project_root, node):
+def render_node_tree(project_root: str, node: Node) -> None:
     """
     Walk the tree of Node entries and render their contents in place.
 
@@ -3347,7 +3476,10 @@ def render_node_tree(project_root, node):
     for child in node.get_children():
         render_node_tree(project_root, child)
 
-def get_max_url_path_len(node, max_url_len=0, max_path_len=0):
+def get_max_url_path_len(node: Node,
+                         max_url_len: int = 0,
+                         max_path_len: int = 0) -> Tuple[int, int]:
+
     """
     Get the maximum URL and path lengths from all of the nodes,
     and return them as a two-element tuple.
@@ -3369,7 +3501,7 @@ def get_max_url_path_len(node, max_url_len=0, max_path_len=0):
 
     return (max_url_len, max_path_len)
 
-def write_dynamic_nodes(project_root, node):
+def write_dynamic_nodes(project_root: str, node: Node) -> None:
     """
     Write the dynamic node/template merged data into files under PUBLIC_ROOT.
 
@@ -3391,13 +3523,18 @@ def write_dynamic_nodes(project_root, node):
     log("type    | " + "node".ljust(max_path_len) + " | " + "url")
     log(bar)
 
-    unique_urls = set()
+    unique_urls: Set[str] = set()
 
     write_nodes(project_root, node, max_url_len, max_path_len, unique_urls)
 
     log(bar)
 
-def write_nodes(project_root, node, max_url_len, max_path_len, unique_urls):
+def write_nodes(project_root: str,
+                node: Node,
+                max_url_len: int,
+                max_path_len: int,
+                unique_urls: Set[str]) -> None:
+
     """
     Recursive function to write the nodes.
 
@@ -3429,7 +3566,10 @@ def write_nodes(project_root, node, max_url_len, max_path_len, unique_urls):
 
     # write the rendered file
     fw = FileWriter(file)
-    fw.write(node.get_rendered_body())
+    body = node.get_rendered_body()
+    if body is None:
+        raise ImpossibleError("node body can not be null")
+    fw.write(body)
     fw.close()
 
     # recurse into the node children
@@ -3440,7 +3580,11 @@ def write_nodes(project_root, node, max_url_len, max_path_len, unique_urls):
                     max_path_len,
                     unique_urls)
 
-def get_eligible_nodes(node, boolean_header, default, node_set):
+def get_eligible_nodes(node: Node,
+                       boolean_header: str,
+                       default: bool,
+                       node_set: Set[Node]) -> None:
+
     """
     Get nodes that have the given header set to true.
 
@@ -3463,7 +3607,7 @@ def get_eligible_nodes(node, boolean_header, default, node_set):
     for child in node.get_children():
         get_eligible_nodes(child, boolean_header, default, node_set)
 
-def get_utc_offset():
+def get_utc_offset() -> Tuple[str, str, str]:
     """
     Get the time zone offset as a three-element tuple of strings:
 
@@ -3515,7 +3659,7 @@ def get_utc_offset():
 
     return (sign, hh, mm)
 
-def get_rfc_2822_date(dt):
+def get_rfc_2822_date(dt: datetime.datetime) -> str:
     """
     Gets a date string in RFC 2822 format.
 
@@ -3532,7 +3676,7 @@ def get_rfc_2822_date(dt):
 
     return dt.strftime("%a, %d %b %Y %H:%M:%S ") + sign + hh + mm
 
-def get_w3c_datetime(dt):
+def get_w3c_datetime(dt: datetime.datetime) -> str:
     """
     Gets a date string in W3C Datetime format.
 
@@ -3549,7 +3693,7 @@ def get_w3c_datetime(dt):
 
     return dt.strftime("%Y-%m-%dT%H:%M:%S") + sign + hh + ":" + mm
 
-def get_rss_url(root_node):
+def get_rss_url(root_node: Node) -> Optional[str]:
     """
     Get the RSS URL (without a leading slash).
 
@@ -3570,7 +3714,7 @@ def get_rss_url(root_node):
 
     return rss_url
 
-def write_rss(project_root, root_node):
+def write_rss(project_root: str, root_node: Node) -> None:
     """
     Write RSS feed to disk (if enabled).
 
@@ -3618,7 +3762,7 @@ def write_rss(project_root, root_node):
         raise UrielError(err % (root_node.get_path()))
 
     # get all of the RSS-eligible nodes
-    eligible_node_set = set()
+    eligible_node_set: Set[Node] = set()
     get_eligible_nodes(root_node, "rss-include", False, eligible_node_set)
 
     # keep track of which nodes we want to include
@@ -3765,6 +3909,8 @@ def write_rss(project_root, root_node):
         node_date = node.modified
         if node.created:
             node_date = node.created
+        if node_date is None:
+            raise ImpossibleError("node date can not be null")
         fw.write("        <pubDate>" + \
             escape(get_rfc_2822_date(node_date)) + \
             "</pubDate>\n")
@@ -3776,7 +3922,7 @@ def write_rss(project_root, root_node):
 
     fw.close()
 
-def get_sitemap_url(root_node):
+def get_sitemap_url(root_node: Node) -> Optional[str]:
     """
     Get the sitemap URL (without a leading slash).
 
@@ -3798,7 +3944,7 @@ def get_sitemap_url(root_node):
 
     return sitemap_url
 
-def write_sitemap(project_root, root_node):
+def write_sitemap(project_root: str, root_node: Node) -> None:
     """
     Write sitemap file to disk (if enabled).
 
@@ -3823,7 +3969,7 @@ def write_sitemap(project_root, root_node):
         return
 
     # get all of the sitemap-eligible nodes
-    eligible_node_set = set()
+    eligible_node_set: Set[Node] = set()
     get_eligible_nodes(root_node, "sitemap-include", True, eligible_node_set)
 
     log("creating '%s'" % (printable_path(sitemap_file)))
@@ -3864,6 +4010,8 @@ def write_sitemap(project_root, root_node):
             "</loc>\n")
 
         # lastmod
+        if node.modified is None:
+            raise ImpossibleError("node modified date can not be null")
         fw.write("        <lastmod>" + \
             escape_xml(get_w3c_datetime(node.modified)) + \
             "</lastmod>\n")
@@ -3873,7 +4021,7 @@ def write_sitemap(project_root, root_node):
     fw.write("</urlset>\n")
     fw.close()
 
-def write_robots_txt(project_root, root_node):
+def write_robots_txt(project_root: str, root_node: Node) -> None:
     """
     Write robots.txt file.
 
@@ -3910,7 +4058,7 @@ def write_robots_txt(project_root, root_node):
                 root_node.get_canonical_url() + sitemap_url + "\n")
         fw.close()
 
-def get_default_template_contents():
+def get_default_template_contents() -> str:
     """
     Get the contents of the initial default template, as a multi-line string.
 
@@ -3939,7 +4087,7 @@ def get_default_template_contents():
 
     return "\n".join(lines)
 
-def get_default_index_node_contents():
+def get_default_index_node_contents() -> str:
     """
     Get the contents of the default index node, as a multi-line string.
 
@@ -3961,7 +4109,7 @@ def get_default_index_node_contents():
 
     return "\n".join(lines)
 
-def get_default_soju_contents():
+def get_default_soju_contents() -> str:
     """
     Get the contents of the default soju.py file, as a multi-line string.
 
@@ -3996,7 +4144,7 @@ def get_default_soju_contents():
 
     return "\n".join(lines)
 
-def get_default_handlers_contents():
+def get_default_handlers_contents() -> str:
     """
     Get the contents of the default handlers.py file, as a multi-line string.
 
@@ -4035,7 +4183,7 @@ def get_default_handlers_contents():
 
     return "\n".join(lines)
 
-def get_default_makefile_contents():
+def get_default_makefile_contents() -> str:
     """
     Get the contents of the default Makefile, as a multi-line string.
 
@@ -4077,7 +4225,9 @@ def get_default_makefile_contents():
 
     return "\n".join(lines)
 
-def init_project_root(project_root, project_root_just_created):
+def init_project_root(project_root: str,
+                      project_root_just_created: bool) -> None:
+
     """
     (Re)initialize the rendered web site public directory with only the
     static content, deleting everything else.
@@ -4202,7 +4352,7 @@ def init_project_root(project_root, project_root_just_created):
             fw.write(get_default_makefile_contents())
             fw.close()
 
-def get_uriel_module():
+def get_uriel_module() -> ModuleType:
     """
     Get a reference to ourselves as a module.
 
@@ -4210,7 +4360,7 @@ def get_uriel_module():
 
     return sys.modules[__name__]
 
-def init_modules(project_root):
+def init_modules(project_root: str) -> None:
     """
     Initialize the modules we can use under LIB_ROOT.
 
@@ -4232,7 +4382,7 @@ def init_modules(project_root):
     lib_soju_file = os.path.join(lib_dir, "soju.py")
     if os.path.exists(lib_soju_file):
         log("initializing soju")
-        import soju
+        import soju  # type: ignore
 
         # export relevant symbols to soju
         soju.uriel = get_uriel_module()
@@ -4253,7 +4403,7 @@ def init_modules(project_root):
     lib_handlers_file = os.path.join(lib_dir, "handlers.py")
     if os.path.exists(lib_handlers_file):
         log("initializing handlers")
-        import handlers
+        import handlers  # type: ignore
 
         # export relevant symbols to handlers
         handlers.uriel = get_uriel_module()
@@ -4274,7 +4424,7 @@ def init_modules(project_root):
         log("skipping module initialization, '%s' not found" %
             (printable_path(lib_handlers_file)))
 
-def write_additional_files(project_root, node):
+def write_additional_files(project_root: str, node: Node) -> None:
     """
     Write additional files after the nodes have been generated.
 
@@ -4289,7 +4439,7 @@ def write_additional_files(project_root, node):
     # write robots.txt (if sitemap is enabled)
     write_robots_txt(project_root, node)
 
-def copy_static_files(project_root):
+def copy_static_files(project_root: str) -> None:
     """
     Copy the static files into the public website, without modification.
 
@@ -4314,7 +4464,7 @@ def copy_static_files(project_root):
     # copy the files
     copy_files_recursive(src, dest)
 
-def create_project_root(project_root):
+def create_project_root(project_root: str) -> bool:
     """
     Create the project root directory, if it doesn't exist.
 
@@ -4341,7 +4491,7 @@ def create_project_root(project_root):
     # the project root directory already existed
     return False
 
-def call_handler(handler_name, *args):
+def call_handler(handler_name: str, *args: Any) -> Any:
     """
     Run a user-defined handler.
 
@@ -4414,7 +4564,7 @@ def call_handler(handler_name, *args):
         # raise the original exception with the summary error
         raise HandlerError(summary_error) from e
 
-def handle_project(project_root):
+def handle_project(project_root: str) -> None:
     """
     Handle whatever needs to be done for the project.
 
@@ -4483,12 +4633,16 @@ def handle_project(project_root):
     except UrielError as e:
         die(get_exception_reason(e))
 
+    except ImpossibleError as e:
+        print_impossible_error()
+        raise
+
     except KeyboardInterrupt:
         sys_exit(EXIT_FAIL)
 
     sys_exit(EXIT_OK)
 
-def main():
+def main() -> None:
     """
     Main entry point into the program.
 

@@ -3,6 +3,15 @@ Uriel changelog
 https://nathanrosenquist.com/uriel/
 ------------------------------------------------------------------------------
 
+VERSION 1.3.10 (Jan 7 23:15 2026)
+------------------------------------------------------------------------------
+- Add type hints to all functions and methods in uriel
+- Update Makefile with 'make mypy' target to run type checking
+- Update Makefile with 'make check' target to run unit tests and type checking
+- Add ImpossibleError to act as an assertion and hint to the type checker
+- Add print_impossible_error() function
+- Add ImpossibleError handler in handle_project(), just in case
+
 VERSION 1.3.9 (Nov 22 17:38 2025)
 ------------------------------------------------------------------------------
 - Improve error messages related to file not found and permissions errors

@@ -124,6 +124,29 @@ class TestFunctionDie(unittest.TestCase):
         self.assertEqual(1, c.exit_code)
 
 
+class TestPrintImpossibleError(unittest.TestCase):
+    """
+    Tests the print_impossible_error() function.
+
+    """
+
+    def test_print_impossible_error(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        uriel.print_impossible_error()
+        self.assertEqual(9, len(c.stderr))
+        self.assertEqual("uriel: -----------------------------------------------------------------------", c.stderr[0])
+        self.assertEqual("uriel: CONGRATULATIONS!", c.stderr[1])
+        self.assertEqual("uriel: ", c.stderr[2])
+        self.assertEqual("uriel: You found a bug in the uriel program!", c.stderr[3])
+        self.assertEqual("uriel: ", c.stderr[4])
+        self.assertEqual("uriel: Please consider reporting it, so it can be fixed.", c.stderr[5])
+        self.assertEqual("uriel: ", c.stderr[6])
+        self.assertEqual("uriel: Sorry for the inconvenience.", c.stderr[7])
+        self.assertEqual("uriel: -----------------------------------------------------------------------", c.stderr[8])
+
+
 class TestFunctionShowUsage(unittest.TestCase):
     """
     Tests the show_usage() function.
