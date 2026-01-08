@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.9
+uriel 1.3.10
 
 Yet another static website generator.
 
 Named for the archangel Uriel in the novel Unsong, whose job was to perform
 the fantastic and mundane work necessary to keep the world functioning.
 
-Copyright 2021-2025 Nathan Rosenquist
+Copyright 2021-2026 Nathan Rosenquist
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
