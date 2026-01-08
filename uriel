@@ -359,6 +359,1045 @@ class TemplateStack:
         return False
 
 
+class Node:
+    """
+    Represents a dynamic page, either virtual or backed by a file.
+
+    This class is intended to be treated as abstract, and not
+    instantiated directly.
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path (as a subdirectory of the node root).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        self.project_root = project_root
+        self.nodes_root = os.path.join(project_root, NODES_ROOT)
+        self.path = path
+        self.parent_node = parent_node
+        self.body = None
+        self.rendered_body = None
+        self.created = None
+        self.modified = None
+
+        # list of child Node instances
+        self.children = []
+        self.child_nodes_presorted = False
+
+        # header -> value
+        self.headers = {}
+
+        # tag -> set of Node matching that tag
+        self.tag_node_index = None
+
+        #
+        # cache performance optimizations
+        #
+        # url
+        self.url_cache = None
+        # title
+        self.title_cache = None
+        # name
+        self.name_cache = None
+        # node path cache (root node only)
+        # path -> Node
+        self.node_path_cache = None
+        if parent_node is None:
+            self.node_path_cache = {}
+        #
+        # tag node cache
+        self.tag_node_cache = None
+        #
+        # root node cache
+        self.root_node_cache = self
+        if parent_node is not None:
+            self.root_node_cache = parent_node.root_node_cache
+        else:
+            self.root_node_cache.node_path_cache["index"] = self
+        #
+        # sorted list of tags
+        self.sorted_tags_cache = None
+        #
+        # map of tag -> Node representing that tag (e.g. /tag/<SOME_TAG>)
+        self.tag_vnode_cache = None
+        if parent_node is None:
+            self.tag_vnode_cache = {}
+
+        # check for duplicate node path elsewhere in the tree
+        if parent_node is not None:
+            root_node = parent_node.get_root_node()
+            dupe = root_node.find_node_by_path(path, False)
+            if dupe is not None:
+                err = "can not create node, another node already exists " + \
+                      "with this path: '%s'"
+                raise Exception(err % (path))
+
+        # import headers from parent node
+        if self.parent_node:
+            # copy parent headers into this node
+            for (key, value) in self.parent_node.get_header_key_values():
+                self.set_header(key, value)
+
+            # N.B. the +/- keys are sorted and reversed, so that it is possible
+            #      to push inheritance out multiple levels. this works because
+            #      when sorted and reversed, ++foo sorts after +foo, and so on,
+            #      which prevents ++foo from overwriting +foo before it gets
+            #      a chance to be set.
+
+            # +
+            for key in reversed(self.get_header_keys()):
+                if key.startswith("+"):
+                    plus_key = key
+                    stripped_key = key[1:]
+                    value = self.get_header(plus_key)
+                    self.set_header(stripped_key, value)
+                    self.delete_header(plus_key)
+
+            # -
+            for key in reversed(self.get_header_keys()):
+                if key.startswith("-"):
+                    minus_key = key
+                    stripped_key = key[1:]
+                    value = self.get_header(minus_key)
+                    if "*" != value:
+                        err = "key '%s' can not have value '%s' " + \
+                              "in node '%s' (value must be '*')"
+                        raise UrielError(err % (key, value, self.get_path()))
+                    if self.has_header(stripped_key):
+                        self.delete_header(stripped_key)
+                    self.delete_header(minus_key)
+
+        # disable inheritance on fields that should be unique
+
+        # Title
+        if self.has_header("title"):
+            self.delete_header("title")
+
+        # Created
+        elif self.has_header("created"):
+            self.delete_header("created")
+
+        # Modified
+        elif self.has_header("modified"):
+            self.delete_header("modified")
+
+    def get_parent_node(self):
+        """
+        Get the parent Node, or None if this is the root.
+
+        """
+
+        return self.parent_node
+
+    def get_path(self):
+        """
+        Get the node path.
+
+        """
+
+        return self.path
+
+    def get_node_type(self):
+        """
+        Get the Node type as a string (e.g. "file", "virtual").
+
+        Subclasses need to implement this, and return a string describing
+        the type of node they represent.
+
+        """
+
+        raise Exception("not implemented in abstract parent class")
+
+    def add_child(self, node):
+        """
+        Add the given Node as a child of this Node.
+
+        """
+
+        # add the child node
+        self.children.append(node)
+
+        # invalidate the pre-sorted flag
+        self.child_nodes_presorted = False
+
+        # update the node path cache on the root node
+        self.root_node_cache.node_path_cache[node.get_path()] = node
+
+    def get_children(self):
+        """
+        Get a list of child Node entries immediately under this Node.
+
+        """
+
+        # if the child nodes have not already been pre-sorted,
+        # sort them now, in place, and remember that we did
+        if not self.child_nodes_presorted:
+            self.children = sorted(self.children)
+            self.child_nodes_presorted = True
+
+        # return the (pre-sorted) child nodes
+        return self.children
+
+    def get_url(self):
+        """
+        Get the URL path for this Node.
+
+        URL paths are relative to the root of the site.
+
+        Example URL paths:
+            /
+            /foo/
+            /foo/bar/
+
+        This method is the authoritative source of where a node will be
+        placed in the rendered files.
+
+        """
+
+        # cache hit
+        if self.url_cache is not None:
+            return self.url_cache
+
+        # set node_dir to the directory we want to use in our URL
+        # if it's an index node, strip off the "index" part
+        if self.get_path().endswith(NODE_INDEX):
+            end_index = (len(NODE_INDEX) * -1) -1
+            node_dir = self.get_path()[:end_index]
+        else:
+            node_dir = self.get_path()
+
+        # if this is the root node, return a /
+        if "" == node_dir:
+            self.url_cache = "/"
+            return self.url_cache
+
+        # preserve node hierarchy by default
+        target_dir = node_dir
+
+        # flat URL (e.g. just the leaf node name, or directory if index)
+        flat_url = node_dir.split("/")[-1:][0]
+
+        # optionally flatten the URL to only the most specific node directory
+        if self.get_boolean_header_value("flat-url", False):
+            target_dir = flat_url
+
+        # if this node doesn't have a flat URL, one of its parents might
+        elif self.get_parent_node() is not None:
+            # get the parent URL (without the slash)
+            parent_url = self.get_parent_node().get_url()[1:]
+
+            # set our target dir to the parent URL plus the flat URL
+            target_dir = parent_url + flat_url
+
+        # return the target dir, with a leading and trailing slash
+        self.url_cache = "/" + target_dir + "/"
+        return self.url_cache
+
+    def get_canonical_url(self):
+        """
+        Get the canonical URL for this Node.
+
+        """
+
+        if not self.has_header("canonical-url"):
+            raise UrielError(
+                "Canonical-URL not set, but required by node '%s'" % \
+                (self.get_path()))
+
+        return self.get_header("canonical-url") + self.get_url()
+
+    def get_name(self):
+        """
+        Get the name of this Node.
+
+        This is generally the most specific dirent from the URL.
+
+        As a special case, the name of the top-level index node is "index".
+
+        """
+
+        if self.name_cache is not None:
+            return self.name_cache
+
+        url = self.get_url()
+
+        leaf = "index"
+
+        url_parts = url.split("/")
+        for part in url_parts:
+            if "" != part:
+                leaf = part
+
+        self.name_cache = leaf
+
+        return self.name_cache
+
+    def get_display_name(self):
+        """
+        Get the display name of the node.
+
+        This is constructed from the base node name, but is formatted to be
+        more human readable.
+
+        It is used as a fallback plan in case a Title header is not set.
+
+        """
+
+        # get the node name
+        name = self.get_name()
+
+        # we're going to split the node name into a bunch of parts,
+        # and recombine them separated by spaces. we split on several
+        # different characters, and subdivide the parts further and further.
+        # to start, put the entire node name in the parts list as one element.
+        parts = [name]
+
+        # go through each single-character pattern we're splitting on
+        for pattern in "-_ ":
+            # temporarily save the parts that come out of the split
+            # for this one character
+            future_parts = []
+
+            # go through all of the parts
+            for part in parts:
+                # further split this part on the current pattern
+                tmp_parts = part.split(pattern)
+
+                # for each part that came out of this split,
+                # add them to what will become the new parts list
+                for tmp_part in tmp_parts:
+                    # by default, we pass the part straight through
+                    future_part = tmp_part
+
+                    # if this part doesn't have any capital letters,
+                    # give it initial caps
+                    if not re.match(r"[A-Z]", future_part):
+                        future_part = future_part.capitalize()
+
+                    # add it to the parts list
+                    future_parts.append(future_part)
+
+            # replace the higher-level parts list with the local one,
+            # which is now further subdivided
+            parts = future_parts
+
+        # return all of the subdivided parts, separated by spaces
+        return " ".join(parts)
+
+    def get_title(self):
+        """
+        Get the title of the node, as set by the Title header.
+
+        If that doesn't work, fall back on using the node display name.
+
+        """
+
+        if self.title_cache is not None:
+            return self.title_cache
+
+        # use the Title header, if we have it
+        if self.has_header("title"):
+            self.title_cache = self.get_header("title")
+            return self.title_cache
+
+        # otherwise fall back on the node name
+        self.title_cache = self.get_display_name()
+        return self.title_cache
+
+    def get_escaped_title(self):
+        """
+        Get the escaped title of the node, as set by the Title header.
+
+        If the Escape-Title: false header is set, return the Title
+        without escaping.
+
+        If that doesn't work, fall back on using the node display name.
+
+        """
+
+        if self.get_boolean_header_value("escape-title", True):
+            return escape(self.get_title())
+
+        return self.get_title()
+
+    def get_link(self):
+        """
+        Get a link to this node, using its title as the link text.
+
+        """
+
+        return "<a href=\"" + self.get_url() + "\">" + \
+               self.get_escaped_title() + "</a>"
+
+    def get_canonical_link(self):
+        """
+        Get a canonical link to this node, using its title as the link text.
+
+        """
+
+        return "<a href=\"" + self.get_canonical_url() + "\">" + \
+               self.get_escaped_title() + "</a>"
+
+    def get_link_prefix(self):
+        """
+        Get the HTML prefix to use in generated lists of links.
+
+        """
+
+        if self.has_header("link-prefix"):
+            return self.get_header("link-prefix")
+
+        return "<p>"
+
+    def get_link_suffix(self):
+        """
+        Get the HTML suffix to use in generated lists of links.
+
+        """
+
+        if self.has_header("link-suffix"):
+            return self.get_header("link-suffix")
+
+        return "</p>"
+
+    def get_tags(self):
+        """
+        Get the set of tags associated with this Node.
+
+        Returns a set of tags.
+
+        """
+
+        # return from cache if possible
+        if self.sorted_tags_cache is not None:
+            return self.sorted_tags_cache
+
+        tag_set = set()
+
+        if self.has_header("tags"):
+            tag_list = self.get_header("tags").split(",")
+            for tag in tag_list:
+                if "" != tag:
+                    tag = tag.strip()
+
+                    # validate tag
+                    if not re.match(r"^[a-z0-9\-]*$", tag):
+                        raise UrielError(
+                            "invalid tag '%s' in node '%s'" % \
+                            (tag, self.get_path()))
+
+                    tag_set.add(tag)
+
+        self.sorted_tags_cache = sorted(tag_set)
+
+        return self.sorted_tags_cache
+
+    def get_dest_dir(self):
+        """
+        Get the destination directory in the public website that will
+        contain this page.
+
+        """
+
+        # get the URL path
+        url = self.get_url()
+
+        # root index node
+        if "/" == url:
+            return os.path.join(self.project_root, PUBLIC_ROOT)
+
+        # strip leading and trailing slashes from URL
+        target_url = url[1:-1]
+
+        return os.path.join(self.project_root, PUBLIC_ROOT, target_url)
+
+    def get_dest_file(self):
+        """
+        Get the destination file in the public website that will
+        contain this page.
+
+        """
+
+        return os.path.join(self.get_dest_dir(), HTML_INDEX)
+
+    def get_boolean_header_value(self, header, default):
+        """
+        Get the boolean value for a header as True or False.
+
+        If the header is not set, return the provided default value.
+
+        Raises an UrielError if any other value is found.
+
+        """
+
+        # canonicalize the header name to lowercase
+        lc_header = header.lower()
+
+        if self.has_header(lc_header):
+            value = self.get_header(lc_header)
+            if "true" == value:
+                return True
+            elif "false" == value:
+                return False
+            else:
+                err = "invalid value for '%s' " + \
+                      "header in node '%s': '%s'"
+                raise UrielError(err % (header, self.get_path(), value))
+
+        return default
+
+    def get_breadcrumb_separator(self):
+        """
+        Get the breadcrumb separator for this node.
+
+        """
+
+        separator = "&raquo;"
+        maybe_space = " "
+
+        # look at headers to see if we should change the separator
+        if self.has_header("breadcrumb-separator"):
+            separator = self.get_header("breadcrumb-separator")
+
+        # should we surround the separator with spaces?
+        if not self.get_boolean_header_value("breadcrumb-separator-spaces",
+                                             True):
+            maybe_space = ""
+
+        return maybe_space + separator + maybe_space
+
+    def find_node_by_path(self, path, raise_exceptions=True):
+        """
+        Find the Node that matches the given path.
+
+        Returns the given node.
+
+        Raises a UrielError if the node can not be found.
+
+        If the optional raise_exceptions parameter is set to False,
+        then instead of raising an exception, it will return None instead.
+
+        """
+
+        # if this node matches, return it
+        if self.get_path() == path:
+            return self
+
+        # return the path from the cache
+        # this should always be accurate, since the cache is built
+        # as child nodes are added to the tree
+        if self.root_node_cache:
+            if path in self.root_node_cache.node_path_cache:
+                return self.root_node_cache.node_path_cache[path]
+
+        if raise_exceptions:
+            raise UrielError("node not found: '%s'" % (path))
+
+        return None
+
+    def get_root_node(self):
+        """
+        Get the root Node, walking up the tree from whichever Node this is.
+
+        """
+
+        return self.root_node_cache
+
+    def get_tag_node(self):
+        """
+        Get the tag node, by looking at the value of the Tag-Node header,
+        and then returning the matching node.
+
+        There is only one tag node, and the Tag-Node header should only be
+        set on the root node.
+
+        Returns the tag node, or None if the tag node is not configured.
+
+        Raises a UrielError if the tag node is configured, but can not be
+        found.
+
+        """
+
+        # return the tag node from the cache, if possible
+        if self.tag_node_cache is not None:
+            return self.tag_node_cache
+
+        # find and return the tag node
+        if self.has_header("tag-node"):
+            # get the root node
+            root = self.get_root_node()
+
+            # find the tag node and cache it
+            self.tag_node_cache = \
+                root.find_node_by_path(self.get_header("tag-node"))
+
+            # return the tag node
+            return self.tag_node_cache
+
+        return None
+
+    def set_tag_node_index(self, tag_node_index):
+        """
+        Set (or replace) the tag node index on the root Node.
+
+        """
+
+        # find the root node
+        root = self.get_root_node()
+
+        # overwrite the tag node index on the root node
+        root.tag_node_index = tag_node_index
+
+    def get_tag_node_index(self):
+        """
+        Get the tag node index.
+
+        The tag node index is a dict of tags, with sets of Node as values.
+
+        Returns the tag node index, or raises a UrielError if the tag node
+        index has not already been created (via create_tag_node_index()).
+
+        """
+
+        # whatever node this is, pull the tag index out of the root node
+        tag_node_index = self.get_root_node().tag_node_index
+
+        if tag_node_index is None:
+            raise UrielError("tag node index not set")
+
+        return tag_node_index
+
+    def create_tag_node_index(self, node=None, tag_node_index=None):
+        """
+        Create tag / node index.
+
+        The tag node index is a dict of tag -> set of node
+
+        Optionally accepts a node, and a tag node index.
+
+        Returns a tag to node index.
+
+        """
+
+        is_top_level_method_call = False
+
+        # if we didn't have a Node passed in, start at the root
+        if node is None:
+            node = self.get_root_node()
+            is_top_level_method_call = True
+
+        # if we don't have a tag index, create it
+        if tag_node_index is None:
+            # tag -> set of Node matching that tag
+            tag_node_index = {}
+
+        # go through the tags for this node
+        for tag in node.get_tags():
+            # if this is a new tag we haven't seen before,
+            # create a set for it and add it to the index
+            if tag not in tag_node_index:
+                tag_node_index[tag] = set()
+
+            # add the node to the index for this tag
+            tag_node_index[tag].add(node)
+
+        # recurse
+        for child in node.get_children():
+            self.create_tag_node_index(child, tag_node_index)
+
+        # if this is the top-level method call,
+        # set the tag node index on the root node
+        if is_top_level_method_call:
+            self.set_tag_node_index(tag_node_index)
+
+        return tag_node_index
+
+    def get_vnode_for_tag(self, tag):
+        """
+        Get the virtual node that represents the given tag
+        (e.g. the node for /tag/$SOME_TAG/)
+
+        """
+
+        # performance optimization:
+        # check the global tag vnode cache first,
+        # and just return the node from there if possible
+        if tag in self.root_node_cache.tag_vnode_cache:
+            return self.root_node_cache.tag_vnode_cache[tag]
+
+        # search for the vnode by tag
+        tag_root = self.get_tag_node()
+        if tag_root is not None:
+            for vnode in tag_root.get_children():
+                if vnode.get_name() == tag:
+                    # performance optimization:
+                    # add the vnode to the tag vnode cache
+                    self.root_node_cache.tag_vnode_cache[tag] = vnode
+
+                    return vnode
+
+        return None
+
+    def get_body(self):
+        """
+        Get the unrendered Node body as a multi-line string.
+
+        """
+
+        return self.body
+
+    def get_rendered_body(self):
+        """
+        Get the rendered Node body as a multi-line string.
+
+        """
+
+        return self.rendered_body
+
+    def set_body(self, body):
+        """
+        Set the unrendered Node body. Accepts a multi-line string.
+
+        """
+
+        self.body = body
+
+    def set_rendered_body(self, rendered_body):
+        """
+        Replace the contents of the Node body (e.g. with a rendered version).
+
+        """
+
+        self.rendered_body = rendered_body
+
+    def has_header(self, header):
+        """
+        Does the given header exist on this node?
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        if header in self.headers:
+            return True
+
+        return False
+
+    def get_header(self, header):
+        """
+        Get the value associated with the given header.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        return self.headers[header]
+
+    def invalidate_cache_by_header(self, header):
+        """
+        Invalidate the cache for certain performance optimizations.
+
+        """
+
+        if header:
+            # headers affecting title_cache field
+            if "title" == header:
+                self.title_cache = None
+            if "escape-title" == header:
+                self.title_cache = None
+
+            # headers affecting url_cache field
+            if "flat-url" == header:
+                self.url_cache = None
+
+    def set_header(self, header, value):
+        """
+        Set the given header to the specified value.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        self.invalidate_cache_by_header(header)
+
+        self.headers[header] = value
+
+    def delete_header(self, header):
+        """
+        Delete the given header.
+
+        Inside the program, headers should all be lowercase.
+
+        """
+
+        self.invalidate_cache_by_header(header)
+
+        del(self.headers[header])
+
+    def get_header_keys(self):
+        """
+        Get each of the header keys.
+
+        """
+
+        return sorted(self.headers.keys())
+
+    def get_header_key_values(self):
+        """
+        Get each key/value element of the headers as a series of two-element
+        tuples.
+
+        """
+
+        return sorted(self.headers.items())
+
+    def get_datetime_from_date_str(self, date_str):
+        """
+        Get a datetime.datetime instance from the provided date string.
+
+        The date string must be in the ISO 8601 date format.
+
+        """
+
+        try:
+            # turn the date string into a datetime instance
+            dt = datetime.datetime.fromisoformat(date_str)
+
+            # if the datetime instance doesn't have a time zone,
+            # create a new datetime with the date/time we read from
+            # the date string, augmented with the local time zone
+            if dt.tzinfo is None:
+                tmp_dt = datetime.datetime.fromtimestamp(
+                    dt.timestamp(),
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+
+                dt = tmp_dt
+
+            # return the datetime with time zone
+            return dt
+
+        except Exception as e:
+            err = "invalid date header value in node " + \
+                  "'%s': '%s'"
+            raise UrielError(err % (self.get_path(), date_str))
+
+    def __lt__(self, other):
+        """
+        Sort Node instances by:
+            date descending (created if available, otherwise modified)
+            title ascending
+            URL ascending
+
+        """
+
+        # self and other candidate dates
+        # created isn't always set, but modified is always available
+
+        self_date = self.modified
+        if self.created:
+            self_date = self.created
+
+        other_date = other.modified
+        if other.created:
+            other_date = other.created
+
+        # sort by date
+        if self_date != other_date:
+            # try to use time zones
+            if self_date.tzinfo and other_date.tzinfo:
+                return self_date > other_date
+
+            # fall back to comparing dates without time zones
+            else:
+                self_date_epoch_sec = int(self_date.strftime("%s"))
+                other_date_epoch_sec = int(other_date.strftime("%s"))
+                return self_date_epoch_sec > other_date_epoch_sec
+
+        # then by title
+        if self.get_title() != other.get_title():
+            return self.get_title() < other.get_title()
+
+        # and finally by URL (which is unique)
+        return self.get_url() < other.get_url()
+
+    def __str__(self):
+        return self.get_path()
+
+
+class FileNode(Node):
+    """
+    Represents a dynamic page backed by a node file.
+
+    Contains headers and a body (format similar to HTTP, email, etc.)
+
+    Headers are inherited from the parent node.
+
+    Nodes have a parent/child tree relationship.
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path to the node file (as a sub path of NODES_ROOT).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        # call the superconstructor
+        super().__init__(project_root, path, parent_node=parent_node)
+
+        # node file path
+        node_path = os.path.join(self.nodes_root, self.get_path())
+
+        try:
+            # set the default date based on the node modified time
+            node_modified = os.path.getmtime(node_path)
+            self.modified = \
+                datetime.datetime.fromtimestamp(node_modified,
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+
+            # read dynamic node file, and parse out headers and body
+            body_lines = []
+
+            with open(os.path.join(self.nodes_root, path)) as f:
+                parsing_headers = True
+
+                # read each line in the node file
+                for line in f.readlines():
+                    line = line.rstrip()
+
+                    # if we're still parsing headers...
+                    if parsing_headers:
+                        # if we find a line without a ":", stop parsing headers
+                        # this lets us have a body-only template
+                        if -1 == line.find(":"):
+                            parsing_headers = False
+
+                        # if we hit a blank line, it could either be the blank
+                        # line separating the headers from the body, or it
+                        # could be a node without any headers at all
+                        if "" == line:
+                            # either way, we're not parsing headers anymore
+                            parsing_headers = False
+
+                            # if we already had any headers before this,
+                            # skip the blank separating line
+                            # (if not, we'll continue on and treat it as the
+                            # first line of the page body)
+                            if len(self.headers) > 0:
+                                continue
+
+                    # if we're parsing headers...
+                    if parsing_headers:
+                        # parse headers
+                        (key, value) = line.split(":", maxsplit=1)
+
+                        # canonicalize header key to lowercase
+                        key = key.strip().lower()
+
+                        # strip leading/trailing whitespace from value
+                        value = value.strip()
+
+                        # set the header
+                        self.set_header(key, value)
+
+                    # if we're parsing the body...
+                    else:
+                        body_lines.append(line)
+
+        except Exception as e:
+            err = "could not read node file '%s': '%s'"
+            raise UrielError(err % (node_path, str(e)))
+
+        # process "-" headers
+        for key in self.get_header_keys():
+            # if a header starts with a "-", and has a value of "*",
+            # it's an instruction to remove that header from this Node
+            # (e.g. -Foo: *)
+            if key.startswith("-"):
+                if "*" == value:
+                    # strip leading "-"
+                    remove_key = key[1:]
+
+                    # remove header
+                    if self.has_header(remove_key):
+                        self.delete_header(remove_key)
+                else:
+                    raise UrielError(
+                        "invalid header in node '%s': '%s': '%s'" % \
+                        (self.get_path(), key, value))
+
+        # process other special headers
+        for key in self.get_header_keys():
+            value = self.get_header(key)
+
+            # Created
+            if "created" == key:
+                self.created = self.get_datetime_from_date_str(value)
+
+            # Modified
+            elif "modified" == key:
+                self.modified = self.get_datetime_from_date_str(value)
+
+        # remember the body as a string
+        self.body = "\n".join(body_lines)
+
+    def get_node_type(self):
+        return "file"
+
+
+class VirtualNode(Node):
+    """
+    Represents a virtual node, not backed by a file.
+
+    To use this class:
+      - call set_body() to set the node body (which will be merged with
+        template later)
+      - set headers (although it inherits headers from the parent node)
+      - add children (if necessary)
+
+    """
+
+    def __init__(self, project_root, path, parent_node=None):
+        """
+        Accepts the project root directory.
+
+        Accepts the path (as a subdirectory of the node root).
+
+        Optionally accepts a parent Node instance.
+
+        """
+
+        # call the superconstructor
+        super().__init__(project_root, path, parent_node=parent_node)
+
+        # set the date, either to the parent node value, or to now
+        if self.get_parent_node():
+            self.created = self.get_parent_node().created
+            self.modified = self.get_parent_node().modified
+        else:
+            # use the current date/time/timezone
+            now = datetime.datetime.fromtimestamp(
+                    datetime.datetime.now().timestamp(),
+                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+
+            self.created = now
+            self.modified = now
+
+    def get_node_type(self):
+        return "virtual"
+
+
 class Page:
     """
     A Page is a combination of a Node and a template.
@@ -1456,1045 +2495,6 @@ class Page:
         return str(self.node) + " [" + self.template + "]"
 
 
-class Node:
-    """
-    Represents a dynamic page, either virtual or backed by a file.
-
-    This class is intended to be treated as abstract, and not
-    instantiated directly.
-
-    """
-
-    def __init__(self, project_root, path, parent_node=None):
-        """
-        Accepts the project root directory.
-
-        Accepts the path (as a subdirectory of the node root).
-
-        Optionally accepts a parent Node instance.
-
-        """
-
-        self.project_root = project_root
-        self.nodes_root = os.path.join(project_root, NODES_ROOT)
-        self.path = path
-        self.parent_node = parent_node
-        self.body = None
-        self.rendered_body = None
-        self.created = None
-        self.modified = None
-
-        # list of child Node instances
-        self.children = []
-        self.child_nodes_presorted = False
-
-        # header -> value
-        self.headers = {}
-
-        # tag -> set of Node matching that tag
-        self.tag_node_index = None
-
-        #
-        # cache performance optimizations
-        #
-        # url
-        self.url_cache = None
-        # title
-        self.title_cache = None
-        # name
-        self.name_cache = None
-        # node path cache (root node only)
-        # path -> Node
-        self.node_path_cache = None
-        if parent_node is None:
-            self.node_path_cache = {}
-        #
-        # tag node cache
-        self.tag_node_cache = None
-        #
-        # root node cache
-        self.root_node_cache = self
-        if parent_node is not None:
-            self.root_node_cache = parent_node.root_node_cache
-        else:
-            self.root_node_cache.node_path_cache["index"] = self
-        #
-        # sorted list of tags
-        self.sorted_tags_cache = None
-        #
-        # map of tag -> Node representing that tag (e.g. /tag/<SOME_TAG>)
-        self.tag_vnode_cache = None
-        if parent_node is None:
-            self.tag_vnode_cache = {}
-
-        # check for duplicate node path elsewhere in the tree
-        if parent_node is not None:
-            root_node = parent_node.get_root_node()
-            dupe = root_node.find_node_by_path(path, False)
-            if dupe is not None:
-                err = "can not create node, another node already exists " + \
-                      "with this path: '%s'"
-                raise Exception(err % (path))
-
-        # import headers from parent node
-        if self.parent_node:
-            # copy parent headers into this node
-            for (key, value) in self.parent_node.get_header_key_values():
-                self.set_header(key, value)
-
-            # N.B. the +/- keys are sorted and reversed, so that it is possible
-            #      to push inheritance out multiple levels. this works because
-            #      when sorted and reversed, ++foo sorts after +foo, and so on,
-            #      which prevents ++foo from overwriting +foo before it gets
-            #      a chance to be set.
-
-            # +
-            for key in reversed(self.get_header_keys()):
-                if key.startswith("+"):
-                    plus_key = key
-                    stripped_key = key[1:]
-                    value = self.get_header(plus_key)
-                    self.set_header(stripped_key, value)
-                    self.delete_header(plus_key)
-
-            # -
-            for key in reversed(self.get_header_keys()):
-                if key.startswith("-"):
-                    minus_key = key
-                    stripped_key = key[1:]
-                    value = self.get_header(minus_key)
-                    if "*" != value:
-                        err = "key '%s' can not have value '%s' " + \
-                              "in node '%s' (value must be '*')"
-                        raise UrielError(err % (key, value, self.get_path()))
-                    if self.has_header(stripped_key):
-                        self.delete_header(stripped_key)
-                    self.delete_header(minus_key)
-
-        # disable inheritance on fields that should be unique
-
-        # Title
-        if self.has_header("title"):
-            self.delete_header("title")
-
-        # Created
-        elif self.has_header("created"):
-            self.delete_header("created")
-
-        # Modified
-        elif self.has_header("modified"):
-            self.delete_header("modified")
-
-    def get_parent_node(self):
-        """
-        Get the parent Node, or None if this is the root.
-
-        """
-
-        return self.parent_node
-
-    def get_path(self):
-        """
-        Get the node path.
-
-        """
-
-        return self.path
-
-    def get_node_type(self):
-        """
-        Get the Node type as a string (e.g. "file", "virtual").
-
-        Subclasses need to implement this, and return a string describing
-        the type of node they represent.
-
-        """
-
-        raise Exception("not implemented in abstract parent class")
-
-    def add_child(self, node):
-        """
-        Add the given Node as a child of this Node.
-
-        """
-
-        # add the child node
-        self.children.append(node)
-
-        # invalidate the pre-sorted flag
-        self.child_nodes_presorted = False
-
-        # update the node path cache on the root node
-        self.root_node_cache.node_path_cache[node.get_path()] = node
-
-    def get_children(self):
-        """
-        Get a list of child Node entries immediately under this Node.
-
-        """
-
-        # if the child nodes have not already been pre-sorted,
-        # sort them now, in place, and remember that we did
-        if not self.child_nodes_presorted:
-            self.children = sorted(self.children)
-            self.child_nodes_presorted = True
-
-        # return the (pre-sorted) child nodes
-        return self.children
-
-    def get_url(self):
-        """
-        Get the URL path for this Node.
-
-        URL paths are relative to the root of the site.
-
-        Example URL paths:
-            /
-            /foo/
-            /foo/bar/
-
-        This method is the authoritative source of where a node will be
-        placed in the rendered files.
-
-        """
-
-        # cache hit
-        if self.url_cache is not None:
-            return self.url_cache
-
-        # set node_dir to the directory we want to use in our URL
-        # if it's an index node, strip off the "index" part
-        if self.get_path().endswith(NODE_INDEX):
-            end_index = (len(NODE_INDEX) * -1) -1
-            node_dir = self.get_path()[:end_index]
-        else:
-            node_dir = self.get_path()
-
-        # if this is the root node, return a /
-        if "" == node_dir:
-            self.url_cache = "/"
-            return self.url_cache
-
-        # preserve node hierarchy by default
-        target_dir = node_dir
-
-        # flat URL (e.g. just the leaf node name, or directory if index)
-        flat_url = node_dir.split("/")[-1:][0]
-
-        # optionally flatten the URL to only the most specific node directory
-        if self.get_boolean_header_value("flat-url", False):
-            target_dir = flat_url
-
-        # if this node doesn't have a flat URL, one of its parents might
-        elif self.get_parent_node() is not None:
-            # get the parent URL (without the slash)
-            parent_url = self.get_parent_node().get_url()[1:]
-
-            # set our target dir to the parent URL plus the flat URL
-            target_dir = parent_url + flat_url
-
-        # return the target dir, with a leading and trailing slash
-        self.url_cache = "/" + target_dir + "/"
-        return self.url_cache
-
-    def get_canonical_url(self):
-        """
-        Get the canonical URL for this Node.
-
-        """
-
-        if not self.has_header("canonical-url"):
-            raise UrielError(
-                "Canonical-URL not set, but required by node '%s'" % \
-                (self.get_path()))
-
-        return self.get_header("canonical-url") + self.get_url()
-
-    def get_name(self):
-        """
-        Get the name of this Node.
-
-        This is generally the most specific dirent from the URL.
-
-        As a special case, the name of the top-level index node is "index".
-
-        """
-
-        if self.name_cache is not None:
-            return self.name_cache
-
-        url = self.get_url()
-
-        leaf = "index"
-
-        url_parts = url.split("/")
-        for part in url_parts:
-            if "" != part:
-                leaf = part
-
-        self.name_cache = leaf
-
-        return self.name_cache
-
-    def get_display_name(self):
-        """
-        Get the display name of the node.
-
-        This is constructed from the base node name, but is formatted to be
-        more human readable.
-
-        It is used as a fallback plan in case a Title header is not set.
-
-        """
-
-        # get the node name
-        name = self.get_name()
-
-        # we're going to split the node name into a bunch of parts,
-        # and recombine them separated by spaces. we split on several
-        # different characters, and subdivide the parts further and further.
-        # to start, put the entire node name in the parts list as one element.
-        parts = [name]
-
-        # go through each single-character pattern we're splitting on
-        for pattern in "-_ ":
-            # temporarily save the parts that come out of the split
-            # for this one character
-            future_parts = []
-
-            # go through all of the parts
-            for part in parts:
-                # further split this part on the current pattern
-                tmp_parts = part.split(pattern)
-
-                # for each part that came out of this split,
-                # add them to what will become the new parts list
-                for tmp_part in tmp_parts:
-                    # by default, we pass the part straight through
-                    future_part = tmp_part
-
-                    # if this part doesn't have any capital letters,
-                    # give it initial caps
-                    if not re.match(r"[A-Z]", future_part):
-                        future_part = future_part.capitalize()
-
-                    # add it to the parts list
-                    future_parts.append(future_part)
-
-            # replace the higher-level parts list with the local one,
-            # which is now further subdivided
-            parts = future_parts
-
-        # return all of the subdivided parts, separated by spaces
-        return " ".join(parts)
-
-    def get_title(self):
-        """
-        Get the title of the node, as set by the Title header.
-
-        If that doesn't work, fall back on using the node display name.
-
-        """
-
-        if self.title_cache is not None:
-            return self.title_cache
-
-        # use the Title header, if we have it
-        if self.has_header("title"):
-            self.title_cache = self.get_header("title")
-            return self.title_cache
-
-        # otherwise fall back on the node name
-        self.title_cache = self.get_display_name()
-        return self.title_cache
-
-    def get_escaped_title(self):
-        """
-        Get the escaped title of the node, as set by the Title header.
-
-        If the Escape-Title: false header is set, return the Title
-        without escaping.
-
-        If that doesn't work, fall back on using the node display name.
-
-        """
-
-        if self.get_boolean_header_value("escape-title", True):
-            return escape(self.get_title())
-
-        return self.get_title()
-
-    def get_link(self):
-        """
-        Get a link to this node, using its title as the link text.
-
-        """
-
-        return "<a href=\"" + self.get_url() + "\">" + \
-               self.get_escaped_title() + "</a>"
-
-    def get_canonical_link(self):
-        """
-        Get a canonical link to this node, using its title as the link text.
-
-        """
-
-        return "<a href=\"" + self.get_canonical_url() + "\">" + \
-               self.get_escaped_title() + "</a>"
-
-    def get_link_prefix(self):
-        """
-        Get the HTML prefix to use in generated lists of links.
-
-        """
-
-        if self.has_header("link-prefix"):
-            return self.get_header("link-prefix")
-
-        return "<p>"
-
-    def get_link_suffix(self):
-        """
-        Get the HTML suffix to use in generated lists of links.
-
-        """
-
-        if self.has_header("link-suffix"):
-            return self.get_header("link-suffix")
-
-        return "</p>"
-
-    def get_tags(self):
-        """
-        Get the set of tags associated with this Node.
-
-        Returns a set of tags.
-
-        """
-
-        # return from cache if possible
-        if self.sorted_tags_cache is not None:
-            return self.sorted_tags_cache
-
-        tag_set = set()
-
-        if self.has_header("tags"):
-            tag_list = self.get_header("tags").split(",")
-            for tag in tag_list:
-                if "" != tag:
-                    tag = tag.strip()
-
-                    # validate tag
-                    if not re.match(r"^[a-z0-9\-]*$", tag):
-                        raise UrielError(
-                            "invalid tag '%s' in node '%s'" % \
-                            (tag, self.get_path()))
-
-                    tag_set.add(tag)
-
-        self.sorted_tags_cache = sorted(tag_set)
-
-        return self.sorted_tags_cache
-
-    def get_dest_dir(self):
-        """
-        Get the destination directory in the public website that will
-        contain this page.
-
-        """
-
-        # get the URL path
-        url = self.get_url()
-
-        # root index node
-        if "/" == url:
-            return os.path.join(self.project_root, PUBLIC_ROOT)
-
-        # strip leading and trailing slashes from URL
-        target_url = url[1:-1]
-
-        return os.path.join(self.project_root, PUBLIC_ROOT, target_url)
-
-    def get_dest_file(self):
-        """
-        Get the destination file in the public website that will
-        contain this page.
-
-        """
-
-        return os.path.join(self.get_dest_dir(), HTML_INDEX)
-
-    def get_boolean_header_value(self, header, default):
-        """
-        Get the boolean value for a header as True or False.
-
-        If the header is not set, return the provided default value.
-
-        Raises an UrielError if any other value is found.
-
-        """
-
-        # canonicalize the header name to lowercase
-        lc_header = header.lower()
-
-        if self.has_header(lc_header):
-            value = self.get_header(lc_header)
-            if "true" == value:
-                return True
-            elif "false" == value:
-                return False
-            else:
-                err = "invalid value for '%s' " + \
-                      "header in node '%s': '%s'"
-                raise UrielError(err % (header, self.get_path(), value))
-
-        return default
-
-    def get_breadcrumb_separator(self):
-        """
-        Get the breadcrumb separator for this node.
-
-        """
-
-        separator = "&raquo;"
-        maybe_space = " "
-
-        # look at headers to see if we should change the separator
-        if self.has_header("breadcrumb-separator"):
-            separator = self.get_header("breadcrumb-separator")
-
-        # should we surround the separator with spaces?
-        if not self.get_boolean_header_value("breadcrumb-separator-spaces",
-                                             True):
-            maybe_space = ""
-
-        return maybe_space + separator + maybe_space
-
-    def find_node_by_path(self, path, raise_exceptions=True):
-        """
-        Find the Node that matches the given path.
-
-        Returns the given node.
-
-        Raises a UrielError if the node can not be found.
-
-        If the optional raise_exceptions parameter is set to False,
-        then instead of raising an exception, it will return None instead.
-
-        """
-
-        # if this node matches, return it
-        if self.get_path() == path:
-            return self
-
-        # return the path from the cache
-        # this should always be accurate, since the cache is built
-        # as child nodes are added to the tree
-        if self.root_node_cache:
-            if path in self.root_node_cache.node_path_cache:
-                return self.root_node_cache.node_path_cache[path]
-
-        if raise_exceptions:
-            raise UrielError("node not found: '%s'" % (path))
-
-        return None
-
-    def get_root_node(self):
-        """
-        Get the root Node, walking up the tree from whichever Node this is.
-
-        """
-
-        return self.root_node_cache
-
-    def get_tag_node(self):
-        """
-        Get the tag node, by looking at the value of the Tag-Node header,
-        and then returning the matching node.
-
-        There is only one tag node, and the Tag-Node header should only be
-        set on the root node.
-
-        Returns the tag node, or None if the tag node is not configured.
-
-        Raises a UrielError if the tag node is configured, but can not be
-        found.
-
-        """
-
-        # return the tag node from the cache, if possible
-        if self.tag_node_cache is not None:
-            return self.tag_node_cache
-
-        # find and return the tag node
-        if self.has_header("tag-node"):
-            # get the root node
-            root = self.get_root_node()
-
-            # find the tag node and cache it
-            self.tag_node_cache = \
-                root.find_node_by_path(self.get_header("tag-node"))
-
-            # return the tag node
-            return self.tag_node_cache
-
-        return None
-
-    def set_tag_node_index(self, tag_node_index):
-        """
-        Set (or replace) the tag node index on the root Node.
-
-        """
-
-        # find the root node
-        root = self.get_root_node()
-
-        # overwrite the tag node index on the root node
-        root.tag_node_index = tag_node_index
-
-    def get_tag_node_index(self):
-        """
-        Get the tag node index.
-
-        The tag node index is a dict of tags, with sets of Node as values.
-
-        Returns the tag node index, or raises a UrielError if the tag node
-        index has not already been created (via create_tag_node_index()).
-
-        """
-
-        # whatever node this is, pull the tag index out of the root node
-        tag_node_index = self.get_root_node().tag_node_index
-
-        if tag_node_index is None:
-            raise UrielError("tag node index not set")
-
-        return tag_node_index
-
-    def create_tag_node_index(self, node=None, tag_node_index=None):
-        """
-        Create tag / node index.
-
-        The tag node index is a dict of tag -> set of node
-
-        Optionally accepts a node, and a tag node index.
-
-        Returns a tag to node index.
-
-        """
-
-        is_top_level_method_call = False
-
-        # if we didn't have a Node passed in, start at the root
-        if node is None:
-            node = self.get_root_node()
-            is_top_level_method_call = True
-
-        # if we don't have a tag index, create it
-        if tag_node_index is None:
-            # tag -> set of Node matching that tag
-            tag_node_index = {}
-
-        # go through the tags for this node
-        for tag in node.get_tags():
-            # if this is a new tag we haven't seen before,
-            # create a set for it and add it to the index
-            if tag not in tag_node_index:
-                tag_node_index[tag] = set()
-
-            # add the node to the index for this tag
-            tag_node_index[tag].add(node)
-
-        # recurse
-        for child in node.get_children():
-            self.create_tag_node_index(child, tag_node_index)
-
-        # if this is the top-level method call,
-        # set the tag node index on the root node
-        if is_top_level_method_call:
-            self.set_tag_node_index(tag_node_index)
-
-        return tag_node_index
-
-    def get_vnode_for_tag(self, tag):
-        """
-        Get the virtual node that represents the given tag
-        (e.g. the node for /tag/$SOME_TAG/)
-
-        """
-
-        # performance optimization:
-        # check the global tag vnode cache first,
-        # and just return the node from there if possible
-        if tag in self.root_node_cache.tag_vnode_cache:
-            return self.root_node_cache.tag_vnode_cache[tag]
-
-        # search for the vnode by tag
-        tag_root = self.get_tag_node()
-        if tag_root is not None:
-            for vnode in tag_root.get_children():
-                if vnode.get_name() == tag:
-                    # performance optimization:
-                    # add the vnode to the tag vnode cache
-                    self.root_node_cache.tag_vnode_cache[tag] = vnode
-
-                    return vnode
-
-        return None
-
-    def get_body(self):
-        """
-        Get the unrendered Node body as a multi-line string.
-
-        """
-
-        return self.body
-
-    def get_rendered_body(self):
-        """
-        Get the rendered Node body as a multi-line string.
-
-        """
-
-        return self.rendered_body
-
-    def set_body(self, body):
-        """
-        Set the unrendered Node body. Accepts a multi-line string.
-
-        """
-
-        self.body = body
-
-    def set_rendered_body(self, rendered_body):
-        """
-        Replace the contents of the Node body (e.g. with a rendered version).
-
-        """
-
-        self.rendered_body = rendered_body
-
-    def has_header(self, header):
-        """
-        Does the given header exist on this node?
-
-        Inside the program, headers should all be lowercase.
-
-        """
-
-        if header in self.headers:
-            return True
-
-        return False
-
-    def get_header(self, header):
-        """
-        Get the value associated with the given header.
-
-        Inside the program, headers should all be lowercase.
-
-        """
-
-        return self.headers[header]
-
-    def invalidate_cache_by_header(self, header):
-        """
-        Invalidate the cache for certain performance optimizations.
-
-        """
-
-        if header:
-            # headers affecting title_cache field
-            if "title" == header:
-                self.title_cache = None
-            if "escape-title" == header:
-                self.title_cache = None
-
-            # headers affecting url_cache field
-            if "flat-url" == header:
-                self.url_cache = None
-
-    def set_header(self, header, value):
-        """
-        Set the given header to the specified value.
-
-        Inside the program, headers should all be lowercase.
-
-        """
-
-        self.invalidate_cache_by_header(header)
-
-        self.headers[header] = value
-
-    def delete_header(self, header):
-        """
-        Delete the given header.
-
-        Inside the program, headers should all be lowercase.
-
-        """
-
-        self.invalidate_cache_by_header(header)
-
-        del(self.headers[header])
-
-    def get_header_keys(self):
-        """
-        Get each of the header keys.
-
-        """
-
-        return sorted(self.headers.keys())
-
-    def get_header_key_values(self):
-        """
-        Get each key/value element of the headers as a series of two-element
-        tuples.
-
-        """
-
-        return sorted(self.headers.items())
-
-    def get_datetime_from_date_str(self, date_str):
-        """
-        Get a datetime.datetime instance from the provided date string.
-
-        The date string must be in the ISO 8601 date format.
-
-        """
-
-        try:
-            # turn the date string into a datetime instance
-            dt = datetime.datetime.fromisoformat(date_str)
-
-            # if the datetime instance doesn't have a time zone,
-            # create a new datetime with the date/time we read from
-            # the date string, augmented with the local time zone
-            if dt.tzinfo is None:
-                tmp_dt = datetime.datetime.fromtimestamp(
-                    dt.timestamp(),
-                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
-
-                dt = tmp_dt
-
-            # return the datetime with time zone
-            return dt
-
-        except Exception as e:
-            err = "invalid date header value in node " + \
-                  "'%s': '%s'"
-            raise UrielError(err % (self.get_path(), date_str))
-
-    def __lt__(self, other):
-        """
-        Sort Node instances by:
-            date descending (created if available, otherwise modified)
-            title ascending
-            URL ascending
-
-        """
-
-        # self and other candidate dates
-        # created isn't always set, but modified is always available
-
-        self_date = self.modified
-        if self.created:
-            self_date = self.created
-
-        other_date = other.modified
-        if other.created:
-            other_date = other.created
-
-        # sort by date
-        if self_date != other_date:
-            # try to use time zones
-            if self_date.tzinfo and other_date.tzinfo:
-                return self_date > other_date
-
-            # fall back to comparing dates without time zones
-            else:
-                self_date_epoch_sec = int(self_date.strftime("%s"))
-                other_date_epoch_sec = int(other_date.strftime("%s"))
-                return self_date_epoch_sec > other_date_epoch_sec
-
-        # then by title
-        if self.get_title() != other.get_title():
-            return self.get_title() < other.get_title()
-
-        # and finally by URL (which is unique)
-        return self.get_url() < other.get_url()
-
-    def __str__(self):
-        return self.get_path()
-
-
-class FileNode(Node):
-    """
-    Represents a dynamic page backed by a node file.
-
-    Contains headers and a body (format similar to HTTP, email, etc.)
-
-    Headers are inherited from the parent node.
-
-    Nodes have a parent/child tree relationship.
-
-    """
-
-    def __init__(self, project_root, path, parent_node=None):
-        """
-        Accepts the project root directory.
-
-        Accepts the path to the node file (as a sub path of NODES_ROOT).
-
-        Optionally accepts a parent Node instance.
-
-        """
-
-        # call the superconstructor
-        super().__init__(project_root, path, parent_node=parent_node)
-
-        # node file path
-        node_path = os.path.join(self.nodes_root, self.get_path())
-
-        try:
-            # set the default date based on the node modified time
-            node_modified = os.path.getmtime(node_path)
-            self.modified = \
-                datetime.datetime.fromtimestamp(node_modified,
-                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
-
-            # read dynamic node file, and parse out headers and body
-            body_lines = []
-
-            with open(os.path.join(self.nodes_root, path)) as f:
-                parsing_headers = True
-
-                # read each line in the node file
-                for line in f.readlines():
-                    line = line.rstrip()
-
-                    # if we're still parsing headers...
-                    if parsing_headers:
-                        # if we find a line without a ":", stop parsing headers
-                        # this lets us have a body-only template
-                        if -1 == line.find(":"):
-                            parsing_headers = False
-
-                        # if we hit a blank line, it could either be the blank
-                        # line separating the headers from the body, or it
-                        # could be a node without any headers at all
-                        if "" == line:
-                            # either way, we're not parsing headers anymore
-                            parsing_headers = False
-
-                            # if we already had any headers before this,
-                            # skip the blank separating line
-                            # (if not, we'll continue on and treat it as the
-                            # first line of the page body)
-                            if len(self.headers) > 0:
-                                continue
-
-                    # if we're parsing headers...
-                    if parsing_headers:
-                        # parse headers
-                        (key, value) = line.split(":", maxsplit=1)
-
-                        # canonicalize header key to lowercase
-                        key = key.strip().lower()
-
-                        # strip leading/trailing whitespace from value
-                        value = value.strip()
-
-                        # set the header
-                        self.set_header(key, value)
-
-                    # if we're parsing the body...
-                    else:
-                        body_lines.append(line)
-
-        except Exception as e:
-            err = "could not read node file '%s': '%s'"
-            raise UrielError(err % (node_path, str(e)))
-
-        # process "-" headers
-        for key in self.get_header_keys():
-            # if a header starts with a "-", and has a value of "*",
-            # it's an instruction to remove that header from this Node
-            # (e.g. -Foo: *)
-            if key.startswith("-"):
-                if "*" == value:
-                    # strip leading "-"
-                    remove_key = key[1:]
-
-                    # remove header
-                    if self.has_header(remove_key):
-                        self.delete_header(remove_key)
-                else:
-                    raise UrielError(
-                        "invalid header in node '%s': '%s': '%s'" % \
-                        (self.get_path(), key, value))
-
-        # process other special headers
-        for key in self.get_header_keys():
-            value = self.get_header(key)
-
-            # Created
-            if "created" == key:
-                self.created = self.get_datetime_from_date_str(value)
-
-            # Modified
-            elif "modified" == key:
-                self.modified = self.get_datetime_from_date_str(value)
-
-        # remember the body as a string
-        self.body = "\n".join(body_lines)
-
-    def get_node_type(self):
-        return "file"
-
-
-class VirtualNode(Node):
-    """
-    Represents a virtual node, not backed by a file.
-
-    To use this class:
-      - call set_body() to set the node body (which will be merged with
-        template later)
-      - set headers (although it inherits headers from the parent node)
-      - add children (if necessary)
-
-    """
-
-    def __init__(self, project_root, path, parent_node=None):
-        """
-        Accepts the project root directory.
-
-        Accepts the path (as a subdirectory of the node root).
-
-        Optionally accepts a parent Node instance.
-
-        """
-
-        # call the superconstructor
-        super().__init__(project_root, path, parent_node=parent_node)
-
-        # set the date, either to the parent node value, or to now
-        if self.get_parent_node():
-            self.created = self.get_parent_node().created
-            self.modified = self.get_parent_node().modified
-        else:
-            # use the current date/time/timezone
-            now = datetime.datetime.fromtimestamp(
-                    datetime.datetime.now().timestamp(),
-                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
-
-            self.created = now
-            self.modified = now
-
-    def get_node_type(self):
-        return "virtual"
-
-
 class FileWriter:
     """
     Writes an individual file to disk.
@@ -2549,6 +2549,7 @@ class FileWriter:
         except Exception as e:
             err = "error writing file '%s': '%s'"
             raise UrielError(err % (self.path, str(e)))
+
 
 def sys_exit(exit_code):
     """
