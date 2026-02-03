@@ -2943,6 +2943,94 @@ class TestFunctionWriteRss(unittest.TestCase):
                     "",
                     lines[23])
 
+    def test_write_rss_file_path_root_relative_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+    def test_write_rss_file_path_root_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+    def test_write_rss_file_path_child_node_relative_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            child_dir = os.path.join(public_dir, "child")
+            rss_file = os.path.join(child_dir, "child.xml")
+
+            os.mkdir(public_dir)
+            os.mkdir(child_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            child = uriel.VirtualNode(project_root, "child", root)
+            child.set_header("canonical-url", "https://example.com")
+            child.set_header("rss-url", "child.xml")
+            child.set_header("rss-title", "My Website")
+            child.set_header("rss-description", "All about my website")
+
+            root.add_child(child)
+
+            uriel.write_rss(project_root, child)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+    def test_write_rss_file_path_child_node_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "child.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            child = uriel.VirtualNode(project_root, "child", root)
+            child.set_header("canonical-url", "https://example.com")
+            child.set_header("rss-url", "/child.xml")
+            child.set_header("rss-title", "My Website")
+            child.set_header("rss-description", "All about my website")
+
+            root.add_child(child)
+
+            uriel.write_rss(project_root, child)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
 
 class TestFunctionGetSitemapUrl(unittest.TestCase):
     """

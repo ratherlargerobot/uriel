@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 """
-uriel 1.3.11
+uriel 1.3.12
 
 Yet another static website generator.
 
@@ -3734,6 +3734,25 @@ def write_rss(project_root: str, root_node: Node) -> None:
 
     # get the path to the RSS file to write
     rss_file = os.path.join(root_node.get_dest_dir(), rss_url)
+
+    # in normal operation, the root node passed into this function
+    # will be the actual root node of the site
+    #
+    # however, if a user-defined handler calls this function with an
+    # alternate node as an argument, then we will honor that as well,
+    # and take care to fix up the RSS-URL path to start at the root of
+    # the site if it is specified as an absolute path starting with a "/"
+    actual_root_node = root_node.get_root_node()
+    if root_node is not actual_root_node:
+        # get_rss_url() strips leading slashes, so we need to check directly
+        raw_rss_url = root_node.get_header("rss-url")
+
+        # if we are actually writing an RSS feed for a node below the root,
+        # but the RSS-URL was specified with a leading slash, then start the
+        # path to write the RSS file from the actual root node
+        if raw_rss_url.startswith("/"):
+            rss_file_dest_dir = actual_root_node.get_dest_dir()
+            rss_file = os.path.join(rss_file_dest_dir, rss_url)
 
     # skip creating the file if there's a static file with the same name
     if os.path.exists(rss_file):
