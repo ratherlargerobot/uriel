@@ -4517,7 +4517,7 @@ def call_handler(handler_name: str, *args: Any) -> Any:
     """
     Run a user-defined handler.
 
-    Accepts the handler name, function reference, project_root, node.
+    Accepts the handler name, and variable arguments to the handler function.
 
     """
 
