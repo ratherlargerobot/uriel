@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>Tags (Documentation)</title>
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:8000/rss.xml">
+    <link rel="stylesheet" type="text/css" href="/css/bce096b30da10f51c90533986e9c1762.css">
+    <link rel="canonical" href="https://documentation.uriel.foo/tags/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://localhost:8000/tags/">
+    <meta property="og:title" content="Tags (Documentation)">
+    <meta property="og:image" content="http://localhost:8000/foo.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:domain" value="localhost">
+    <meta name="twitter:title" value="Tags (Documentation)">
+    <meta name="twitter:image" content="http://localhost:8000/foo.jpg">
+</head>
+
+<body>
+
+<div class="squish-page">
+
+<nav>
+    <p class="breadcrumbs"><a href="/">Uriel Documentation</a> &raquo; <a href="/tags/">Tags (Documentation)</a></p>
+</nav>
+
+<h1>Tags (Documentation)</h1>
+
+<p>
+    Uriel can optionally build a tag index, to add additional ways to link
+    pages together.
+</p>
+
+<p>
+    The basic idea is that you add one or more tags to various
+    <a href="/directories/nodes/">nodes</a> throughout your site,
+    and Uriel can build a <a href="/tag/">tag index</a>, with
+    individual tag pages that link back to the nodes matching each tag.
+</p>
+
+<p>
+    In order to set up tags on your site, you need to take the following
+    steps:
+</p>
+
+<h3>Create a Designated Tag Node</h3>
+
+<p>
+    Create a designated node that will serve as the root of the tag index.
+    The suggested location is to create this file at
+    <a href="/tag/">nodes/tag</a>. The reason for
+    this is because Uriel will create an additional virtual node for every tag
+    on the site immediately under this path. This way you will end up
+    with individual tag URLs like
+    <a href="/tag/foo/">/tag/foo/</a> later.
+</p>
+
+<p>
+    The tag node should, at minimum, include the
+    <a href="/parameters/tag-list/">{{tag-list:*}}</a> somewhere on the page. This parameter
+    will be expanded out to contain links to all of the individual generated
+    tag pages.
+</p>
+
+<p>
+    It can also be helpful to set the
+    <a href="/headers/link-prefix-link-suffix/">Link-Prefix / Link-Suffix</a>
+    headers to control the formatting for the list of tag links.
+</p>
+
+<p>
+    The tag node for this documentation site can be found
+    <a href="/tag/">here</a>.
+</p>
+
+<h3>Set the Tag-Node Header on the Root Node</h3>
+
+<p>
+    Uriel doesn&apos;t make any assumptions about where you put the tag node.
+    You have to specify which node to use. The way that you do this is by
+    adding a header to the
+    <a href="/directories/nodes/">root node</a> to indicate
+    which node Uriel should use as the basis for the tag hierarchy it&apos;s
+    going to create.
+</p>
+
+<p>
+    The way that you designate which node is the tag node, is by setting the
+    <a href="/headers/tag-node/">Tag-Node</a> header on the
+    <a href="/directories/nodes/">root node</a>.
+</p>
+
+<p>
+    If you used the recommended path of
+    <a href="/tag/">nodes/tag</a> for the tag node, then you just
+    need to add the following header to the
+    <a href="/directories/nodes/">root node</a>:
+</p>
+
+<p><pre>Tag-Node: tag</pre></p>
+
+<p>
+    In this case, <i>tag</i> refers to the node defined in the
+    <a href="/tag/">nodes/tag</a> file.
+</p>
+
+<h3>Add Tags to Other Nodes</h3>
+
+<p>
+    Now that the tag node is all set up, the final step is to add tags to
+    other nodes.
+</p>
+
+<p>
+    Setting up the tag node is something you only need to do once. Adding
+    tags to nodes is something that you will probably continue to do as
+    long as you are updating your site.
+</p>
+
+<p>
+    To add one or more tags to a node, simply add a <a href="/headers/tags/">Tags</a>
+    header to each node, with a comma-separated list of tags.
+</p>
+
+<p>
+    This page has two different tags, <i>foo</i> and <i>bar</i>.
+    The <a href="/headers/tags/">Tags</a> header for this node looks like this:
+</p>
+
+<p><pre>Tags: foo, bar</pre></p>
+
+<p>
+    Adding these tags to this node causes several things to happen:
+</p>
+
+<ul>
+    <li>Each tag added to this node causes a tag page to be created, if it doesn't already exist.</li>
+    <li>A link to this node is added to each tag page</li>
+</ul>
+
+<p>
+    For example, by adding the <i>foo</i> and <i>bar</i> tags to this node,
+    the <a href="/tag/foo/">/tag/foo/</a> and
+    <a href="/tag/bar/">/tag/bar/</a> pages come into existence,
+    and link back to this page.
+</p>
+
+<h3>Add Links to Tags</h3>
+
+<p>
+    You will probably want to add links from each node to the tag pages that
+    it is associated with. The easiest way to do this automatically is to set
+    this up once in a
+    <a href="/directories/templates/">template</a>.
+</p>
+
+<p>
+    Add the following code snippet to a template, where it will be displayed
+    on pages of your web site that have tags:
+</p>
+
+<p><pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre></p>
+
+<p>This is what the code above evaluates to on this node:</p>
+
+<p><a href="/tag/">Tags</a>: <a href="/tag/bar/">bar</a>, <a href="/tag/foo/">foo</a></p>
+
+<p>
+    The <a href="/parameters/node-link-some-other-node/">&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;</a>
+    substitution parameter links to the
+    <a href="/tag/">tag node</a>, and uses the
+    <a href="/headers/title/">Title</a> header of that page for the link text. On this
+    documentation site, the tag node has its title set to <i>Tags</i>, which
+    is what you see in the link here.
+</p>
+
+<p>
+    The <a href="/parameters/tag-list/">&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</a>
+    substitution parameter in this case links to the tags that are defined on the current node.
+</p>
+
+
+<p><a href="/tag/">Tags</a>: <a href="/tag/bar/">bar</a>, <a href="/tag/foo/">foo</a></p>
+
+<div class="page-details">
+
+<p>This page was generated by <a href="https://uriel.foo/">Uriel</a> with the following settings:</p>
+
+<p><b>Page Details</b></p>
+
+<table>
+    <tr>
+        <th>Resource</th>
+        <th>Path</th>
+        <th>Project File</th>
+    </tr>
+    <tr>
+        <td><a href="/directories/nodes/">Node</a></td>
+        <td>tags</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/tags">nodes/tags</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/templates/">Template</a></td>
+        <td>default.html</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/templates/default.html">templates/default.html</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/public/">URL</a></td>
+        <td>/tags/</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public/tags/index.html">public/tags/index.html</a>
+        </td>
+    </tr>
+</table>
+
+<p><b>Node Headers</b></p>
+
+<table>
+    <tr align="left">
+        <th>Header (Lowercase)</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td><b>tags</b></td>
+        <td><b>foo, bar</b></td>
+    </tr>
+    <tr>
+        <td><b>title</b></td>
+        <td><b>Tags (Documentation)</b></td>
+    </tr>
+    <tr>
+        <td>breadcrumb-separator</td>
+        <td>&amp;raquo;</td>
+    </tr>
+    <tr>
+        <td>canonical-url</td>
+        <td>http://localhost:8000</td>
+    </tr>
+    <tr>
+        <td>rss-description</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-image-height</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-image-url</td>
+        <td>/favicon-32x32.png</td>
+    </tr>
+    <tr>
+        <td>rss-image-width</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-max-entries</td>
+        <td>50</td>
+    </tr>
+    <tr>
+        <td>rss-title</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-url</td>
+        <td>/rss.xml</td>
+    </tr>
+    <tr>
+        <td>sitemap-max-entries</td>
+        <td>10000</td>
+    </tr>
+    <tr>
+        <td>sitemap-url</td>
+        <td>/sitemap.xml</td>
+    </tr>
+    <tr>
+        <td>tag-node</td>
+        <td>tag</td>
+    </tr>
+    <tr>
+        <td>template</td>
+        <td>default.html</td>
+    </tr>
+</table>
+
+<p><b>Node Timestamps</b></p>
+
+<table>
+    <tr>
+        <th>Type</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>Created</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>Modified</td>
+        <td>2026-06-07T19:32:58-04:00</td>
+    </tr>
+</table>
+
+<p><b>Node Methods</b></p>
+
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>get_parent_node()</td>
+        <td>index</td>
+    </tr>
+    <tr>
+        <td>get_path()</td>
+        <td>tags</td>
+    </tr>
+    <tr>
+        <td>get_node_type()</td>
+        <td>file</td>
+    </tr>
+    <tr>
+        <td>get_url()</td>
+        <td>/tags/</td>
+    </tr>
+    <tr>
+        <td>get_canonical_url()</td>
+        <td>http://localhost:8000/tags/</td>
+    </tr>
+    <tr>
+        <td>get_name()</td>
+        <td>tags</td>
+    </tr>
+    <tr>
+        <td>get_display_name()</td>
+        <td>Tags</td>
+    </tr>
+    <tr>
+        <td>get_title()</td>
+        <td>Tags (Documentation)</td>
+    </tr>
+    <tr>
+        <td>get_escaped_title()</td>
+        <td>Tags (Documentation)</td>
+    </tr>
+    <tr>
+        <td>get_link()</td>
+        <td>&lt;a href=&quot;/tags/&quot;&gt;Tags (Documentation)&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_canonical_link()</td>
+        <td>&lt;a href=&quot;http://localhost:8000/tags/&quot;&gt;Tags (Documentation)&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_prefix()</td>
+        <td>&lt;p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_suffix()</td>
+        <td>&lt;/p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_tags()</td>
+        <td>[&apos;bar&apos;, &apos;foo&apos;]</td>
+    </tr>
+    <tr>
+        <td>get_dest_dir()</td>
+        <td>./public/tags</td>
+    </tr>
+    <tr>
+        <td>get_dest_file()</td>
+        <td>./public/tags/index.html</td>
+    </tr>
+    <tr>
+        <td>get_breadcrumb_separator()</td>
+        <td> &amp;raquo; </td>
+    </tr>
+</table>
+
+</div>
+
+<footer>
+    <p class="fineprint">
+        &copy; 2026 <a href="https://nathanrosenquist.com/">Nathan Rosenquist</a>
+        |
+        <a href="https://uriel.foo/">Uriel</a>
+        |
+        <a href="https://documentation.uriel.foo/">Documentation</a>
+        |
+        <a href="https://github.com/ratherlargerobot/uriel">GitHub</a>
+    </p>
+</footer>
+
+</div>
+
+</body>
+</html>

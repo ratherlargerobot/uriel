@@ -1,0 +1,15 @@
+Title: Escape-Title: false (&ldquo;not escaped&rdquo;)
+Escape-Title: false
+
+<p>This page has {{node-link:headers/escape-title/index}} set to <i>false</i>.
+
+<p>
+    Notice how the <i>&amp;ldquo;</i> in the title passes through directly
+    and appears as a left double quote symbol in the browser, without getting
+    turned into <i>&amp;amp;ldquo;</i> by HTML escaping?
+</p>
+
+<p>
+    Compare this with {{node-link:headers/escape-title/true}}
+</p>
+

@@ -1,0 +1,50 @@
+Title: {{node:body}}
+
+<p>
+    The <b>&lbrace;&lbrace;node:body&rbrace;&rbrace;</b> substitution
+    parameter evaluates to the entire body contents of a node.
+</p>
+
+<p>
+    Typically, you would include the
+    <b>&lbrace;&lbrace;node:body&rbrace;&rbrace;</b> parameter, exactly once,
+    in a template. This allows you to add HTML around the main content of the
+    node, and then drop the &ldquo;content&rdquo; part of the node into the
+    middle of the rendered page.
+</p>
+
+<h3>Node Body Include Loop Error Detection</h3>
+
+<p>
+    Unlike every other substitution parameter,
+    <b>&lbrace;&lbrace;node:body&rbrace;&rbrace;</b> can only be included
+    within a template, and not within a node, to prevent an infinite feedback
+    loop. The node body can not, itself, include the node body...
+</p>
+
+<p>
+    If you try to include the <b>&lbrace;&lbrace;node:body&rbrace;&rbrace;</b>
+    substitution parameter within a node, Uriel will detect this and show a
+    detailed error message to help you track down exactly where the problem
+    occurred.
+</p>
+
+<p>
+    For example, if you modified the node that generated this page to include
+    the <b>&lbrace;&lbrace;node:body&rbrace;&rbrace;</b> parameter, Uriel
+    would show you an error message like this when you tried to build the
+    site:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+node body include loop error:
+  nodes/parameters/node-body
+    templates/default.html
+      nodes/parameters/node-body
+        '&lbrace;&lbrace;node:body&rbrace;&rbrace;'
+uriel: node body include loop detected in node: 'parameters/node-body'</pre></p>
+

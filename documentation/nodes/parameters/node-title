@@ -1,0 +1,30 @@
+Title: {{node:title}}
+
+<p>
+    The <b>&lbrace;&lbrace;node:title&rbrace;&rbrace;</b> parameter evaluates
+    to the title of the current node.
+</p>
+
+<p>
+    The title of the node is usually set with the {{node-link:headers/title}}
+    header. However, if the {{node-link:headers/title}} header is not set,
+    then the node title is inferred from the node file name.
+</p>
+
+<p>
+    On this node, the <b>&lbrace;&lbrace;node:title&rbrace;&rbrace;</b>
+    parameter evaluates to <i>{{node:title}}</i>, which is self-referential.
+</p>
+
+<p>
+    But on the {{node-link:parameters/some-other-node}} page, the node title
+    would evaluate to:
+</p>
+
+<p><pre>{{node-title:parameters/some-other-node}}</pre></p>
+
+<p>
+    Compare this with {{node-link:parameters/node-title-some-other-node}},
+    which evaluates to the title of the other referenced node.
+</p>
+

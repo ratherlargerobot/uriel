@@ -1,0 +1,14 @@
+Title: Breadcrumb-Separator-Spaces: false
+Breadcrumb-Separator-Spaces: false
+
+<p>
+    This page has the {{node-link:headers/breadcrumb-separator-spaces/index}}
+    parameter set to <i>false</i>.
+</p>
+
+<p>
+    You can see that most of the breadcrumb navigation elements at the top of
+    this page are no longer separated by spaces.
+</p>
+
+<p>Compare with {{node-link:headers/breadcrumb-separator-spaces/true}}</p>

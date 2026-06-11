@@ -1,0 +1,43 @@
+Title: Link-Prefix / Link-Suffix
+
+<p>
+    The <b>Link-Prefix</b> and <b>Link-Suffix</b> tags work closely together.
+    When Uriel needs to generate a list of links from a
+    <a href="{{node-url:parameters/index}}">substitution parameter</a>, the
+    <b>Link-Prefix</b> and <b>Link-Suffix</b> header values define the
+    strings that will be wrapped around each link in the generated list.
+</p>
+
+<p>The default value of <b>Link-Prefix</b> is <i>&lt;p&gt;</i></p>
+
+<p>The default value of <b>Link-Suffix</b> is <i>&lt;/p&gt;</i></p>
+
+<p>
+    <b>Link-Prefix</b> and <b>Link-Suffix</b> are used by Uriel in the
+    following situations:
+</p>
+
+<ul>
+    <li>
+        On a node using {{node-link:parameters/node-list/index}} to list child
+        nodes
+    </li>
+    <li>
+        On the {{node-link:headers/tag-node}} page, when listing each tag page
+        with {{node-link:parameters/tag-list}}
+    </li>
+    <li>
+        On the pages for each tag under the tag node (e.g.
+        <a href="{{node-url:tag/foo}}">{{node-url:tag/foo}}</a>), when listing
+        the nodes matching that tag with {{node-link:parameters/tag-list}}
+    </li>
+</ul>
+
+<p>
+    Here are two example pages highlighting the difference between the
+    defaults and using custom values:
+</p>
+
+<p>{{node-link:headers/link-prefix-link-suffix/default/index}}</p>
+<p>{{node-link:headers/link-prefix-link-suffix/custom/index}}</p>
+

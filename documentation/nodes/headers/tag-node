@@ -1,0 +1,30 @@
+Title: Tag-Node
+Tags: headers, root-node
+
+<p>
+    The <b>Tag-Node</b> header is one part of a larger collection of settings
+    that work together to add tag support to a web site. If you want to
+    understand the big picture, the {{node-link:tags}} page is required
+    reading.
+</p>
+
+<p>
+    The <b>Tag-Node</b> header can be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to indicate which
+    node within the site should serve as the entry point into the tag index.
+</p>
+
+<p>
+    For example, if you want the <a href="{{node-url:tag}}">nodes/tag</a> node
+    to be the start of the tag index, then you would add the following header
+    to the root node:
+</p>
+
+<p><pre>Tag-Node: tag</pre></p>
+
+<p>
+    Here, the value <i>tag</i> refers to the <i>nodes/tag</i> node file.
+    This header designates that node to be the entry point into the tag index
+    on the generated web site.
+</p>
+

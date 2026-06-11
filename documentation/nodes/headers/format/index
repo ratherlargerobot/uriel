@@ -1,0 +1,37 @@
+<p>
+    The <b>Format</b> header influences how the node body content will be
+    interpreted when the site is generated.
+</p>
+
+<p>The <b>Format</b> header has two valid values:</p>
+
+<ul>
+    <li><i>html</i></li>
+    <li><i>text</i></li>
+</ul>
+
+<p>The default value is <i>html</i>.</p>
+
+<p>
+    When <b>Format</b> is set to <i>html</i>, the node body contents are not
+    modified in any special way.
+</p>
+
+<p>
+    When <b>Format</b> is set to <i>text</i>, each newline in the node body
+    content is followed by a <i>&lt;br&gt;</i> tag. This can be useful if
+    you want node files to have basic text content, and have each line break
+    represented in the generated HTML.
+</p>
+
+<p>
+    Whether you choose <i>html</i> or <i>text</i>,
+    <a href="{{node-url:parameters/index}}">substitution parameters</a> are
+    still processed in the same manner.
+</p>
+
+<p>Here are two example pages highlighting the difference:</p>
+
+<p>{{node-link:headers/format/html}}</p>
+<p>{{node-link:headers/format/text}}</p>
+

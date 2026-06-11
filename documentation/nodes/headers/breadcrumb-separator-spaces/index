@@ -1,0 +1,30 @@
+Title: Breadcrumb-Separator-Spaces
+Tags: headers, breadcrumbs
++-Tags: *
+
+<p>
+    Breadcrumbs are a navigation element that shows where you are in the
+    context of a web site. You can see them at the very top of this page.
+</p>
+
+<p>
+    <b>Breadcrumb-Separator-Spaces</b> controls whether spaces are added to
+    either side of the
+    {{node-link:headers/breadcrumb-separator}} when breadcrumbs are generated
+    using the {{node-link:parameters/breadcrumbs}} substitution parameter.
+</p>
+
+<p>There are two valid values:</p>
+
+<ul>
+    <li><i>true</i></li>
+    <li><i>false</i></li>
+</ul>
+
+<p>The default value is <i>true</i></p>
+
+<p>Here are two example pages highlighting the difference:</p>
+
+<p>{{node-link:headers/breadcrumb-separator-spaces/true}}</p>
+<p>{{node-link:headers/breadcrumb-separator-spaces/false}}</p>
+

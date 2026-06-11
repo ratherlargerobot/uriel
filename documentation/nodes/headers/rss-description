@@ -1,0 +1,39 @@
+Title: RSS-Description
+Tags: headers, rss, rss-headers, root-node
+
+<p>
+    The <b>RSS-Description</b> field can be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to set the
+    <i>&lt;channel&gt; &lt;description&gt;</i> field in the generated RSS
+    feed.
+</p>
+
+<p>
+    This will show up as a description of the web site in RSS readers.
+</p>
+
+<p>
+    The value of the <b>RSS-Description</b> header on the root node of this
+    documentation web site is:
+</p>
+
+<p><pre>{{value:rss-description}}</pre></p>
+
+<p>
+    You can see how it shows up in the
+    <i>&lt;channel&gt; &lt;description&gt;</i> portion of the generated
+    RSS feed here: <a href="{{value:rss-url}}">{{value:rss-url}}</a>
+</p>
+
+<p>
+    This header is optional if you don&apos;t want to generate an RSS feed.
+    However, if you do want to generate an RSS feed, then this header is
+    required. If the {{node-link:headers/rss-url}} header is set, then this
+    header must also be set.
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate an RSS feed. 
+</p>
+

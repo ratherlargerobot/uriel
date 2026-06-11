@@ -1,0 +1,59 @@
+Title: {{node-url:foo/bar}}
+RSS-Include: true
+
+<p>
+    The <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b>
+    parameter evaluates to the URL for the node specified in the rvalue
+    portion of the parameter. Nodes are specified as paths starting from the
+    {{node-link:directories/nodes}} directory.
+</p>
+
+<p>
+    For example, on this documentation site, we have another node with the
+    path <i>parameters/some-other-node</i>.
+</p>
+
+<p>
+    If we reference it using <i>parameters/some-other-node</i> as the rvalue,
+    then
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    evaluates to:
+</p>
+
+<p><pre>{{node-url:parameters/some-other-node}}</pre></p>
+
+<p>
+    Compare this with {{node-link:parameters/node-url}}, which lets you get
+    the URL of the current node.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<p><pre>/parameters/some-other-node/</pre></p>
+
+<p>
+    In the <a href="{{node-url:generated}}">generated RSS feed</a>, the URL
+    will include the {{node-link:headers/canonical-url}}. Like this:
+</p>
+
+<p><pre>{{value:canonical-url}}/parameters/some-other-node/</pre></p>
+
+<p>
+    The actual value of
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    in the current context evaluates to:
+</p>
+
+<p><pre>{{node-url:parameters/some-other-node}}</pre></p>
+
+<p>
+    View this in both the <a href="{{node:url}}">web page</a> and the
+    <a href="{{rss:url}}">RSS feed</a>, and compare the results.
+</p>
+

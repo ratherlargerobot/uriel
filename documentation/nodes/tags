@@ -1,0 +1,156 @@
+Title: Tags (Documentation)
+Tags: foo, bar
+
+<p>
+    Uriel can optionally build a tag index, to add additional ways to link
+    pages together.
+</p>
+
+<p>
+    The basic idea is that you add one or more tags to various
+    <a href="{{node-url:directories/nodes}}">nodes</a> throughout your site,
+    and Uriel can build a <a href="{{node-url:tag}}">tag index</a>, with
+    individual tag pages that link back to the nodes matching each tag.
+</p>
+
+<p>
+    In order to set up tags on your site, you need to take the following
+    steps:
+</p>
+
+<h3>Create a Designated Tag Node</h3>
+
+<p>
+    Create a designated node that will serve as the root of the tag index.
+    The suggested location is to create this file at
+    <a href="{{node-url:tag}}">nodes/tag</a>. The reason for
+    this is because Uriel will create an additional virtual node for every tag
+    on the site immediately under this path. This way you will end up
+    with individual tag URLs like
+    <a href="{{node-url:tag/foo}}">{{node-url:tag/foo}}</a> later.
+</p>
+
+<p>
+    The tag node should, at minimum, include the
+    {{node-link:parameters/tag-list}} somewhere on the page. This parameter
+    will be expanded out to contain links to all of the individual generated
+    tag pages.
+</p>
+
+<p>
+    It can also be helpful to set the
+    {{node-link:headers/link-prefix-link-suffix/index}}
+    headers to control the formatting for the list of tag links.
+</p>
+
+<p>
+    The tag node for this documentation site can be found
+    <a href="{{node-url:tag}}">here</a>.
+</p>
+
+<h3>Set the Tag-Node Header on the Root Node</h3>
+
+<p>
+    Uriel doesn&apos;t make any assumptions about where you put the tag node.
+    You have to specify which node to use. The way that you do this is by
+    adding a header to the
+    <a href="{{node-url:directories/nodes}}">root node</a> to indicate
+    which node Uriel should use as the basis for the tag hierarchy it&apos;s
+    going to create.
+</p>
+
+<p>
+    The way that you designate which node is the tag node, is by setting the
+    {{node-link:headers/tag-node}} header on the
+    <a href="{{node-url:directories/nodes}}">root node</a>.
+</p>
+
+<p>
+    If you used the recommended path of
+    <a href="{{node-url:tag}}">nodes/tag</a> for the tag node, then you just
+    need to add the following header to the
+    <a href="{{node-url:directories/nodes}}">root node</a>:
+</p>
+
+<p><pre>Tag-Node: tag</pre></p>
+
+<p>
+    In this case, <i>tag</i> refers to the node defined in the
+    <a href="{{node-url:tag}}">nodes/tag</a> file.
+</p>
+
+<h3>Add Tags to Other Nodes</h3>
+
+<p>
+    Now that the tag node is all set up, the final step is to add tags to
+    other nodes.
+</p>
+
+<p>
+    Setting up the tag node is something you only need to do once. Adding
+    tags to nodes is something that you will probably continue to do as
+    long as you are updating your site.
+</p>
+
+<p>
+    To add one or more tags to a node, simply add a {{node-link:headers/tags}}
+    header to each node, with a comma-separated list of tags.
+</p>
+
+<p>
+    This page has two different tags, <i>foo</i> and <i>bar</i>.
+    The {{node-link:headers/tags}} header for this node looks like this:
+</p>
+
+<p><pre>Tags: {{value:tags}}</pre></p>
+
+<p>
+    Adding these tags to this node causes several things to happen:
+</p>
+
+<ul>
+    <li>Each tag added to this node causes a tag page to be created, if it doesn't already exist.</li>
+    <li>A link to this node is added to each tag page</li>
+</ul>
+
+<p>
+    For example, by adding the <i>foo</i> and <i>bar</i> tags to this node,
+    the <a href="{{node-url:tag/foo}}">/tag/foo/</a> and
+    <a href="{{node-url:tag/bar}}">/tag/bar/</a> pages come into existence,
+    and link back to this page.
+</p>
+
+<h3>Add Links to Tags</h3>
+
+<p>
+    You will probably want to add links from each node to the tag pages that
+    it is associated with. The easiest way to do this automatically is to set
+    this up once in a
+    <a href="{{node-url:directories/templates}}">template</a>.
+</p>
+
+<p>
+    Add the following code snippet to a template, where it will be displayed
+    on pages of your web site that have tags:
+</p>
+
+<p><pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre></p>
+
+<p>This is what the code above evaluates to on this node:</p>
+
+<p>{{node-link:tag}}: {{tag-list:*}}</p>
+
+<p>
+    The <a href="{{node-url:parameters/node-link-some-other-node}}">&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;</a>
+    substitution parameter links to the
+    <a href="{{node-url:tag}}">tag node</a>, and uses the
+    {{node-link:headers/title}} header of that page for the link text. On this
+    documentation site, the tag node has its title set to <i>Tags</i>, which
+    is what you see in the link here.
+</p>
+
+<p>
+    The <a href="{{node-url:parameters/tag-list}}">&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</a>
+    substitution parameter in this case links to the tags that are defined on the current node.
+</p>
+

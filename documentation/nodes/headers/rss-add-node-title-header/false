@@ -1,0 +1,17 @@
+Title: RSS-Add-Node-Title-Header: false
+RSS-Add-Node-Title-Header: false
+
+<p>
+    This node has the {{node-link:headers/rss-add-node-title-header/index}}
+    header set to <i>false</i>.
+</p>
+
+<p>
+    As a result, Uriel has not added an additional <b>&lt;h1&gt;</b> title
+    header to the top of its
+    RSS <i>&lt;description&gt;</i> field in the generated RSS feed
+    (<a href="{{rss:url}}">{{rss:url}}</a>)
+</p>
+
+<p>Compare this with {{node-link:headers/rss-add-node-title-header/true}}</p>
+

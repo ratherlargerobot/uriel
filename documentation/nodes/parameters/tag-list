@@ -1,0 +1,83 @@
+Title: {{tag-list:*}}
+Tags: parameters, foo
+
+<p>
+    The <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b>
+    parameter evaluates to a set of links to whatever tags are defined on
+    the current node.
+</p>
+
+<p>
+    For example, the current node has the following header that specifies two
+    tags that this node is associated with:
+</p>
+
+<p><pre>Tags: {{value:tags}}</pre></p>
+
+<p>
+    When the <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b> is used on this
+    node, it evaluates to:
+</p>
+
+<p>{{tag-list:*}}</p>
+
+<p>
+    A link is created to the tag page for each tag this node is associated
+    with. The links are displayed in alphabetical order, with commas between
+    them.
+</p>
+
+<p>
+    A typical usage would be to include a link to the tag index, along with
+    the <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b> parameter in a
+    template, so that each page will display a link to the tag index, and
+    whatever tags the current page is associated with.
+</p>
+
+<p>
+    For example, the following fragment:
+</p>
+
+<p><pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre></p>
+
+<p>
+    Evaluates to this when displayed as HTML on the page:
+</p>
+
+<p>{{node-link:tag}}: {{tag-list:*}}</p>
+
+<h3>Tag Node Behavior</h3>
+
+<p>
+    The
+    <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b> parameter works
+    differently when it is used on the designated
+    <a href="{{node-url:tag}}">tag node</a>.
+</p>
+
+<p>
+    When it is used in that context, it behaves similarly to
+    {{node-link:parameters/node-list/index}}.
+</p>
+
+<p>
+    However, the tag node body contents also get copied into each child node
+    under the tag index. And when
+    <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b> is used in the context
+    of each child tag node, it lists links to all of the pages that are
+    associated with that tag.
+</p>
+
+<p>
+    It also behaves similarly to {{node-link:parameters/node-list/index}} on
+    the child tag pages. Except that instead of listing off child nodes, it
+    is instead creating a list of links back to the nodes that have that tag.
+</p>
+
+<p>
+    See the {{node-link:parameters/node-list/index}} page for other details
+    about link formatting, including how the
+    {{node-link:headers/link-prefix-link-suffix/index}} headers can influence
+    the display of the links.
+</p>
+

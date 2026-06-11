@@ -1,0 +1,36 @@
+Title: RSS-Include
+RSS-Include: true
+Tags: headers, rss, rss-headers
++-Tags: *
+
+<p>
+    The <b>RSS-Include</b> header controls whether a node is eligible for
+    inclusion in the <a href="{{node-url:generated}}">generated RSS feed</a>.
+</p>
+
+<p>There are two possible values:</p>
+
+<ul>
+    <li><i><a href="{{node-url:headers/rss-include/true}}">true</a></i></li>
+    <li><i><a href="{{node-url:headers/rss-include/false}}">false</a></i></li>
+</ul>
+
+<p>The default value is <i>false</i>.</p>
+
+<p>
+    The <a href="{{node-url:directories/nodes}}">node</a> that generated this
+    page has the <b>RSS-Include</b> value set to <i>true</i>. As a result, it
+    is included in the generated RSS feed
+    (<a href="{{rss:url}}">{{rss:url}}</a>).
+</p>
+
+<p>
+    The usual node
+    <a href="{{node-url:headers/index}}">header inheritance rules</a> apply.
+</p>
+
+<p>Here are two example pages highlighting the difference:</p>
+
+<p>{{node-link:headers/rss-include/true}}</p>
+<p>{{node-link:headers/rss-include/false}}</p>
+

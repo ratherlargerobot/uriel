@@ -1,0 +1,171 @@
+Title: {{static-url:foo.jpg}}
+Tags: parameters, static
+
+<p>
+    The <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b> parameter
+    evaluates to the URL path of the specified static file.
+</p>
+
+<p>
+    When this parameter is used, Uriel verifies that the file actually exists
+    when building the web site, and will exit with an error if the file is
+    not found.
+</p>
+
+<p>
+    This means that if you use this parameter every time you reference static
+    content on your site, all of your links and references within your site
+    are guaranteed to work.
+</p>
+
+<p>
+    If used consistently, this means you will never have any broken links
+    within your site, because they will become build errors instead of broken
+    links. That way you can detect and fix them immediately.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>
+    The <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b> parameter
+    is most useful when linking to images and other similar content
+    (downloadable content, other media files).
+</p>
+
+<p>
+    For example, here the
+    <b>&lbrace;&lbrace;static-url:/foo.jpg&rbrace;&rbrace;</b> parameter is
+    referencing the <i>/foo.jpg</i> file path in the rvalue portion of the
+    parameter. The parameter itself is wrapped inside of an image tag. The
+    HTML looks like this:
+</p>
+
+<p><pre>&lt;img src=&quot;&lbrace;&lbrace;static-url:/foo.jpg&rbrace;&rbrace;&quot;&gt;</pre></p>
+
+<p>
+    When the site is built, this evaluates to:
+</p>
+
+<p><pre>&lt;img src=&quot;/foo.jpg&quot;&gt;</pre></p>
+
+<p>
+    And when interpreted as HTML in your browser, it looks like this:
+</p>
+
+<p><img src="{{static-url:/foo.jpg}}"></p>
+
+<p>
+    If the <i>/foo.jpg</i> file is not present, then Uriel will generate an
+    error like this when it tries to build the web site:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+parameter error:
+  nodes/parameters/static-url
+    templates/default.html
+      nodes/parameters/static-url
+        '&lbrace;&lbrace;static-url:/foo.jpg&rbrace;&rbrace;'
+uriel: file not found: '/foo.jpg'</pre></p>
+
+<h3>File Paths</h3>
+
+<p>
+    When Uriel builds your web site, it copies files from the
+    {{node-link:directories/static}} directory into the
+    {{node-link:directories/public}} directory. Anything that is present in
+    the static directory will wind up on your web site, and can be referenced
+    by the <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b>
+    parameter.
+</p>
+
+<p>
+    File paths in the rvalue portion of the
+    <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b> parameter can
+    either be local to where the node will be published, or the paths can
+    start with a slash, relative to the root of the site. Directory traversal
+    with <i>../</i> is not allowed.
+</p>
+
+<h3>Absolute Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-url:/foo.jpg&rbrace;&rbrace;</b>
+    parameter with <i>/foo.jpg</i> as the rvalue component:
+</p>
+
+<p><pre>{{static-url:/foo.jpg}}</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/foo.jpg</i> exists</li>
+    <li>Uriel copies <i>static/foo.jpg</i> to <i>public/foo.jpg</i></li>
+    <li>The <i>/foo.jpg</i> file is found at <i>public/foo.jpg</i></li>
+</ul>
+
+<h3>Relative Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-url:bar.jpg&rbrace;&rbrace;</b>
+    parameter with <i>bar.jpg</i> as the rvalue component:
+</p>
+
+<p><pre>{{static-url:bar.jpg}}</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/parameters/static-url/bar.jpg</i> exists</li>
+    <li>
+        Uriel copies <i>static/parameters/static-url/bar.jpg</i> to
+        <i>public/parameters/static-url/bar.jpg</i>
+    </li>
+    <li>
+        The <i>nodes/parameters/static-url</i> node is published to
+        <i>public/parameters/static-url/index.html</i>
+    </li>
+    <li>
+        The published <i>index.html</i> and <i>bar.jpg</i> files are both in
+        the same directory
+    </li>
+</ul>
+
+<h3>
+    &lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace; vs.
+    &lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;
+</h3>
+
+<p>
+    The <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b> parameter
+    evaluates to the URL path of the file referenced in the rvalue portion of
+    the parameter.
+</p>
+
+<p>
+    There is also a {{node-link:parameters/static-hash-url}} parameter that
+    copies the referenced file to a new file name, and then evaluates to the
+    URL path for the newly-created file.
+</p>
+
+<p>
+    <b>&lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace;</b> is better for
+    things like images and links to downloadable content, where you
+    don&apos;t want the file name to change.
+</p>
+
+<p>
+    {{node-link:parameters/static-hash-url}} is often better for references
+    to things like CSS and JavaScript files, where you need to ensure that the
+    browser loads the newest version of the file whenever it changes.
+</p>
+

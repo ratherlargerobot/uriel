@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import gzip
 import datetime
 import unittest
 
@@ -158,9 +159,12 @@ class TestFunctionShowUsage(unittest.TestCase):
         uriel = c.uriel
 
         uriel.show_usage()
-        self.assertEqual(2, len(c.stderr))
-        self.assertEqual("uriel: Yet Another Static Site Generator", c.stderr[0])
+        self.assertEqual(3, len(c.stderr))
+        self.assertEqual("uriel " + uriel.VERSION, c.stderr[0])
         self.assertEqual("Usage: uriel <project-root>", c.stderr[1])
+        self.assertEqual(
+            "See the uriel(1) man page, or https://uriel.foo/ for more information",
+            c.stderr[2])
         self.assertEqual(1, c.exit_code)
 
 
@@ -2509,7 +2513,7 @@ class TestFunctionWriteDynamicNodes(unittest.TestCase):
                 content = f.read()
                 self.assertEqual("bar", content)
 
-            self.assertEqual(8, len(c.stderr))
+            self.assertEqual(9, len(c.stderr))
             self.assertEqual(
                 "creating pages in '" + public_dir + "' from nodes and templates",
                 c.stderr[0])
@@ -2520,6 +2524,7 @@ class TestFunctionWriteDynamicNodes(unittest.TestCase):
             self.assertEqual("virtual | foo/index | /foo/", c.stderr[5])
             self.assertEqual("virtual | foo/bar   | /foo/bar/", c.stderr[6])
             self.assertEqual("--------+-----------+----------", c.stderr[7])
+            self.assertEqual("created 3 pages (0 file, 3 virtual)", c.stderr[8])
 
 
 class TestFunctionWriteNodes(unittest.TestCase):
@@ -2943,6 +2948,242 @@ class TestFunctionWriteRss(unittest.TestCase):
                     "",
                     lines[23])
 
+    def test_write_rss_invalid_max_entries(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-max-entries", "nope")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            bar.set_header("rss-include", "true")
+            bar.set_header("rss-add-node-title-header", "false")
+            bar.set_body("bar")
+
+            root.add_child(foo)
+            root.add_child(bar)
+
+            try:
+                uriel.write_rss(project_root, root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                errstr = str(e)
+                self.assertTrue("RSS-Max-Entries" in errstr)
+
+    def test_write_rss_negative_max_entries(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-max-entries", "-1")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            bar.set_header("rss-include", "true")
+            bar.set_header("rss-add-node-title-header", "false")
+            bar.set_body("bar")
+
+            root.add_child(foo)
+            root.add_child(bar)
+
+            try:
+                uriel.write_rss(project_root, root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                errstr = str(e)
+                self.assertTrue("RSS-Max-Entries" in errstr)
+
+    def test_write_rss_zero_max_entries(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-max-entries", "0")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            bar.set_header("rss-include", "true")
+            bar.set_header("rss-add-node-title-header", "false")
+            bar.set_body("bar")
+
+            root.add_child(foo)
+            root.add_child(bar)
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual("creating '" + rss_file + "'", c.stderr[0])
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(10, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<rss version=\"2.0\">",
+                    lines[1])
+                self.assertEqual(
+                    "<channel>",
+                    lines[2])
+                self.assertEqual(
+                    "    <title>My Website</title>",
+                    lines[3])
+                self.assertEqual(
+                    "    <link>https://example.com/</link>",
+                    lines[4])
+                self.assertEqual(
+                    "    <description>All about my website</description>",
+                    lines[5])
+                self.assertTrue("<lastBuildDate>" in lines[6])
+                self.assertTrue("</lastBuildDate>" in lines[6])
+
+                self.assertEqual(
+                    "</channel>",
+                    lines[7])
+                self.assertEqual(
+                    "</rss>",
+                    lines[8])
+                self.assertEqual(
+                    "",
+                    lines[9])
+
+
+    def test_write_rss_valid_max_entries(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-max-entries", "1")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            bar.set_header("rss-include", "true")
+            bar.set_header("rss-add-node-title-header", "false")
+            bar.set_body("bar")
+
+            root.add_child(foo)
+            root.add_child(bar)
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual("creating '" + rss_file + "'", c.stderr[0])
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(16, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<rss version=\"2.0\">",
+                    lines[1])
+                self.assertEqual(
+                    "<channel>",
+                    lines[2])
+                self.assertEqual(
+                    "    <title>My Website</title>",
+                    lines[3])
+                self.assertEqual(
+                    "    <link>https://example.com/</link>",
+                    lines[4])
+                self.assertEqual(
+                    "    <description>All about my website</description>",
+                    lines[5])
+                self.assertTrue("<lastBuildDate>" in lines[6])
+                self.assertTrue("</lastBuildDate>" in lines[6])
+                self.assertEqual(
+                    "    <item>",
+                    lines[7])
+                self.assertEqual(
+                    "        <title>Bar</title>",
+                    lines[8])
+                self.assertEqual(
+                    "        <link>https://example.com/foo/bar/</link>",
+                    lines[9])
+                self.assertEqual(
+                    "        <description><![CDATA[bar]]></description>",
+                    lines[10])
+                self.assertTrue("<pubDate>" in lines[11])
+                self.assertTrue("</pubDate>" in lines[11])
+                self.assertEqual(
+                    "    </item>",
+                    lines[12])
+
+                self.assertEqual(
+                    "</channel>",
+                    lines[13])
+                self.assertEqual(
+                    "</rss>",
+                    lines[14])
+                self.assertEqual(
+                    "",
+                    lines[15])
+
     def test_write_rss_file_path_root_relative_path(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -3146,6 +3387,108 @@ class TestFunctionWriteSitemap(unittest.TestCase):
                     "",
                     lines[7])
 
+    def test_write_sitemap_root_node_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml.gz")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml.gz")
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[6])
+                self.assertEqual(
+                    "",
+                    lines[7])
+
+    def test_write_sitemap_root_node_capital_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "SITEMAP.XML.GZ")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/SITEMAP.XML.GZ")
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[6])
+                self.assertEqual(
+                    "",
+                    lines[7])
+
     def test_write_sitemap(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -3198,6 +3541,475 @@ class TestFunctionWriteSitemap(unittest.TestCase):
                     lines[6])
                 self.assertEqual(
                     "        <loc>https://example.com/</loc>",
+                    lines[7])
+                self.assertTrue("<lastmod>" in lines[8])
+                self.assertTrue("</lastmod>" in lines[8])
+                self.assertEqual(
+                    "    </url>",
+                    lines[9])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[10])
+                self.assertEqual(
+                    "",
+                    lines[11])
+
+    def test_write_sitemap_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml.gz")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml.gz")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(12, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "    <url>",
+                    lines[6])
+                self.assertEqual(
+                    "        <loc>https://example.com/</loc>",
+                    lines[7])
+                self.assertTrue("<lastmod>" in lines[8])
+                self.assertTrue("</lastmod>" in lines[8])
+                self.assertEqual(
+                    "    </url>",
+                    lines[9])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[10])
+                self.assertEqual(
+                    "",
+                    lines[11])
+
+    def test_write_sitemap_valid_max_entries_invalid(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-max-entries", "nope")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            try:
+                uriel.write_sitemap(project_root, root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                errstr = str(e)
+                self.assertTrue("Sitemap-Max-Entries" in errstr)
+
+    def test_write_sitemap_valid_max_entries_negative(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-max-entries", "-1")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            try:
+                uriel.write_sitemap(project_root, root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                errstr = str(e)
+                self.assertTrue("Sitemap-Max-Entries" in errstr)
+
+    def test_write_sitemap_valid_max_entries_zero(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-max-entries", "0")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap is empty, because Sitemap-Max-Entries is 0 on node 'index'",
+                c.stderr[1])
+
+            with open(sitemap_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(4, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[2])
+                self.assertEqual(
+                    "",
+                    lines[3])
+
+    def test_write_sitemap_valid_max_entries_zero_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml.gz")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml.gz")
+            root.set_header("sitemap-max-entries", "0")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap is empty, because Sitemap-Max-Entries is 0 on node 'index'",
+                c.stderr[1])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(4, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[2])
+                self.assertEqual(
+                    "",
+                    lines[3])
+
+    def test_write_sitemap_valid_max_entries_1(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-max-entries", "1")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap contents limited to most recent 1 entry",
+                c.stderr[1])
+
+            with open(sitemap_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[6])
+                self.assertEqual(
+                    "",
+                    lines[7])
+
+    def test_write_sitemap_valid_max_entries_1_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml.gz")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml.gz")
+            root.set_header("sitemap-max-entries", "1")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap contents limited to most recent 1 entry",
+                c.stderr[1])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[6])
+                self.assertEqual(
+                    "",
+                    lines[7])
+
+    def test_write_sitemap_valid_max_entries_2(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-max-entries", "2")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            foo.add_child(bar)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap contents limited to most recent 2 entries",
+                c.stderr[1])
+
+            with open(sitemap_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(12, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/bar/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "    <url>",
+                    lines[6])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/</loc>",
+                    lines[7])
+                self.assertTrue("<lastmod>" in lines[8])
+                self.assertTrue("</lastmod>" in lines[8])
+                self.assertEqual(
+                    "    </url>",
+                    lines[9])
+                self.assertEqual(
+                    "</urlset>",
+                    lines[10])
+                self.assertEqual(
+                    "",
+                    lines[11])
+
+    def test_write_sitemap_valid_max_entries_2_gz(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml.gz")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml.gz")
+            root.set_header("sitemap-max-entries", "2")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar", foo)
+            foo.add_child(bar)
+
+            uriel.write_sitemap(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+            self.assertEqual(
+                "creating '" + sitemap_file + "'",
+                c.stderr[0])
+            self.assertEqual(
+                "uriel: warning: sitemap contents limited to most recent 2 entries",
+                c.stderr[1])
+
+            with gzip.open(sitemap_file, "rt") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(12, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+                    lines[1])
+                self.assertEqual(
+                    "    <url>",
+                    lines[2])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/bar/</loc>",
+                    lines[3])
+                self.assertTrue("<lastmod>" in lines[4])
+                self.assertTrue("</lastmod>" in lines[4])
+                self.assertEqual(
+                    "    </url>",
+                    lines[5])
+                self.assertEqual(
+                    "    <url>",
+                    lines[6])
+                self.assertEqual(
+                    "        <loc>https://example.com/foo/</loc>",
                     lines[7])
                 self.assertTrue("<lastmod>" in lines[8])
                 self.assertTrue("</lastmod>" in lines[8])
@@ -3274,6 +4086,7 @@ class TestFunctionGetDefaultTemplateContents(unittest.TestCase):
             "<!DOCTYPE html>\n" + \
             "<html lang=\"en-US\">\n" + \
             "<head>\n" + \
+            "    <meta charset=\"UTF-8\">\n" + \
             "    <title>{{node:title}}</title>\n" + \
             "</head>\n" + \
             "\n" + \
@@ -3285,6 +4098,9 @@ class TestFunctionGetDefaultTemplateContents(unittest.TestCase):
             "<b>{{value:foo}}</b></p>\n" + \
             "\n" + \
             "{{node:body}}\n" + \
+            "\n" + \
+            "<p>This page was generated by " + \
+            "<a href=\"https://uriel.foo/\">Uriel</a></p>\n" + \
             "\n" + \
             "</body>\n" + \
             "</html>\n"
@@ -3312,9 +4128,7 @@ class TestFunctionGetDefaultIndexNodeContents(unittest.TestCase):
             "<i>index</i> node and the <i>default.html</i> \n" + \
             "template.</p>\n" + \
             "\n" + \
-            "<p>Replace this with your own content, etc.</p>\n" + \
-            "\n" + \
-            "<p>This page was generated by uriel</p>\n"
+            "<p>Replace this with your own content, etc.</p>\n"
 
         self.assertEqual(
             expected,
@@ -4078,7 +4892,7 @@ class TestFunctionHandleProject(unittest.TestCase):
                     del(sys.modules["uriel"])
 
             self.assertEqual(0, c.exit_code)
-            self.assertEqual(22, len(c.stderr))
+            self.assertEqual(23, len(c.stderr))
             self.assertEqual(
                 "creating '" + project_root + "'",
                 c.stderr[0])
@@ -4144,9 +4958,12 @@ class TestFunctionHandleProject(unittest.TestCase):
                 "--------+-------+----",
                 c.stderr[20])
             self.assertEqual(
+                "created 1 page (1 file, 0 virtual)",
+                c.stderr[21])
+            self.assertEqual(
                 "copying '" + \
                 project_root + "/static' to '" + project_root + "/public'",
-                c.stderr[21])
+                c.stderr[22])
 
             self.assertTrue(os.path.isdir(project_root))
             self.assertTrue(os.path.isdir(os.path.join(project_root, "nodes")))
@@ -4179,7 +4996,7 @@ class TestFunctionHandleProject(unittest.TestCase):
                     del(sys.modules["uriel"])
 
             self.assertEqual(0, c.exit_code)
-            self.assertEqual(15, len(c.stderr))
+            self.assertEqual(16, len(c.stderr))
             self.assertEqual(
                 "creating '" + project_root + "/nodes'",
                 c.stderr[0])
@@ -4227,6 +5044,9 @@ class TestFunctionHandleProject(unittest.TestCase):
             self.assertEqual(
                 "--------+-------+----",
                 c.stderr[14])
+            self.assertEqual(
+                "created 1 page (1 file, 0 virtual)",
+                c.stderr[15])
 
             self.assertTrue(os.path.isdir(project_root))
             self.assertTrue(os.path.isdir(os.path.join(project_root, "nodes")))

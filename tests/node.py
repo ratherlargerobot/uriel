@@ -918,7 +918,7 @@ class TestNode(unittest.TestCase):
             self.assertTrue("baz" in tags)
             self.assertTrue("quux" in tags)
 
-    def test_get_tags_invalid_capital(self):
+    def test_get_tags_valid_capital(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -926,7 +926,8 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "Aardvark")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            tags = root.get_tags()
+            self.assertTrue("Aardvark" in tags)
 
     def test_get_tags_invalid_space(self):
         c = UrielContainer()
@@ -938,13 +939,44 @@ class TestNode(unittest.TestCase):
 
             self.assertRaises(uriel.UrielError, root.get_tags)
 
-    def test_get_tags_invalid_underscore(self):
+    def test_get_tags_valid_underscore(self):
         c = UrielContainer()
         uriel = c.uriel
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "foo_bar")
+
+            tags = root.get_tags()
+            self.assertTrue("foo_bar" in tags)
+
+    def test_get_tags_invalid_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "foo/bar")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_invalid_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", ".")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_invalid_double_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "..")
 
             self.assertRaises(uriel.UrielError, root.get_tags)
 

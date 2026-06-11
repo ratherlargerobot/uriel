@@ -1,0 +1,191 @@
+Title: {{static-hash-url:foo.css}}
+Tags: parameters, static
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter copies the referenced file to a new file, and evaluates to the
+    URL path of the newly-created file. The name of the new file is an MD5
+    hash of the contents of the file. This ensures that the file name will
+    change whenever the contents of the file change.
+</p>
+
+<p>
+    When this parameter is used, Uriel verifies that the referenced file
+    actually exists when building the web site, and will exit with an error if
+    the file is not found.
+</p>
+
+<p>
+    This means that if you use this parameter every time you reference static
+    content on your site (that needs dynamic hashed filenames), all of your
+    links and references within your site are guaranteed to work.
+</p>
+
+<p>
+    If used consistently, this means you will never have any broken links
+    within your site, because they will become build errors instead of broken
+    links. That way you can detect and fix them immediately.
+</p>
+
+<p>
+    For most links and references on your site, the
+    {{node-link:parameters/static-url}} is a better choice. The
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b> is
+    primarily useful for referencing CSS and JavaScript content, where you
+    need to force the browser to reload those files when the contents change.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter is most useful when referencing CSS and JavaScript files, where
+    you need to force the browser to download new versions of those files
+    when the contents change.
+</p>
+
+<p>
+    For example, here the
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b>
+    parameter is wrapped inside of a tag that references the
+    <i>/css/main.css</i> CSS file in the rvalue portion of the parameter. The
+    HTML looks like this:
+</p>
+
+<link rel="stylesheet" type="text/css" href="/css/f54d2ddbc897921c8041041f53b09a11.css">
+
+<p><pre>&lt;link rel="stylesheet"
+      type="text/css"
+      href="&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;"&gt;</pre></p>
+
+<p>
+    When the site is built, this evaluates to:
+</p>
+
+<p><pre>&lt;link rel="stylesheet"
+      type="text/css"
+      href="{{static-hash-url:/css/main.css}}"&gt;</pre></p>
+
+<p>
+    If the <i>/css/main.css</i> file is not present, then Uriel will generate
+    an error like this when it tries to build the web site:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+parameter error:
+  nodes/parameters/static-hash-url
+    templates/default.html
+      nodes/parameters/static-hash-url
+        '&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;'
+uriel: file not found: '/css/main.css'</pre></p>
+
+<h3>File Paths</h3>
+
+<p>
+    When Uriel builds your web site, it copies files from the
+    {{node-link:directories/static}} directory into the
+    {{node-link:directories/public}} directory. Anything that is present in
+    the static directory will wind up on your web site, and can be referenced
+    by the <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter.
+</p>
+
+<p>
+    File paths in the rvalue portion of the
+    <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter can either be local to where the node will be published, or the
+    paths can start with a slash, relative to the root of the site. Directory
+    traversal with <i>../</i> is not allowed.
+</p>
+
+<h3>Absolute Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b>
+    parameter with <i>/css/main.css</i> as the rvalue component:
+</p>
+
+<p><pre>{{static-hash-url:/css/main.css}}</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/css/main.css</i> exists</li>
+    <li>Uriel copies <i>static/css/main.css</i> to <i>public/css/main.css</i></li>
+    <li><i>/css/main.css</i> is found at <i>public/css/main.css</i></li>
+    <li>
+        Uriel copies <i>public/css/main.css</i> to
+        <i>public{{static-hash-url:/css/main.css}}</i>
+    </li>
+</ul>
+
+<h3>Relative Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-hash-url:local.css&rbrace;&rbrace;</b>
+    parameter with <i>local.css</i> as the rvalue component:
+</p>
+
+<p><pre>{{static-hash-url:local.css}}</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/parameters/static-hash-url/local.css</i> exists</li>
+    <li>
+        Uriel copies <i>static/parameters/static-hash-url/local.css</i> to
+        <i>public/parameters/static-hash-url/local.css</i>
+    </li>
+    <li>
+        The <i>nodes/parameters/static-hash-url</i> node is published to
+        <i>public/parameters/static-hash-url/index.html</i>
+    </li>
+    <li>
+        The published <i>index.html</i> and <i>local.css</i> files are both in
+        the same directory
+    </li>
+    <li>
+        Uriel copies <i>public/parameters/static-hash-url/local.css</i> to
+        <i>public/parameters/static-hash-url/{{static-hash-url:local.css}}</i>
+    </li>
+</ul>
+
+<h3>
+    &lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace; vs.
+    &lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;
+</h3>
+
+<p>
+    The {{node-link:parameters/static-url}} parameter evaluates to the URL
+    path of the file referenced in the rvalue portion of the parameter.
+</p>
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter copies the referenced file to a new file name, and then
+    evaluates to the URL path for the newly-created file.
+</p>
+
+<p>
+    {{node-link:parameters/static-url}} is better for things like images and
+    links to downloadable content, where you don&apos;t want the file name to
+    change.
+</p>
+
+<p>
+    <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b> is often
+    better for references to things like CSS and JavaScript files, where you
+    need to ensure that the browser loads the newest version of the file
+    whenever it changes.
+</p>
+

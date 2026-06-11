@@ -1,0 +1,60 @@
+Title: Constants
+
+<p>
+    The <b>uriel</b> program defines the following constants.
+</p>
+
+<p>
+    This is Python, so they aren&apos;t really constants. But they are
+    treated like constants by convention.
+</p>
+
+<p>
+    See the {{node-link:soju}} and {{node-link:handlers}} sections for
+    information on how to reference these constants.
+</p>
+
+<p><pre># the name of the program
+PROGRAM_NAME = "uriel"
+
+# program version
+VERSION = "1.4.0"
+    
+# exit codes
+EXIT_OK = 0
+EXIT_FAIL = 1
+
+# sub-directories under the project root directory
+STATIC_ROOT = "static"
+NODES_ROOT = "nodes"
+TEMPLATES_ROOT = "templates"
+LIB_ROOT = "lib"
+PUBLIC_ROOT = "public"
+
+# node index filename 
+NODE_INDEX = "index"
+
+# html index filename
+HTML_INDEX = "index.html"
+
+# default template to use when rendering nodes
+# (can be overridden via Template header)
+DEFAULT_TEMPLATE = "default.html"
+
+# default maximum number of RSS feed entries
+# (can be overridden via RSS-Max-Entries header)
+RSS_MAX_ENTRIES = 20
+
+# default maximum number of sitemap entries
+# (can be overridden via Sitemap-Max-Entries header)
+SITEMAP_MAX_ENTRIES = 50000
+
+# HTML escape character map
+HTML_ESCAPE_MAP = {
+    "&": "&amp;amp;",
+    '"': "&amp;quot;",
+    "'": "&amp;apos;",
+    ">": "&amp;gt;",
+    "<": "&amp;lt;"
+}</pre></p>
+

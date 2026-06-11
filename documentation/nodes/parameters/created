@@ -1,0 +1,42 @@
+Title: {{created:%B %d, %Y}}
+Created: 2026-04-12T16:45:29-04:00
+
+<p>
+    The <b>&lbrace;&lbrace;created:%B %d, %Y&rbrace;&rbrace;</b> substitution
+    parameter references the value of the {{node-link:headers/created}} header
+    on a node, and formats the date/time value using an
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+    format string in the rvalue portion of the parameter.
+</p>
+
+<p>
+    For example, this node has the following {{node-link:headers/created}}
+    header set:
+</p>
+
+<p><pre>Created: 2026-04-12T16:45:29-04:00</pre></p>
+
+<p>
+    Here is what the <b>&lbrace;&lbrace;created:%B %d, %Y&rbrace;&rbrace;</b>
+    substitution parameter evaluates to:
+</p>
+
+<p><pre>{{created:%B %d, %Y}}</pre></p>
+
+<p>
+    The format string has a lot of different options. See the
+    <a href="https://docs.python.org/3.14/library/datetime.html#strftime-and-strptime-format-codes">Python datetime strftime() reference</a>
+    or the
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime(3)</a>
+    man page for further details.
+</p>
+
+<p>
+    {{node-link:headers/created}} is an optional header. If it is not set on
+    the node, then it will cause a build error.
+</p>
+
+<p>
+    Compare this with the {{node-link:parameters/modified}} parameter.
+</p>
+

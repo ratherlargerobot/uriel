@@ -1,0 +1,43 @@
+Title: Escape-Title
+
+<p>
+    When a <a href="{{node-url:headers/title}}">node title</a> is referenced
+    elsewhere, it is HTML escaped by default. You can override this behavior
+    by setting the <b>Escape-Title</b> header to <i>false</i>.
+</p>
+
+<p>
+    You can see the difference in the two nodes below. They both use the
+    HTML entities <b>&amp;ldquo;</b> and <b>&amp;rdquo;</b> in their
+    {{node-link:headers/title}} tags.
+</p>
+
+<p>{{node-link:headers/escape-title/true}}</p>
+<p>{{node-link:headers/escape-title/false}}</p>
+
+<p>
+    The node with the default setting of <b>Escape-Title</b> set to
+    <i>true</i> HTML escapes the title. The node that sets
+    <b>Escape-Title</b> to <i>false</i> bypasses the HTML escaping, allowing
+    the original HTML entities to come through.
+</p>
+
+<p>
+    Escaping is on by default for a reason. HTML escaping of the title makes
+    it impossible to accidentally break the HTML structure of the page by
+    adding a special HTML character into the {{node-link:headers/title}}
+    value. However, if you know that you need to embed an HTML entity in a
+    node title, it is still possible to disable the automatic HTML escaping.
+</p>
+
+<p>
+    The usual node header <a href="{{node-url:headers/index}}">inheritance
+    rules</a> still apply. If you need to disable HTML escaping for a node,
+    but still want to leave it enabled for its child nodes, you can always add
+    the following set of headers to achieve this:
+</p>
+
+<p><pre>Escape-Title: false
++Escape-Title: true
+</pre></p>
+

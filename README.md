@@ -1,8 +1,8 @@
-# uriel
+# Uriel
 
 By Nathan Rosenquist
 
-[https://nathanrosenquist.com/uriel/](https://nathanrosenquist.com/uriel/)
+[https://uriel.foo/](https://uriel.foo/)
 
 ## Overview
 
@@ -13,7 +13,7 @@ the fantastic and mundane work necessary to keep the world functioning.
 
 ## Installation
 
-uriel is a single, standalone Python script. You can just run the script from
+Uriel is a single, standalone Python script. You can just run the script from
 any directory, as any user, without installing it or requiring root
 privileges. You can even copy it into your project directory, so it stays
 with the project.
@@ -35,6 +35,36 @@ If the project root is a directory that does not exist, it will be created and
 initialized with new project files. Subsequent invocations of the uriel
 command against the project root will regenerate the static files of the web
 site from the project files.
+
+## Documentation
+
+Uriel comes with comprehensive documentation, which is itself in the form of a
+Uriel project.
+
+The documentation can be read directly. But in addition to that, the project
+files that created the documentation also use all of the features of Uriel,
+and can be examined to see how the documentation was generated.
+
+The documentation project can be found in the **`documentation/`** directory
+of this source code distribution.
+
+Since the documentation is also a Uriel project, it is best viewed as a web
+site, through a web server. Fortunately, if you can run Uriel, then you have
+everything you need to run a web server to view the documentation.
+
+To view the documentation, starting from the current directory:
+
+```bash
+cd documentation/public/
+python3 -m http.server
+```
+
+If you have the `make` command installed, you can also use the `make preview`
+target from inside the documentation directory.
+
+Once the Python web server is running, then visit
+<a href="http://localhost:8000/">http://localhost:8000/</a> in your web
+browser to view the documentation.
 
 ## Organization and Structure
 
@@ -565,7 +595,7 @@ that can be served up as the default document by a web server.
 
 Static content to merge into the rendered web site, without modification.
 
-When uriel runs, the public directory is initialized to only contain the
+When Uriel runs, the public directory is initialized to only contain the
 static content, completely overwriting and deleting whatever was in the public
 directory before.
 
@@ -586,7 +616,7 @@ static content is copied over, without modification.
 
 ## User-Defined Python Code
 
-The uriel program provides a basic, stable platform for hacking. It is
+The Uriel program provides a basic, stable platform for hacking. It is
 entirely possible to build a complete website without any user-defined code.
 However, if you want to go deeper, there are numerous opportunities for
 site-specific customization.
@@ -603,14 +633,14 @@ interpreted in substitution parameters in nodes and templates.
 The handlers allow you to tap into various points during execution of the
 program, to insert your own code at several critical moments. You can add
 dynamically-generated pages that will be included in the generated site,
-overwrite built-in uriel functions with your own replacements, and all sorts
+overwrite built-in Uriel functions with your own replacements, and all sorts
 of things.
 
 If you want to heavily customize your site, hacking on these files is the way
 to go. You can import arbitrary Python modules, run arbitrary code, and
 basically improve the system beyond recognition.
 
-The core of uriel is not likely to change much. It does not have any external
+The core of Uriel is not likely to change much. It does not have any external
 dependencies beyond python3. Goals for the core program include minimalism,
 simplicity, stability, and longevity. I want this to still work 20 years from
 now.
@@ -620,7 +650,7 @@ virtually everything about the system. Think of the core program as being a
 stable platform for modding, or a jazz standard that is begging to be
 reinterpreted.
 
-This is also another way of saying that the feature set for the core uriel
+This is also another way of saying that the feature set for the core Uriel
 program is more or less set in stone, modulo any bug fixes. If you write your
 own Python code that replaces the built-in method to generate the RSS feed,
 for example, my fervent hope is that it will continue to work indefinitely,

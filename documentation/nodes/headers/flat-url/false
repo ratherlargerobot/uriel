@@ -1,0 +1,16 @@
+Title: Flat-URL: false
+Flat-URL: false
+
+<p>This node has {{node-link:headers/flat-url/index}} set to <i>false</i>.</p>
+
+<p>
+    However, the parent node has {{node-link:headers/flat-url/index}} set to <i>true</i>.
+</p>
+
+<p>
+    As a result of this combination, this node has the following URL:
+    <i><a href="{{node:url}}">{{node:url}}</a></i>
+</p>
+
+<p>Compare this with {{node-link:headers/flat-url/true}}</p>
+

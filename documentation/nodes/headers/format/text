@@ -1,0 +1,11 @@
+Title: Format: text
+Format: text
+
+This node has the {{node-link:headers/format/index}} header set to text
+
+It is interpreted as a text document
+
+Note the lack of HTML tags in the node, and how the text appears in the
+generated HTML page.
+
+Compare this with {{node-link:headers/format/html}}

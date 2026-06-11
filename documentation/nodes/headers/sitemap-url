@@ -1,0 +1,67 @@
+Title: Sitemap-URL
+Tags: sitemap, sitemap-headers, root-node
+
+<p>
+    The <b>Sitemap-URL</b> header can be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to specify the URL
+    path for Uriel to write the generated sitemap for the web site.
+</p>
+
+<p>
+    If the <b>Sitemap-URL</b> header is not set, then Uriel will not write a
+    sitemap file.
+</p>
+
+<p>
+    If the <b>Sitemap-URL</b> header is set, then the
+    {{node-link:headers/canonical-url}} header must also be set on the root
+    node.
+</p>
+
+<p>
+    The <b>Sitemap-URL</b> value is a URL path, starting with a slash, where
+    Uriel will write the sitemap file.
+</p>
+
+<p>
+    For example, on this documentation site, the <b>Sitemap-URL</b> header is
+    set on the root node to a value of <i>{{value:sitemap-url}}</i>, like
+    this:
+</p>
+
+<p><pre>Sitemap-URL: {{value:sitemap-url}}</pre></p>
+
+<p>
+    This causes Uriel to write a sitemap to the specified path, which you
+    can see here: <a href="{{value:sitemap-url}}">{{value:sitemap-url}}</a>
+</p>
+
+<p>
+    If the path specified in the <b>Sitemap-URL</b> header ends with a
+    <i>.gz</i> extension, then the sitemap will be compressed with gzip
+    automatically when the file is written.
+</p>
+
+<p>
+    You can write a sitemap into a subdirectory. However, the subdirectory
+    must already exist. Search engines also have additional rules about
+    sitemap locations. Putting the sitemap at the root of your web site is
+    usually the best choice.
+</p>
+
+<p>
+    The sitemap URL can be referenced in templates using the
+    <a href="{{node-url:parameters/value}}">&lbrace;&lbrace;value:sitemap-url&rbrace;&rbrace;</a>
+    substitution parameter to reference the <b>Sitemap-URL</b> header.
+</p>
+
+<p>
+    You can also set the maximum number of entries that can be included in
+    the sitemap using the {{node-link:headers/sitemap-max-entries}} header.
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate a sitemap.
+</p>
+

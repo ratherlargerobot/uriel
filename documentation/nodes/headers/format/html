@@ -1,0 +1,13 @@
+Title: Format: html
+Format: html
+
+<p>This node has the {{node-link:headers/format/index}} header set to html</p>
+
+<p>It is interpreted as an HTML document</p>
+
+<p>
+    Note the presence of HTML tags in the node, and how the text appears in
+    the generated HTML page.
+</p>
+
+<p>Compare this with {{node-link:headers/format/text}}</p>

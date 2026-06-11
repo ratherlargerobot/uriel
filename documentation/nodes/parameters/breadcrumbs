@@ -1,0 +1,41 @@
+Title: {{breadcrumbs:*}}
+Tags: parameters, breadcrumbs
+
+<p>
+    Breadcrumbs are a navigation element that shows where you are in the
+    context of a web site. You can see them at the very top of this page.
+</p>
+
+<p>
+    Uriel has two different substitution parameters to generate breadcrumbs.
+</p>
+
+<ul>
+    <li><b>&lbrace;&lbrace;breadcrumbs:*&rbrace;&rbrace;</b></li>
+    <li>{{node-link:parameters/breadcrumbs-root}}</li>
+</ul>
+
+<p>
+    The <b>&lbrace;&lbrace;breadcrumbs:*&rbrace;&rbrace;</b> parameter
+    generates links to all of the pages leading up to the current node,
+    but excludes the root node from the breadcrumb links.
+</p>
+
+<p>
+    This can be useful if the link to the root of the site gets special
+    treatment (like an image link with a logo or something).
+</p>
+
+<p>
+    On this page of the documentation site, the
+    <b>&lbrace;&lbrace;breadcrumbs:*&rbrace;&rbrace;</b> parameter evalutes
+    to the following value:
+</p>
+
+<p>{{breadcrumbs:*}}</p>
+
+<p>
+    Compare this with the {{node-link:parameters/breadcrumbs-root}}
+    parameter.
+</p>
+

@@ -589,7 +589,7 @@ class TestPage(unittest.TestCase):
                     "foo"
             )
 
-    def test_create_breadcrumbs_default_separator_with_spaces(self):
+    def test_create_breadcrumbs_no_include_rootdefault_separator_with_spaces(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -614,31 +614,31 @@ class TestPage(unittest.TestCase):
             baz_page = uriel.Page(project_root, baz)
             quux_page = uriel.Page(project_root, quux)
 
-            self.assertEqual("", root_page.create_breadcrumbs())
+            self.assertEqual("", root_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>",
-                foo_page.create_breadcrumbs())
+                foo_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> &raquo; " +
                 "<a href=\"/foo/bar/\">Bar</a>",
-                bar_page.create_breadcrumbs())
+                bar_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> &raquo; " +
                 "<a href=\"/foo/bar/\">Bar</a> &raquo; " +
                 "<a href=\"/foo/bar/baz/\">Baz</a>",
-                baz_page.create_breadcrumbs())
+                baz_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> &raquo; " +
                 "<a href=\"/foo/bar/\">Bar</a> &raquo; " +
                 "<a href=\"/foo/bar/baz/\">Baz</a> &raquo; " +
                 "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
-                quux_page.create_breadcrumbs())
+                quux_page.create_breadcrumbs(False))
 
-    def test_create_breadcrumbs_default_separator_no_spaces(self):
+    def test_create_breadcrumbs_no_include_root_default_separator_no_spaces(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -664,31 +664,31 @@ class TestPage(unittest.TestCase):
             baz_page = uriel.Page(project_root, baz)
             quux_page = uriel.Page(project_root, quux)
 
-            self.assertEqual("", root_page.create_breadcrumbs())
+            self.assertEqual("", root_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>",
-                foo_page.create_breadcrumbs())
+                foo_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>&raquo;" +
                 "<a href=\"/foo/bar/\">Bar</a>",
-                bar_page.create_breadcrumbs())
+                bar_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>&raquo;" +
                 "<a href=\"/foo/bar/\">Bar</a>&raquo;" +
                 "<a href=\"/foo/bar/baz/\">Baz</a>",
-                baz_page.create_breadcrumbs())
+                baz_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>&raquo;" +
                 "<a href=\"/foo/bar/\">Bar</a>&raquo;" +
                 "<a href=\"/foo/bar/baz/\">Baz</a>&raquo;" +
                 "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
-                quux_page.create_breadcrumbs())
+                quux_page.create_breadcrumbs(False))
 
-    def test_create_breadcrumbs_custom_separator_with_spaces(self):
+    def test_create_breadcrumbs_no_include_root_custom_separator_with_spaces(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -715,31 +715,31 @@ class TestPage(unittest.TestCase):
             baz_page = uriel.Page(project_root, baz)
             quux_page = uriel.Page(project_root, quux)
 
-            self.assertEqual("", root_page.create_breadcrumbs())
+            self.assertEqual("", root_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>",
-                foo_page.create_breadcrumbs())
+                foo_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> / " +
                 "<a href=\"/foo/bar/\">Bar</a>",
-                bar_page.create_breadcrumbs())
+                bar_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> / " +
                 "<a href=\"/foo/bar/\">Bar</a> / " +
                 "<a href=\"/foo/bar/baz/\">Baz</a>",
-                baz_page.create_breadcrumbs())
+                baz_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a> / " +
                 "<a href=\"/foo/bar/\">Bar</a> / " +
                 "<a href=\"/foo/bar/baz/\">Baz</a> / " +
                 "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
-                quux_page.create_breadcrumbs())
+                quux_page.create_breadcrumbs(False))
 
-    def test_create_breadcrumbs_custom_separator_no_spaces(self):
+    def test_create_breadcrumbs_no_include_root_custom_separator_no_spaces(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -766,29 +766,254 @@ class TestPage(unittest.TestCase):
             baz_page = uriel.Page(project_root, baz)
             quux_page = uriel.Page(project_root, quux)
 
-            self.assertEqual("", root_page.create_breadcrumbs())
+            self.assertEqual("", root_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>",
-                foo_page.create_breadcrumbs())
+                foo_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>/" +
                 "<a href=\"/foo/bar/\">Bar</a>",
-                bar_page.create_breadcrumbs())
+                bar_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>/" +
                 "<a href=\"/foo/bar/\">Bar</a>/" +
                 "<a href=\"/foo/bar/baz/\">Baz</a>",
-                baz_page.create_breadcrumbs())
+                baz_page.create_breadcrumbs(False))
 
             self.assertEqual(
                 "<a href=\"/foo/\">Foo</a>/" +
                 "<a href=\"/foo/bar/\">Bar</a>/" +
                 "<a href=\"/foo/bar/baz/\">Baz</a>/" +
                 "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
-                quux_page.create_breadcrumbs())
+                quux_page.create_breadcrumbs(False))
+
+    def test_create_breadcrumbs_include_root_default_separator_with_spaces(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            bar.add_child(foo)
+
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            baz.add_child(bar)
+
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            baz.add_child(quux)
+
+            root_page = uriel.Page(project_root, root)
+            foo_page = uriel.Page(project_root, foo)
+            bar_page = uriel.Page(project_root, bar)
+            baz_page = uriel.Page(project_root, baz)
+            quux_page = uriel.Page(project_root, quux)
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>",
+                root_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> &raquo; " +
+                "<a href=\"/foo/\">Foo</a>",
+                foo_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> &raquo; " +
+                "<a href=\"/foo/\">Foo</a> &raquo; " +
+                "<a href=\"/foo/bar/\">Bar</a>",
+                bar_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> &raquo; " +
+                "<a href=\"/foo/\">Foo</a> &raquo; " +
+                "<a href=\"/foo/bar/\">Bar</a> &raquo; " +
+                "<a href=\"/foo/bar/baz/\">Baz</a>",
+                baz_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> &raquo; " +
+                "<a href=\"/foo/\">Foo</a> &raquo; " +
+                "<a href=\"/foo/bar/\">Bar</a> &raquo; " +
+                "<a href=\"/foo/bar/baz/\">Baz</a> &raquo; " +
+                "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
+                quux_page.create_breadcrumbs(True))
+
+    def test_create_breadcrumbs_include_root_default_separator_no_spaces(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("breadcrumb-separator-spaces", "false")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            bar.add_child(foo)
+
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            baz.add_child(bar)
+
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            baz.add_child(quux)
+
+            root_page = uriel.Page(project_root, root)
+            foo_page = uriel.Page(project_root, foo)
+            bar_page = uriel.Page(project_root, bar)
+            baz_page = uriel.Page(project_root, baz)
+            quux_page = uriel.Page(project_root, quux)
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>",
+                root_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>&raquo;" +
+                "<a href=\"/foo/\">Foo</a>",
+                foo_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>&raquo;" +
+                "<a href=\"/foo/\">Foo</a>&raquo;" +
+                "<a href=\"/foo/bar/\">Bar</a>",
+                bar_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>&raquo;" +
+                "<a href=\"/foo/\">Foo</a>&raquo;" +
+                "<a href=\"/foo/bar/\">Bar</a>&raquo;" +
+                "<a href=\"/foo/bar/baz/\">Baz</a>",
+                baz_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>&raquo;" +
+                "<a href=\"/foo/\">Foo</a>&raquo;" +
+                "<a href=\"/foo/bar/\">Bar</a>&raquo;" +
+                "<a href=\"/foo/bar/baz/\">Baz</a>&raquo;" +
+                "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
+                quux_page.create_breadcrumbs(True))
+
+    def test_create_breadcrumbs_include_root_custom_separator_with_spaces(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("breadcrumb-separator", "/")
+            root.set_header("breadcrumb-separator-spaces", "true")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            bar.add_child(foo)
+
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            baz.add_child(bar)
+
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            baz.add_child(quux)
+
+            root_page = uriel.Page(project_root, root)
+            foo_page = uriel.Page(project_root, foo)
+            bar_page = uriel.Page(project_root, bar)
+            baz_page = uriel.Page(project_root, baz)
+            quux_page = uriel.Page(project_root, quux)
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>",
+                root_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> / " +
+                "<a href=\"/foo/\">Foo</a>",
+                foo_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> / " +
+                "<a href=\"/foo/\">Foo</a> / " +
+                "<a href=\"/foo/bar/\">Bar</a>",
+                bar_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> / " +
+                "<a href=\"/foo/\">Foo</a> / " +
+                "<a href=\"/foo/bar/\">Bar</a> / " +
+                "<a href=\"/foo/bar/baz/\">Baz</a>",
+                baz_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a> / " +
+                "<a href=\"/foo/\">Foo</a> / " +
+                "<a href=\"/foo/bar/\">Bar</a> / " +
+                "<a href=\"/foo/bar/baz/\">Baz</a> / " +
+                "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
+                quux_page.create_breadcrumbs(True))
+
+    def test_create_breadcrumbs_include_root_custom_separator_no_spaces(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("breadcrumb-separator", "/")
+            root.set_header("breadcrumb-separator-spaces", "false")
+
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            root.add_child(foo)
+
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            bar.add_child(foo)
+
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            baz.add_child(bar)
+
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            baz.add_child(quux)
+
+            root_page = uriel.Page(project_root, root)
+            foo_page = uriel.Page(project_root, foo)
+            bar_page = uriel.Page(project_root, bar)
+            baz_page = uriel.Page(project_root, baz)
+            quux_page = uriel.Page(project_root, quux)
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>",
+                root_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>/" +
+                "<a href=\"/foo/\">Foo</a>",
+                foo_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>/" +
+                "<a href=\"/foo/\">Foo</a>/" +
+                "<a href=\"/foo/bar/\">Bar</a>",
+                bar_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>/" +
+                "<a href=\"/foo/\">Foo</a>/" +
+                "<a href=\"/foo/bar/\">Bar</a>/" +
+                "<a href=\"/foo/bar/baz/\">Baz</a>",
+                baz_page.create_breadcrumbs(True))
+
+            self.assertEqual(
+                "<a href=\"/\">Index</a>/" +
+                "<a href=\"/foo/\">Foo</a>/" +
+                "<a href=\"/foo/bar/\">Bar</a>/" +
+                "<a href=\"/foo/bar/baz/\">Baz</a>/" +
+                "<a href=\"/foo/bar/baz/quux/\">Quux</a>",
+                quux_page.create_breadcrumbs(True))
 
     def test_get_soju_result(self):
         c = UrielContainer()

@@ -1,0 +1,57 @@
+Title: Canonical-URL
+Tags: headers, rss, rss-headers, sitemap, sitemap-headers, root-node
+
+<p>
+    The <b>Canonical-URL</b> header can be used to set the canonical URL of
+    your web site, so that complete links can be created that will work when
+    used beyond your own web site.
+</p>
+
+<p>
+    The canonical URL should be set to the first portion of the full URL for
+    your web site, not including the path. For example, this is the canonical
+    URL for this documentation web site:
+</p>
+
+<p><pre>{{value:canonical-url}}</pre></p>
+
+<p>
+    Uriel will prepend the canonical URL to the node URL path when a
+    canonical link needs to be constructed.
+</p>
+
+<p>
+    This value only has any effect if it is set on the
+    <a href="{{node-url:directories/nodes}}">root node</a>.
+</p>
+
+<p>
+    The <b>Canonical-URL</b> header must be set if you want to generate an
+    RSS feed or a sitemap. See the {{node-link:generated}} page for details.
+</p>
+
+<p>
+    The following
+    <a href="{{node-url:parameters/index}}">substitution parameters</a>
+    construct relative URLs for the generated HTML pages, and canonical URLs
+    when the RSS feed is generated:
+</p>
+
+<ul>
+    <li>{{node-link:parameters/breadcrumbs}}</li>
+    <li>{{node-link:parameters/node-url}}</li>
+    <li>{{node-link:parameters/static-url}}</li>
+    <li>{{node-link:parameters/static-hash-url}}</li>
+    <li>{{node-link:parameters/node-url}}</li>
+    <li>{{node-link:parameters/node-link}}</li>
+    <li>{{node-link:parameters/node-url-some-other-node}}</li>
+    <li>{{node-link:parameters/node-link-some-other-node}}</li>
+    <li>{{node-link:parameters/node-list/index}}</li>
+    <li>{{node-link:parameters/tag-list}}</li>
+</ul>
+
+<p>
+    The {{node-link:parameters/rss-url}} parameter always uses the canonical
+    URL, on the generated HTML pages and in the RSS feed.
+</p>
+

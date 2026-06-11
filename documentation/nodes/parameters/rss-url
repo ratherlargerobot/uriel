@@ -1,0 +1,75 @@
+Title: {{rss:url}}
+Tags: parameters, rss
+
+<p>
+    The <b>&lbrace;&lbrace;rss:url&rbrace;&rbrace;</b> substitution parameter
+    evaluates to the canonical URL for the
+    <a href="{{node-url:generated}}">generated RSS feed</a>.
+</p>
+
+<p>
+    For example, this documentation site has the following headers set on
+    the <a href="{{node-url:directories/nodes}}">root node</a>:
+</p>
+
+<p><pre>Canonical-URL: {{value:canonical-url}}
+RSS-URL: {{value:rss-url}}</pre></p>
+
+<p>
+    As a result, when we use the
+    <b>&lbrace;&lbrace;rss:url&rbrace;&rbrace;</b> parameter, it evaluates
+    to the following value:
+</p>
+
+<p><pre>{{rss:url}}</pre></p>
+
+<h3>Typical Usage</h3>
+
+<p>
+    The intended use of this parameter is to include it in a template, where
+    it is included on every page of your site.
+</p>
+
+<p>
+    For example, here the <b>&lbrace;&lbrace;rss:url&rbrace;&rbrace;</b>
+    parameter is wrapped inside of a tag that references the RSS feed. The
+    HTML looks like this:
+</p>
+
+<p><pre>&lt;link rel="alternate"
+      type="application/rss+xml"
+      href="&lbrace;&lbrace;rss:url&rbrace;&rbrace;"&gt;</pre></p>
+
+<p>When the site is built, this evaluates to:</p>
+
+<p><pre>&lt;link rel="alternate"
+      type="application/rss+xml"
+      href="{{rss:url}}"&gt;</pre></p>
+
+
+<h3>Required Headers</h3>
+
+<p>
+    The {{node-link:headers/rss-url}} header must be set in order for this
+    parameter to operate correctly. If you try to use this parameter without
+    the RSS feed being enabled, you will get an error like this when Uriel
+    tries to build the site:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+parameter error:
+  nodes/index
+    templates/homepage.html
+    templates/top.html
+      '&lbrace;&lbrace;rss:url&rbrace;&rbrace;'
+uriel: 'RSS-URL' header not set</pre></p>
+
+<p>
+    See the {{node-link:generated}} page for more information about getting
+    Uriel to generate an RSS feed.
+</p>
+

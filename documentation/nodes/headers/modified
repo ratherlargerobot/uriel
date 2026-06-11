@@ -1,0 +1,76 @@
+Title: Modified
+Modified: 2026-06-05T18:11:52-04:00
+
+<p>
+    Each <a href="{{node-url:directories/nodes}}">node</a> is capable of
+    having a {{node-link:headers/created}} time, and a <b>Modified</b> time.
+</p>
+
+<p>
+    If the <b>Modified</b> header is not set, the modification time of the
+    <a href="{{node-url:directories/nodes}}">node file</a> is used as its
+    modified time by default.
+</p>
+
+<p>The <b>Modified</b> header is not inherited by child nodes.</p>
+
+<p>
+    The value for the <b>Modified</b> header is a date/time string in
+    <a href="https://en.wikipedia.org/wiki/ISO_8601">ISO 8601</a> format.
+</p>
+
+<p>
+    The <b>Modified</b> time for a node can be referenced from the
+    {{node-link:parameters/modified}} substitution parameter, where the
+    parameter rvalue can be an arbitrary
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+    format string. If the <b>Modified</b> header is not set, the reference
+    will fall back on the default node time derived from the node file
+    modification time.
+</p>
+
+<h3>Generating Valid Date/Time Strings</h3>
+
+<p>
+    On a Linux system with GNU
+    <a href="https://www.man7.org/linux/man-pages/man1/date.1.html">date</a>,
+    the following command will output a suitable ISO 8601 date/time string,
+    complete with the local UTC time zone offset:
+</p>
+
+<p><pre>date -Is</pre></p>
+
+<p>Example output:</p>
+
+<p><pre>2026-06-05T18:11:52-04:00</pre></p>
+
+<p>
+    On other UNIX systems where GNU date is not available, the following
+    command will output a suitable ISO 8601 date/time string, without the
+    local UTC time zone offset:
+</p>
+
+<p><pre>date +%FT%T</pre></p>
+
+<p>Example output:</p>
+
+<p><pre>2026-06-05T18:11:52</pre></p>
+
+<p>
+    You can also use date string values with less precision. For example, you
+    can specify only the year, month, and day:
+</p>
+
+<p><pre>2026-06-05</pre></p>
+
+<h3>Node Sorting Behavior</h3>
+
+<p>
+    Node creation and modification time can both be used when nodes are
+    sorted. When nodes are sorted by time, the creation time is used
+    preferentially, and the modification time is only consulted if the
+    creation time is not available. See the main
+    <a href="{{node-url:directories/nodes}}">node documentation</a> for
+    additional details.
+</p>
+

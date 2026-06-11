@@ -1,0 +1,7 @@
+Title: Flat-URL: true
+Flat-URL: true
+
+<p>This node has {{node-link:headers/flat-url/index}} set to <i>true</i>.</p>
+
+<p>Compare this with {{node-link:headers/flat-url/false}}</p>
+

@@ -1,0 +1,70 @@
+Title: RSS-Add-Node-Title-Header
+RSS-Include: true
+Tags: headers, rss, rss-headers
++-Tags: *
+
+<p>
+    Controls whether a title header element is added to the body content of
+    <a href="{{node-url:directories/nodes}}">nodes</a> included in a
+    <a href="{{node-url:generated}}">generated RSS feed</a>.
+</p>
+
+<p>
+    There are two possible values:
+</p>
+
+<ul>
+    <li>
+        <i><a href="{{node-url:headers/rss-add-node-title-header/true}}">true</a></i>
+    </li>
+    <li>
+        <i><a href="{{node-url:headers/rss-add-node-title-header/false}}">false</a></i>
+    </li>
+</ul>
+
+<p>The default value is <i>true</i>.</p>
+
+<p>
+    When Uriel generates an RSS feed, it only uses the
+    <a href="{{node-url:directories/nodes}}">node</a> contents,
+    and completely ignores the
+    <a href="{{node-url:headers/template}}">template</a> settings that are
+    used to render the HTML pages on the main web site.
+</p>
+
+<p>
+    However, in most site layouts, the node
+    <a href="{{node-url:headers/title}}">title</a> is likely to be displayed
+    on the page in a <a href="{{node-url:headers/template}}">template</a>
+    using a {{node-link:parameters/node-title}} substitution parameter, and
+    not from within the node body contents themselves.
+</p>
+
+<p>
+    Therefore, when <b>RSS-Add-Node-Title-Header</b> is set to <i>true</i>
+    (or left to its default setting), Uriel will add an HTML
+    <b>&lt;h1&gt;</b> header tag containing the node
+    <a href="{{node-url:headers/title}}">title</a> to the top of its RSS
+    entry.
+</p>
+
+<p>
+    If you want to override this behavior, simply set the
+    <b>RSS-Add-Node-Title-Header</b> to <i>false</i>.
+</p>
+
+<p>
+    All of the normal node
+    <a href="{{node-url:headers/index}}">header inheritance rules</a> apply.
+</p>
+
+<p>
+    Compare how the following nodes differ in their representation within the
+    generated RSS feed (<a href="{{rss:url}}">{{rss:url}}</a>).
+</p>
+
+<ul>
+    <li>{{node-link:headers/rss-add-node-title-header/true}}</li>
+    <li>{{node-link:headers/rss-add-node-title-header/false}}</li>
+</ul>
+

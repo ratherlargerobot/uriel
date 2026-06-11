@@ -1,0 +1,116 @@
+Title: Uriel Documentation
+Template: homepage.html
++Template: default.html
+Breadcrumb-Separator: &raquo;
+Canonical-URL: http://localhost:8000
+Tag-Node: tag
+RSS-URL: /rss.xml
+RSS-Title: Uriel Documentation
+RSS-Description: Uriel Documentation
+RSS-Image-URL: /favicon-32x32.png
+RSS-Image-Width: 32
+RSS-Image-Height: 32
+RSS-Max-Entries: 50
+Sitemap-URL: /sitemap.xml
+Sitemap-Max-Entries: 10000
+
+<p>
+    This is documentation for the <a href="https://uriel.foo/">Uriel</a>
+    static site generator.
+</p>
+
+<p>
+    The latest version of this documentation can be found online at
+    <a href="https://documentation.uriel.foo/">documentation.uriel.foo</a>,
+    or bundled with the
+    <a href="https://github.com/ratherlargerobot/uriel">Uriel source code</a>.
+</p>
+
+<p>
+    The documentation itself is presented in the form of a Uriel project. You
+    can read it, of course. But you can also examine the project files and see
+    how it was constructed. The project files themselves use most of the
+    features of Uriel within this project.
+</p>
+
+<p>
+    If you want to view (and experiment with) this documentation locally,
+    you will need to view it through a web server. See the
+    <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/README.md">README.md</a>
+    file in the
+    <a href="https://github.com/ratherlargerobot/uriel/tree/main/documentation">documentation</a>
+    directory for instructions on viewing this documentation locally through
+    the built-in web server that comes with Python.
+</p>
+
+<h2>Getting Started</h2>
+
+<p>{{node-link:overview}}</p>
+<p>{{node-link:quickstart}}</p>
+
+<h2>Project Structure</h2>
+
+<p>{{node-link:directories/index}}</p>
+
+<ul>
+    <li>{{node-link:directories/templates}}</li>
+    <li>{{node-link:directories/nodes}}</li>
+    <li>{{node-link:directories/lib}}</li>
+    <li>{{node-link:directories/static}}</li>
+    <li>{{node-link:directories/public}}</li>
+</ul>
+
+<h2>Dynamic Content</h2>
+
+<p>{{node-link:headers/index}}</p>
+<p>{{node-link:parameters/index}}</p>
+<p><a href="{{node-url:tags}}">Tags</a></p>
+<p>{{node-link:generated}}</p>
+
+<h2>User-Defined Python Code</h2>
+
+<p>{{node-link:soju}} (custom substitution parameter functions)</p>
+<p>{{node-link:handlers}} (custom handler functions, dynamically-generated nodes)</p>
+
+<h2>Uriel API</h2>
+
+<p>
+    Call any part of the Uriel code directly from your own
+    <a href="{{node-url:soju}}">Soju functions</a> and
+    <a href="{{node-url:handlers}}">user-defined handlers</a>.
+</p>
+
+<p>{{node-link:uriel/index}}</p>
+
+<ul>
+    <li>{{node-link:uriel/node}}</li>
+    <li>{{node-link:uriel/functions}}</li>
+    <li>{{node-link:uriel/constants}}</li>
+    <li>{{node-link:uriel/exceptions}}</li>
+</ul>
+
+<h2>Security</h2>
+
+<p>
+    Each Uriel project can contain user-defined Python code, which can be
+    executed every time Uriel builds that project.
+</p>
+
+<p>The user-defined code is located in the following project files:</p>
+
+<ul>
+    <li><a href="{{node-url:soju}}">lib/soju.py</a></li>
+    <li><a href="{{node-url:handlers}}">lib/handlers.py</a></li>
+</ul>
+
+<p>
+    Since projects can execute code during the build phase, make sure
+    you trust the project before building it.
+</p>
+
+<h2>Project Links</h2>
+
+<p><a href="https://uriel.foo/">Uriel Web Site</a></p>
+<p><a href="https://documentation.uriel.foo/">Uriel Documentation</a></p>
+<p><a href="https://github.com/ratherlargerobot/uriel">Uriel GitHub</a></p>
+

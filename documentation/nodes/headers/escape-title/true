@@ -1,0 +1,16 @@
+Title: Escape-Title: true (&ldquo;escaped&rdquo;)
+Escape-Title: true
+
+<p>This page has {{node-link:headers/escape-title/index}} set to <i>true</i>
+
+<p>The {{node-link:headers/title}} header is set to <i>{{value:title}}</i>
+
+<p>
+    Notice how the <i>&amp;ldquo;</i> in the title actually gets turned into
+    <i>&amp;amp;ldquo;</i> by the HTML escaping?
+</p>
+
+<p>
+    Compare this with {{node-link:headers/escape-title/false}}
+</p>
+

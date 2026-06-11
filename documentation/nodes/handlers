@@ -1,0 +1,260 @@
+Title: Handlers
+Tags: user-defined-python-code
+
+<p>
+    Uriel allows you to optionally implement four handler functions, that are
+    called at specific times every time you build your web site.
+</p>
+
+<p>
+    These handler functions are defined in the <i>lib/handlers.py</i> file
+    in your project.
+</p>
+
+<p>
+    When Uriel first creates a new project, the contents of the
+    <i>lib/handlers.py</i> look like this:
+</p>
+
+<p><pre>##############################################################################
+# handlers.py                                                                #
+##############################################################################
+
+# The following symbols are imported using magic:
+#
+# import uriel
+# from uriel import Page
+# from uriel import Node
+# from uriel import FileNode
+# from uriel import VirtualNode
+# from uriel import HandlerError
+# from uriel import log
+# from uriel import escape
+
+#def init(project_root):
+#    pass
+
+#def before_render_node_tree(project_root, root_node):
+#    pass
+
+#def after_render_node_tree(project_root, root_node):
+#    pass
+
+#def cleanup(project_root, root_node):
+#    pass</pre>
+
+<p>
+    Notice how all of the functions are commented out? If a handler function
+    doesn&apos;t exist, then Uriel will not call it.
+</p>
+
+<p>
+    To enable a handler function, uncomment it in <i>lib/handlers.py</i> and
+    add your own code.
+</p>
+
+<p>
+    See the <a href="{{node-url:uriel/index}}">Uriel API Reference</a> for
+    more information about what is available to reference inside handler
+    functions.
+</p>
+
+<h3>Uriel Execution Life Cycle</h3>
+
+<p>
+    When Uriel builds your web site, it performs the following steps, in
+    order. Handler function steps are highlighted in bold.
+</p>
+
+<table>
+    <tr>
+        <th>Step</th>
+        <th>Comments</th>
+    </tr>
+    <tr>
+        <td>create_project_root</td>
+        <td>
+            When <b>uriel</b> is run against a directory name that does not
+            exist, it will create the initial
+            <a href="{{node-url:directories/index}}">project root directory</a>.
+        </td>
+    </tr>
+    <tr>
+        <td>init_project_root</td>
+        <td>
+            Creates initial files and directories in the project root.
+            Restores the <a href="{{node-url:directories/public}}">public</a>
+            directory to match the contents of the
+            <a href="{{node-url:directories/static}}">static</a> directory,
+            deleting any previously generated files in the process.
+        </td>
+    </tr>
+    <tr>
+        <td>init_modules</td>
+        <td>
+            Import the <a href="{{node-url:soju}}">lib/soju.py</a> and
+            <i>lib/handlers.py</i> modules.
+        </td>
+    </tr>
+    <tr>
+        <td><b>init()</b></td>
+        <td>
+            Calls the <b>init(project_root)</b> function in <i>lib/handlers.py</i>
+        </td>
+    </tr>
+    <tr>
+        <td>create_file_node_tree</td>
+        <td>
+            Read the <a href="{{node-url:directories/nodes}}">node files</a>
+            and turn them into an in-memory tree of
+            <a href="{{node-url:uriel/node}}">Node</a> object instances.
+        </td>
+    </tr>
+    <tr>
+        <td><b>before_render_node_tree()</b></td>
+        <td>
+            Calls the <b>before_render_node_tree(project_root, root_node)</b>
+            function in <i>lib/handlers.py</i>
+        </td>
+    </tr>
+    <tr>
+        <td>augment_node_tree</td>
+        <td>
+            Augments <a href="{{node-url:uriel/node}}">Node</a> object
+            instances with additional values before rendering.
+        </td>
+    </tr>
+    <tr>
+        <td>render_node_tree</td>
+        <td>
+            Renders <a href="{{node-url:uriel/node}}">nodes</a> and
+            <a href="{{node-url:directories/templates}}">templates</a>
+            together in memory, in preparation for writing the HTML files
+            into the <a href="{{node-url:directories/public}}">public</a>
+            directory.
+        </td>
+    </tr>
+    <tr>
+        <td><b>after_render_node_tree()</b></td>
+        <td>
+            Calls the <b>after_render_node_tree(project_root, root_node)</b>
+            function in <i>lib/handlers.py</i>. This is especially useful if
+            you need to make any changes to the
+            <a href="{{node-url:uriel/node}}">Node</a> objects in memory after
+            the HTML page rendering, but before the
+            <a href="{{node-url:generated}}">RSS feed rendering</a>.
+        </td>
+    </tr>
+    <tr>
+        <td>write_dynamic_nodes</td>
+        <td>
+            Writes the rendered nodes out to HTML files in the
+            <a href="{{node-url:directories/public}}">public</a> directory.
+        </td>
+    </tr>
+    <tr>
+        <td>write_additional_files</td>
+        <td>
+            Write additional generated files ({{node-link:generated}}). If an
+            RSS feed is generated, this step involves rendering some nodes a
+            second time for the RSS feed.
+        </td>
+    </tr>
+    <tr>
+        <td>copy_static_files</td>
+        <td>
+            The contents of the
+            <a href="{{node-url:directories/static}}">static</a> directory
+            are copied into the
+            <a href="{{node-url:directories/public}}">public</a> directory.
+        </td>
+    </tr>
+    <tr>
+        <td><b>cleanup()</b></td>
+        <td>
+            Calls the <b>cleanup(project_root, root_node)</b> function in
+            <i>lib/handlers.py</i>
+        </td>
+    </tr>
+</table>
+
+<h3>VirtualNode Example</h3>
+
+<p>
+    On this documentation site, we have two handler functions defined. Here
+    are the relevant functions from <i>lib/handlers.py</i> on this project:
+</p>
+
+<p><pre>def before_render_node_tree(project_root, root_node):
+    # find the node for the Handlers page
+    # (the nodes/handlers file)
+    example_root = root_node.find_node_by_path("handlers")
+
+    # create a new virtual node under the Handers page, with the node path
+    # "handlers/virtual", as a child of the "handlers" node
+    vnode = VirtualNode(project_root,
+                        example_root.get_path() + "/virtual",
+                        example_root)
+
+    # add the VirtualNode to the list of child nodes for the parent
+    # "handlers" node
+    example_root.add_child(vnode)
+
+    # N.B. we need to add the parent node in the VirtualNode constructor, and
+    #      also call the add_child() method on the parent node, so that the
+    #      parent/child relationship is established in both directions
+
+    # set the Title and RSS-Include headers for this vnode
+    #
+    # uriel canonicalizes all header names to lowercase internally, so we
+    # set headers in all lowercase when creating vnodes
+    vnode.set_header("title", "VirtualNode Example")
+    vnode.set_header("rss-include", "true")
+
+    # set the node body contents
+    vnode.set_body(
+        "&lt;p&gt;Hello from a VirtualNode.&lt;/p&gt;\n" +
+        "\n" +
+        "&lt;p&gt;See the &lbrace;&lbrace;node-link:handlers&rbrace;&rbrace; page for more details.&lt;/p&gt;"
+    )
+
+def after_render_node_tree(project_root, root_node):
+    # find the node for the virtual node we created earlier in the
+    # before_render_node_tree() handler function
+    vnode = root_node.find_node_by_path("handlers/virtual")
+
+    # get the node body
+    body = vnode.get_body()
+
+    # modify our local copy of the node body contents
+    body += "\n\n&lt;p&gt;This is a special message for RSS readers only.&lt;/p&gt;"
+
+    # set the node body to our modified string
+    vnode.set_body(body)</pre></p>
+
+<p>
+    The code above generates a new virtual node in its
+    <b>before_render_node_tree()</b> implementation.
+</p>
+
+<p>
+    The <b>after_render_node_tree()</b> implementation also modifies the same
+    virtual node, to change the node body contents before the RSS feed is
+    generated.
+</p>
+
+<p>
+    You can see the results below:
+</p>
+
+<table>
+    <tr>
+        <th>Generated Page</th>
+        <th>RSS Feed</th>
+    </tr>
+    <tr>
+        <td>{{node-link:handlers/virtual}}</td>
+        <td><a href="{{rss:url}}">{{rss:url}}</a></td>
+    </tr>
+</table>
+

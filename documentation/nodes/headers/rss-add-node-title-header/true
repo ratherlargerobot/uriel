@@ -1,0 +1,18 @@
+Title: RSS-Add-Node-Title-Header: true
+RSS-Add-Node-Title-Header: true
+
+<p>
+    This node has the {{node-link:headers/rss-add-node-title-header/index}}
+    header set to <i>true</i>.
+</p>
+
+<p>
+    As a result, Uriel has added the following HTML code to the top of its
+    RSS <i>&lt;description&gt;</i> field in the generated RSS feed
+    (<a href="{{rss:url}}">{{rss:url}}</a>):
+</p>
+
+<p><pre>&lt;h1&gt;RSS-Add-Node-Title-Header: true&lt;/h1&gt;</pre></p>
+
+<p>Compare this with {{node-link:headers/rss-add-node-title-header/false}}</p>
+

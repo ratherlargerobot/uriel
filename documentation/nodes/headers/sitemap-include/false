@@ -1,0 +1,11 @@
+Title: Sitemap-Include: false
+Sitemap-Include: false
+
+<p>
+    This node has the {{node-link:headers/sitemap-include/index}} header set
+    to <i>false</i>. As a result, it is not included in the generated sitemap
+    (<a href="{{value:sitemap-url}}">{{value:sitemap-url}}</a>)
+</p>
+
+<p>Compare this with {{node-link:headers/sitemap-include/true}}</p>
+

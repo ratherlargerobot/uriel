@@ -1,0 +1,48 @@
+Title: {{node:url}}
+RSS-Include: true
+
+<p>
+    The <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> parameter evaluates
+    to the URL for the current node.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>Use this when you need to get the URL for the current page.</p>
+
+<p>For example: <a href="{{node:url}}">{{node:url}}</a></p>
+
+<p>
+    Compare this with {{node-link:parameters/node-url-some-other-node}}, which
+    lets you get the URL of another node on the web site.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<p><pre>/parameters/node-url/</pre></p>
+
+<p>
+    In the <a href="{{node-url:generated}}">generated RSS feed</a>, the URL
+    will include the {{node-link:headers/canonical-url}}. Like this:
+</p>
+
+<p><pre>{{value:canonical-url}}/parameters/node-url/</pre></p>
+
+<p>
+    The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
+    current context evaluates to:
+</p>
+
+<p><pre>{{node:url}}</pre></p>
+
+<p>
+    View this in both the <a href="{{node:url}}">web page</a> and the
+    <a href="{{rss:url}}">RSS feed</a>, and compare the results.
+</p>
+

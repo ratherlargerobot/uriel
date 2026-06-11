@@ -1,0 +1,54 @@
+Title: templates
+
+<p>
+    The <b>templates</b> directory contains templates that can be combined
+    with {{node-link:directories/nodes}} and other templates.
+</p>
+
+<p>
+    When Uriel builds your web site, it combines the nodes and templates
+    together to create rendered pages in the
+    {{node-link:directories/public}} directory containing your finished web
+    site.
+</p>
+
+<h3>How Pages Are Constructed</h3>
+
+<p>
+    Each dynamically-generated page on your web site starts with a content
+    <a href="{{node-url:directories/nodes}}">node</a>.
+</p>
+
+<p>
+    Each node has a template associated with it. The template is defined in
+    the node, using the {{node-link:headers/template}} header. If a
+    template header is not defined, then the <i>default.html</i> template is
+    used instead.
+</p>
+
+<p>
+    Templates can use
+    <a href="{{node-url:parameters/index}}">substitution parameters</a>, which
+    can include all sorts of dynamically-generated content on the page,
+    including
+    <a href="{{node-url:parameters/soju-hello-world}}">user-defined Python code</a>.
+</p>
+
+<p>
+    When the page is rendered, the template is the first thing that is
+    included in the rendered page.
+</p>
+
+<p>
+    If you want the node body contents to show up on the page (and you almost
+    certainly do), then the {{node-link:parameters/node-body}} substitution
+    parameter should be included somewhere in the template. This is where the
+    node body content will be merged into the middle of your template.
+</p>
+
+<p>
+    Templates can include other templates using the
+    {{node-link:parameters/include}} substitution parameter. The node body
+    contents can also include templates using the same parameter.
+</p>
+

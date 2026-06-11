@@ -1,0 +1,22 @@
+Title: Sitemap-Include
+Tags: headers, sitemap, sitemap-headers
++-Tags: *
+
+<p>
+    The <b>Sitemap-Include</b> header controls whether a node is eligible for
+    inclusion in the <a href="{{node-url:generated}}">generated sitemap</a>.
+</p>
+
+<p>There are two possible values:</p>
+
+<ul>
+    <li><i><a href="{{node-url:headers/sitemap-include/true}}">true</a></i></li>
+    <li><i><a href="{{node-url:headers/sitemap-include/false}}">false</a></i></li>
+</ul>
+
+<p>The default value is <i>true</i>.</p>
+
+<p>Here are two example pages highlighting the difference:</p>
+
+<p>{{node-link:headers/sitemap-include/true}}</p>
+<p>{{node-link:headers/sitemap-include/false}}</p>

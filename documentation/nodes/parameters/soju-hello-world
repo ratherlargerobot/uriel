@@ -1,0 +1,56 @@
+Title: {{soju:hello_world(node)}}
+Tags: parameters, soju, user-defined-python-code
+
+<p>
+    {{node-link:soju}} is an extension mechanism that lets you create
+    your own user-defined Python functions, and reference them in substitution
+    parameters when your web site is built.
+</p>
+
+<p>
+    This is a powerful tool that lets you add most of the benefits of dynamic
+    code to a static web site.
+</p>
+
+<p>
+    The <i>lib/soju.py</i> file is a Python module within a Uriel project
+    where you can create your own user-defined functions.
+</p>
+
+<p>
+    Once you have a user-defined function in <i>lib/soju.py</i>, you can
+    reference it in the rvalue portion of a
+    <b>&lbrace;&lbrace;soju:hello_world(node)&rbrace;&rbrace;</b> parameter.
+</p>
+
+<p>
+    For example, the <i>lib/soju.py</i> file for this documentation site
+    contains the following function:
+</p>
+
+<pre># &lbrace;&lbrace;soju:hello_world(node)&rbrace;&rbrace;
+def hello_world(node):
+    """
+    Hello world function.
+
+    Accepts a Node.
+
+    Returns an HTML escaped hello world message.
+
+    """
+
+    return "Hello from lib/soju.py, called from " + escape(node.get_path())</pre>
+
+<p>
+    And when we use the
+    <b>&lbrace;&lbrace;soju:hello_world(node)&rbrace;&rbrace;</b> parameter
+    on this node, it evaluates to:
+</p>
+
+<p><pre>{{soju:hello_world(node)}}</pre></p>
+
+<p>
+    See the {{node-link:soju}} section for more information on writing
+    your own user-defined functions.
+</p>
+

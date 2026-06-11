@@ -1,0 +1,40 @@
+Title: {{node:link}}
+
+<p>
+    The <b>&lbrace;&lbrace;node:link&rbrace;&rbrace;</b> parameter evaluates
+    to an HTML link to the current node, with the HTML escaped title of the
+    current node as the text.
+</p>
+
+<p>
+    For example, on the current node, the
+    <b>&lbrace;&lbrace;node:link&rbrace;&rbrace;</b> parameter evaluates to:
+</p>
+
+<p><pre>&lt;a href="{{node:url}}"&gt;{{node:title}}&lt;/a&gt;</pre></p>
+
+<p>And the actual HTML on the page looks like this: {{node:link}}</a>
+
+<p>
+    This is pretty self-referential, because the title of this page is also
+    <b>&lbrace;&lbrace;node:link&rbrace;&rbrace;</b>.
+</p>
+
+<p>
+    But on the {{node-link:parameters/some-other-node}} page, the
+    <b>&lbrace;&lbrace;node:link&rbrace;&rbrace;</b> parameter would
+    evaluate to:
+</p>
+
+<p><pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre></p>
+
+<p>
+    And if this parameter were used on that page, the actual HTML on the page
+    would look like this: {{node-link:parameters/some-other-node}}
+</p>
+
+<p>
+    Compare this with the {{node-link:parameters/node-link-some-other-node}}
+    parameter, which evaluates to a link to the other referenced node.
+</p>
+

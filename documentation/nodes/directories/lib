@@ -1,0 +1,39 @@
+Title: lib
+Tags: user-defined-python-code
+
+<p>
+    The <b>lib</b> directory is where user-defined Python code is stored in
+    your project.
+</p>
+
+<p>
+    When a project is first created, two files are added under the <b>lib</b>
+    directory:
+</p>
+
+<ul>
+    <li><a href="{{node-url:soju}}">lib/soju.py</a></li>
+    <li><a href="{{node-url:handlers}}">lib/handlers.py</a></li>
+</ul>
+
+<p>
+    The <a href="{{node-url:soju}}">lib/soju.py</a> file is the entry
+    point for user-defined Python code that can be referenced from
+    <a href="{{node-url:parameters/soju-hello-world}}">substitution parameters</a>
+    when pages are rendered.
+</p>
+
+<p>
+    The <a href="{{node-url:handlers}}">lib/handlers.py</a> file lets you
+    optionally run custom Python code during different parts of the build
+    process when your web site is generated.
+</p>
+
+<p>
+    You can also create your own custom Python modules and store them under
+    the <b>lib</b> directory. This way you can import them into the
+    <a href="{{node-url:soju}}">lib/soju.py</a> and
+    <a href="{{node-url:handlers}}">lib/handlers.py</a> files as
+    Python modules.
+</p>
+

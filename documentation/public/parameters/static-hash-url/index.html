@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>{{static-hash-url:foo.css}}</title>
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:8000/rss.xml">
+    <link rel="stylesheet" type="text/css" href="/css/bce096b30da10f51c90533986e9c1762.css">
+    <link rel="canonical" href="https://documentation.uriel.foo/parameters/static-hash-url/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://localhost:8000/parameters/static-hash-url/">
+    <meta property="og:title" content="{{static-hash-url:foo.css}}">
+    <meta property="og:image" content="http://localhost:8000/foo.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:domain" value="localhost">
+    <meta name="twitter:title" value="{{static-hash-url:foo.css}}">
+    <meta name="twitter:image" content="http://localhost:8000/foo.jpg">
+</head>
+
+<body>
+
+<div class="squish-page">
+
+<nav>
+    <p class="breadcrumbs"><a href="/">Uriel Documentation</a> &raquo; <a href="/parameters/">Substitution Parameters</a> &raquo; <a href="/parameters/static-hash-url/">{{static-hash-url:foo.css}}</a></p>
+</nav>
+
+<h1>{{static-hash-url:foo.css}}</h1>
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter copies the referenced file to a new file, and evaluates to the
+    URL path of the newly-created file. The name of the new file is an MD5
+    hash of the contents of the file. This ensures that the file name will
+    change whenever the contents of the file change.
+</p>
+
+<p>
+    When this parameter is used, Uriel verifies that the referenced file
+    actually exists when building the web site, and will exit with an error if
+    the file is not found.
+</p>
+
+<p>
+    This means that if you use this parameter every time you reference static
+    content on your site (that needs dynamic hashed filenames), all of your
+    links and references within your site are guaranteed to work.
+</p>
+
+<p>
+    If used consistently, this means you will never have any broken links
+    within your site, because they will become build errors instead of broken
+    links. That way you can detect and fix them immediately.
+</p>
+
+<p>
+    For most links and references on your site, the
+    <a href="/parameters/static-url/">{{static-url:foo.jpg}}</a> is a better choice. The
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b> is
+    primarily useful for referencing CSS and JavaScript content, where you
+    need to force the browser to reload those files when the contents change.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter is most useful when referencing CSS and JavaScript files, where
+    you need to force the browser to download new versions of those files
+    when the contents change.
+</p>
+
+<p>
+    For example, here the
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b>
+    parameter is wrapped inside of a tag that references the
+    <i>/css/main.css</i> CSS file in the rvalue portion of the parameter. The
+    HTML looks like this:
+</p>
+
+<link rel="stylesheet" type="text/css" href="/css/f54d2ddbc897921c8041041f53b09a11.css">
+
+<p><pre>&lt;link rel="stylesheet"
+      type="text/css"
+      href="&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;"&gt;</pre></p>
+
+<p>
+    When the site is built, this evaluates to:
+</p>
+
+<p><pre>&lt;link rel="stylesheet"
+      type="text/css"
+      href="/css/bce096b30da10f51c90533986e9c1762.css"&gt;</pre></p>
+
+<p>
+    If the <i>/css/main.css</i> file is not present, then Uriel will generate
+    an error like this when it tries to build the web site:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+parameter error:
+  nodes/parameters/static-hash-url
+    templates/default.html
+      nodes/parameters/static-hash-url
+        '&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;'
+uriel: file not found: '/css/main.css'</pre></p>
+
+<h3>File Paths</h3>
+
+<p>
+    When Uriel builds your web site, it copies files from the
+    <a href="/directories/static/">static</a> directory into the
+    <a href="/directories/public/">public</a> directory. Anything that is present in
+    the static directory will wind up on your web site, and can be referenced
+    by the <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter.
+</p>
+
+<p>
+    File paths in the rvalue portion of the
+    <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter can either be local to where the node will be published, or the
+    paths can start with a slash, relative to the root of the site. Directory
+    traversal with <i>../</i> is not allowed.
+</p>
+
+<h3>Absolute Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;</b>
+    parameter with <i>/css/main.css</i> as the rvalue component:
+</p>
+
+<p><pre>/css/bce096b30da10f51c90533986e9c1762.css</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/css/main.css</i> exists</li>
+    <li>Uriel copies <i>static/css/main.css</i> to <i>public/css/main.css</i></li>
+    <li><i>/css/main.css</i> is found at <i>public/css/main.css</i></li>
+    <li>
+        Uriel copies <i>public/css/main.css</i> to
+        <i>public/css/bce096b30da10f51c90533986e9c1762.css</i>
+    </li>
+</ul>
+
+<h3>Relative Path Example</h3>
+
+<p>
+    Here is an example of using the
+    <b>&lbrace;&lbrace;static-hash-url:local.css&rbrace;&rbrace;</b>
+    parameter with <i>local.css</i> as the rvalue component:
+</p>
+
+<p><pre>67d51b872c106b102703dfb4fae4a3c7.css</pre></p>
+
+<p>
+    This works because:
+</p>
+
+<ul>
+    <li><i>static/parameters/static-hash-url/local.css</i> exists</li>
+    <li>
+        Uriel copies <i>static/parameters/static-hash-url/local.css</i> to
+        <i>public/parameters/static-hash-url/local.css</i>
+    </li>
+    <li>
+        The <i>nodes/parameters/static-hash-url</i> node is published to
+        <i>public/parameters/static-hash-url/index.html</i>
+    </li>
+    <li>
+        The published <i>index.html</i> and <i>local.css</i> files are both in
+        the same directory
+    </li>
+    <li>
+        Uriel copies <i>public/parameters/static-hash-url/local.css</i> to
+        <i>public/parameters/static-hash-url/67d51b872c106b102703dfb4fae4a3c7.css</i>
+    </li>
+</ul>
+
+<h3>
+    &lbrace;&lbrace;static-url:foo.jpg&rbrace;&rbrace; vs.
+    &lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;
+</h3>
+
+<p>
+    The <a href="/parameters/static-url/">{{static-url:foo.jpg}}</a> parameter evaluates to the URL
+    path of the file referenced in the rvalue portion of the parameter.
+</p>
+
+<p>
+    The <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b>
+    parameter copies the referenced file to a new file name, and then
+    evaluates to the URL path for the newly-created file.
+</p>
+
+<p>
+    <a href="/parameters/static-url/">{{static-url:foo.jpg}}</a> is better for things like images and
+    links to downloadable content, where you don&apos;t want the file name to
+    change.
+</p>
+
+<p>
+    <b>&lbrace;&lbrace;static-hash-url:foo.css&rbrace;&rbrace;</b> is often
+    better for references to things like CSS and JavaScript files, where you
+    need to ensure that the browser loads the newest version of the file
+    whenever it changes.
+</p>
+
+
+<p><a href="/tag/">Tags</a>: <a href="/tag/parameters/">parameters</a>, <a href="/tag/static/">static</a></p>
+
+<div class="page-details">
+
+<p>This page was generated by <a href="https://uriel.foo/">Uriel</a> with the following settings:</p>
+
+<p><b>Page Details</b></p>
+
+<table>
+    <tr>
+        <th>Resource</th>
+        <th>Path</th>
+        <th>Project File</th>
+    </tr>
+    <tr>
+        <td><a href="/directories/nodes/">Node</a></td>
+        <td>parameters/static-hash-url</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/parameters/static-hash-url">nodes/parameters/static-hash-url</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/templates/">Template</a></td>
+        <td>default.html</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/templates/default.html">templates/default.html</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/public/">URL</a></td>
+        <td>/parameters/static-hash-url/</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public/parameters/static-hash-url/index.html">public/parameters/static-hash-url/index.html</a>
+        </td>
+    </tr>
+</table>
+
+<p><b>Node Headers</b></p>
+
+<table>
+    <tr align="left">
+        <th>Header (Lowercase)</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td><b>tags</b></td>
+        <td><b>parameters, static</b></td>
+    </tr>
+    <tr>
+        <td><b>title</b></td>
+        <td><b>{{static-hash-url:foo.css}}</b></td>
+    </tr>
+    <tr>
+        <td>+-tags</td>
+        <td>*</td>
+    </tr>
+    <tr>
+        <td>breadcrumb-separator</td>
+        <td>&amp;raquo;</td>
+    </tr>
+    <tr>
+        <td>canonical-url</td>
+        <td>http://localhost:8000</td>
+    </tr>
+    <tr>
+        <td>rss-description</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-image-height</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-image-url</td>
+        <td>/favicon-32x32.png</td>
+    </tr>
+    <tr>
+        <td>rss-image-width</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-max-entries</td>
+        <td>50</td>
+    </tr>
+    <tr>
+        <td>rss-title</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-url</td>
+        <td>/rss.xml</td>
+    </tr>
+    <tr>
+        <td>sitemap-max-entries</td>
+        <td>10000</td>
+    </tr>
+    <tr>
+        <td>sitemap-url</td>
+        <td>/sitemap.xml</td>
+    </tr>
+    <tr>
+        <td>tag-node</td>
+        <td>tag</td>
+    </tr>
+    <tr>
+        <td>template</td>
+        <td>default.html</td>
+    </tr>
+</table>
+
+<p><b>Node Timestamps</b></p>
+
+<table>
+    <tr>
+        <th>Type</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>Created</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>Modified</td>
+        <td>2026-06-09T23:33:11-04:00</td>
+    </tr>
+</table>
+
+<p><b>Node Methods</b></p>
+
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>get_parent_node()</td>
+        <td>parameters/index</td>
+    </tr>
+    <tr>
+        <td>get_path()</td>
+        <td>parameters/static-hash-url</td>
+    </tr>
+    <tr>
+        <td>get_node_type()</td>
+        <td>file</td>
+    </tr>
+    <tr>
+        <td>get_url()</td>
+        <td>/parameters/static-hash-url/</td>
+    </tr>
+    <tr>
+        <td>get_canonical_url()</td>
+        <td>http://localhost:8000/parameters/static-hash-url/</td>
+    </tr>
+    <tr>
+        <td>get_name()</td>
+        <td>static-hash-url</td>
+    </tr>
+    <tr>
+        <td>get_display_name()</td>
+        <td>Static Hash Url</td>
+    </tr>
+    <tr>
+        <td>get_title()</td>
+        <td>{{static-hash-url:foo.css}}</td>
+    </tr>
+    <tr>
+        <td>get_escaped_title()</td>
+        <td>{{static-hash-url:foo.css}}</td>
+    </tr>
+    <tr>
+        <td>get_link()</td>
+        <td>&lt;a href=&quot;/parameters/static-hash-url/&quot;&gt;{{static-hash-url:foo.css}}&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_canonical_link()</td>
+        <td>&lt;a href=&quot;http://localhost:8000/parameters/static-hash-url/&quot;&gt;{{static-hash-url:foo.css}}&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_prefix()</td>
+        <td>&lt;p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_suffix()</td>
+        <td>&lt;/p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_tags()</td>
+        <td>[&apos;parameters&apos;, &apos;static&apos;]</td>
+    </tr>
+    <tr>
+        <td>get_dest_dir()</td>
+        <td>./public/parameters/static-hash-url</td>
+    </tr>
+    <tr>
+        <td>get_dest_file()</td>
+        <td>./public/parameters/static-hash-url/index.html</td>
+    </tr>
+    <tr>
+        <td>get_breadcrumb_separator()</td>
+        <td> &amp;raquo; </td>
+    </tr>
+</table>
+
+</div>
+
+<footer>
+    <p class="fineprint">
+        &copy; 2026 <a href="https://nathanrosenquist.com/">Nathan Rosenquist</a>
+        |
+        <a href="https://uriel.foo/">Uriel</a>
+        |
+        <a href="https://documentation.uriel.foo/">Documentation</a>
+        |
+        <a href="https://github.com/ratherlargerobot/uriel">GitHub</a>
+    </p>
+</footer>
+
+</div>
+
+</body>
+</html>

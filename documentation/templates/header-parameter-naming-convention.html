@@ -1,0 +1,25 @@
+<h3>Naming Convention</h3>
+
+<p>
+    By convention, <a href="{{node-url:headers/index}}">headers</a> are set
+    using <i>Mixed-Case-With-Dashes</i>. However, when they are referenced in
+    <a href="{{node-url:parameters/index}}">substitution parameters</a>,
+    they are referenced in lowercase.
+</p>
+
+<p>
+    For example, a <a href="{{node-url:directories/nodes}}">node</a> might
+    set a header and reference the same header directly like this:
+</p>
+
+<p><pre>Title: Some Example Node
+Foo-Bar-Baz-Quux: Some Value
+
+Here is the value of Foo-Bar-Baz-Quux: &lbrace;&lbrace;value:foo-bar-baz-quux&rbrace;&rbrace;
+</pre></p>
+
+<p>
+    The example above would render in the generated page as:
+</p>
+
+<p><pre>Here is the value of Foo-Bar-Baz-Quux: Some Value</pre></p>

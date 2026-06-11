@@ -1,0 +1,338 @@
+Title: Soju
+Tags: user-defined-python-code
+RSS-Include: true
+
+<p>
+    Soju is an extension mechanism that lets you call custom Python code from
+    <a href="{{node-url:parameters/soju-hello-world}}">substition parameters</a>.
+</p>
+
+<p>
+    To run user-defined Python code and have its output appear on a page, you
+    need to do two things:
+</p>
+
+<ul>
+    <li>Define a Soju function</li>
+    <li>Reference a Soju function</li>
+</ul>
+
+<p>
+    This page will show you how to do both.
+</p>
+
+<h3>Define a Soju Function</h3>
+
+<p>
+    To define a Soju function, you need to add your own user-defined Python
+    code into the <i>lib/soju.py</i> file within your project.
+</p>
+
+<p>
+    This is what the <i>lib/soju.py</i> file looks like when Uriel first
+    creates a new project:
+</p>
+
+<p><pre>##############################################################################
+# soju.py                                                                    #
+##############################################################################
+
+# The following symbols are imported using magic:
+#
+# import uriel
+# from uriel import SojuError
+# from uriel import log
+# from uriel import escape
+
+# The following variables are available to pass to functions:
+#
+# page
+# node
+# project_root
+# use_canonical_url
+
+# &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
+def node_title(node):
+    return escape(node.get_title())</pre></p>
+
+<p>
+    You can add your own functions to this file, and
+    <a href="{{node-url:parameters/soju-hello-world}}">reference</a>
+    them in
+    <a href="{{node-url:directories/nodes}}">nodes</a> and
+    <a href="{{node-url:directories/templates}}">templates</a>, so the output
+    of these functions shows up in pages on your web site.
+</p>
+
+<p>
+    The <b>uriel</b> program itself is imported into <i>lib/soju.py</i> as a
+    module, along with the <b>log()</b> and <b>escape()</b> functions and the
+    <b>SojuError</b> exception. See the
+    <a href="{{node-url:uriel/index}}">Uriel API reference</a> for details.
+</p>
+
+<p>
+    Four variables are present when your functions are called. You can write
+    your functions to accept and make use of these variables:
+</p>
+
+<table>
+    <tr>
+        <th>Variable Name</th>
+        <th>Type</th>
+        <th>Comments</th>
+    </tr>
+    <tr>
+        <td>page</td>
+        <td>uriel.Page</td>
+        <td><i>uriel.Page</i> instance used to render the current page</td>
+    </tr>
+    <tr>
+        <td>node</td>
+        <td><a href="{{node-url:uriel/node}}">uriel.Node</a></td>
+        <td>
+            The <a href="{{node-url:uriel/node}}">uriel.Node</a> instance for
+            the current page
+        </td>
+    </tr>
+    <tr>
+        <td>project_root</td>
+        <td>str</td>
+        <td>Filesystem path to your Uriel project root directory</td>
+    </tr>
+    <tr>
+        <td>use_canonical_url</td>
+        <td>bool</td>
+        <td>Use canonical URL when generating links?</td>
+    </tr>
+</table>
+
+<p>
+    We won&apos;t discuss <i>page</i> further here. See the
+    <a href="https://github.com/ratherlargerobot/uriel/blob/main/uriel">Uriel source code</a>
+    if you&apos;re curious.
+</p>
+
+<p>
+    The <i>node</i> variable is extremely useful. This gives you access to
+    dozens of methods that can provide information about the current node,
+    find other nodes on the site and get their
+    <a href="{{node-url:uriel/node}}">Node</a> instances, etc.
+</p>
+
+<p>
+    The <i>project_root</i> variable contains the filesystem path to your
+    project directory.
+</p>
+
+<p>
+    The <i>use_canonical_url</i> variable is a boolean that indicates the mode
+    that is being used to render the page when your function is called. Normal
+    HTML pages are rendered with <i>use_canonical_url</i> set to <i>False</i>.
+    But if you are generating an
+    <a href="{{node-url:generated}}">RSS feed</a>, then your function can be
+    called with <i>use_canonical_url</i> set to <i>True</i> during that
+    rendering step. If you are generating your own links to other nodes inside
+    of your Soju function, you&apos;ll want to accept this as a function
+    argument, and conditionalize your code to work in both conditions.
+</p>
+
+<h3>Reference a Soju Function</h3>
+
+<p>
+    To reference your custom Soju function, you will need to call it from a
+    <a href="{{node-url:parameters/soju-hello-world}}">substition parameter</a>
+    in a 
+    <a href="{{node-url:directories/nodes}}">node</a> or a
+    <a href="{{node-url:directories/templates}}">template</a>.
+</p>
+
+<p>
+    For example, the default <i>lib/soju.py</i> that Uriel generates when it
+    creates a new project contains the following function:
+</p>
+
+<p><pre># &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
+def node_title(node):
+    return escape(node.get_title())</pre></p>
+
+<p>
+    We can reference that function by including the
+    <b>&lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;</b> substitution
+    parameter on the node that creates this page. When we do that, here is
+    the result of that Soju function call to the <b>node_title(node)</b>
+    function:
+</p>
+
+<p><pre>{{soju:node_title(node)}}</pre></p>
+
+<p>
+    The function evaluated to the HTML escaped title of the current node, and
+    the string was included in the rendered page.
+</p>
+
+<h3>Example Soju Function</h3>
+
+<p>
+    Let&apos;s take a look at a non-trivial example function. Here is the
+    source code for the <b>example()</b> function in the <i>lib/soju.py</i>
+    file for this documentation site:
+</p>
+
+<p><pre># &lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;
+def example(page, node, project_root, use_canonical_url):
+    """
+    Example Soju function, demonstrating several things in one place.
+
+    Accepts a page, node, project_root, and use_canonical_url.
+
+    Returns an example string to use in the Soju documentation.
+
+    """
+
+    # log a message when the site builds
+    log("the example() function is running now")
+
+    # create a list of strings that we will combine and return
+    lines = []
+
+    # show the uriel version (which is referenced from the uriel module,
+    # along with the string values of each argument passed to this function
+    lines.append("Hello from the &lt;b&gt;example()&lt;/b&gt; function!")
+    lines.append("")
+    lines.append("Generated by uriel version " + escape(uriel.VERSION))
+    lines.append("")
+    lines.append("page:              " + escape(str(page)))
+    lines.append("node:              " + escape(str(node)))
+    lines.append("project_root:      " + escape(project_root))
+    lines.append("use_canonical_url: " + escape(str(use_canonical_url)))
+    lines.append("")
+
+    # find the node for the Uriel API documentation index
+    # (the nodes/uriel/index file)
+    uriel_api_doc_index_node = node.find_node_by_path("uriel/index")
+
+    # show a link to the node
+    lines.append(uriel_api_doc_index_node.get_link())
+
+    # go through each child node under the Uriel API documentation index,
+    # sorted by (title + node path). Title is not always guaranteed to
+    # be unique, so the unique node path will act as a tie breaker in.
+    # case any nodes have the same title.
+    for child_node in sorted(uriel_api_doc_index_node.get_children(),
+                             key=lambda n: n.get_title() + n.get_path()):
+
+        lines.append("  " + child_node.get_link())
+
+    # if you uncomment this line, it will cause an error when the site builds
+    #raise SojuError("oops")
+
+    # combine and return the lines as a string
+    return "\n".join(lines)</pre></p>
+
+<p>
+    When we call this function, by including it a node or template, using the<br>
+    <b>&lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;</b><br>
+    substitution parameter, this is the output of the function that ends up
+    on the rendered page:
+</p>
+
+<p><pre>{{soju:example(page, node, project_root, use_canonical_url)}}</pre></p>
+
+<p>
+    You can see the output of the <b>log()</b> function when the site builds:
+</p>
+
+<p><pre>
+copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+<b>soju: the example() function is running now</b>
+creating pages in 'public' from nodes and templates
+
+... lots of output omitted for brevity ...
+
+created 110 pages (95 file, 15 virtual)
+creating 'public/rss.xml'
+<b>soju: the example() function is running now</b>
+creating 'public/sitemap.xml'
+creating 'public/robots.txt'
+copying 'static' to 'public'
+</pre></p>
+
+<p>
+    Notice that the <b>log()</b> message shows up twice? This is because the
+    <b>example()</b> function is called twice. Once when the HTML page is
+    generated, and again when the
+    <a href="{{node-url:generated}}">RSS feed</a> is generated.
+</p>
+
+<p>
+    The <b>example()</b> function basically collects a variety of values from
+    various parts of the <a href="{{node-url:uriel/index}}">Uriel API</a>, and
+    then returns a string that can be displayed in place of the substitution
+    parameter on the generated page.
+</p>
+
+<p>
+    The <b>escape()</b> function performs HTML escaping. As a general rule, it
+    should be wrapped around any dynamic values that are returned.
+</p>
+
+<p>
+    However, any <b>Node</b> methods that return HTML fragments should not be
+    escaped (e.g. <b>get_link()</b>).
+</p>
+
+<p>
+    You should always be aware of HTML escaping when writing custom Soju
+    functions.
+</p>
+
+<h3>Error Handling</h3>
+
+<p>
+    All Soju functions must return a Python <b>str</b> value.
+</p>
+
+<p>
+    If your function returns a value with a type other than <b>str</b>, has a
+    syntax error, or if it raises an exception when it is called, Uriel will
+    show an error when the site builds. This error includes detailed
+    information about which node and templates were involved, which Soju
+    function was called, and what the error was, including a Python traceback.
+    This makes it easy to find what caused the build to fail, and where to
+    start your debugging efforts.
+</p>
+
+<p>
+    If you want to avoid the Python traceback portion of the error, you can
+    raise a <b>SojuError</b> when you need to raise an expected error.
+    This will still result in detailed information about where the error
+    originated, but it will skip the Python traceback portion.
+</p>
+
+<p>
+    If you uncomment the <b>SojuError</b> line from the <b>example()</b>
+    function, it will cause the web site build to fail, with a brief error
+    message.
+</p>
+
+<p>Example <b>SojuError</b> build error message:</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+soju: the example() function is running now
+parameter error:
+  nodes/soju
+    templates/default.html
+      nodes/soju
+        '&lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;'
+          'oops'
+soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre></p>
+

@@ -1,0 +1,11 @@
+Title: Tags
+Template: tags.html
+Link-Prefix: 
+Link-Suffix: <br>
+
+<p>This page is part of the tag index, that lists all of the tags on the site.</p>
+
+<p><a href="{{node-url:tags}}">(How do tags work?)</a></p>
+
+{{tag-list:*}}
+<br>

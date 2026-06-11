@@ -1,0 +1,43 @@
+Title: {{node-list:*}}
+
+<p>
+    The <b>&lbrace;&lbrace;node-list:*&rbrace;&rbrace;</b> parameter evaluates
+    to a set of HTML links to all the child nodes of the current node.
+</p>
+
+<p>
+    Each link is surrounded by the strings defined in the
+    {{node-link:headers/link-prefix-link-suffix/index}} headers, which default
+    to <i>&lt;p&gt;</i> and <i>&lt;/p&gt;</i>.
+</p>
+
+<p>
+    The links use relative paths starting at the root of the site on generated
+    HTML pages, and canonical URLs on the
+    <a href="{{node-url:generated}}">generated RSS feed</a>.
+</p>
+
+<p>
+    This page is created from a node found at
+    <i>nodes/parameters/node-list/index</i>, which has the following child
+    nodes:
+</p>
+
+<ul>
+    <li><i>nodes/parameters/node-list/a</i></li>
+    <li><i>nodes/parameters/node-list/b</i></li>
+    <li><i>nodes/parameters/node-list/c</i></li>
+</ul>
+
+<p>
+    As a result, on this node, the
+    <b>&lbrace;&lbrace;node-list:*&rbrace;&rbrace;</b> parameter evaluates to:
+</p>
+
+<p><pre>&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/a}}"&gt;{{node-title:parameters/node-list/a}}&lt;a&gt;&lt;p&gt;
+&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/b}}"&gt;{{node-title:parameters/node-list/b}}&lt;a&gt;&lt;p&gt;
+&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/c}}"&gt;{{node-title:parameters/node-list/c}}&lt;a&gt;&lt;p&gt;</pre></p>
+
+<p>And the generated HTML on the page looks like this:</p>
+
+{{node-list:*}}

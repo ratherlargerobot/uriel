@@ -1,0 +1,97 @@
+Title: Flat-URL
+Flat-URL: true
+
+<p>
+    The <b>Flat-URL</b> header influences the URL for a
+    <a href="{{node-url:directories/nodes}}">node</a>.
+</p>
+
+<p>This header can be set to two possible values:</p>
+
+<ul>
+    <li><i><a href="{{node-url:headers/flat-url/true}}">true</a></i></li>
+    <li><i><a href="{{node-url:headers/flat-url/false}}">false</a></i></li>
+</ul>
+
+<p>The default value is <i>false</i>.</p>
+
+<p>
+    By default, the node file path has a direct relationship to its
+    URL in the generated web site. For example, the
+    <i><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/title">nodes/headers/title</a></i>
+    node on this documentation site ends up with a URL of
+    <i><a href="{{node-url:headers/title}}">{{node-url:headers/title}}</a></i>.
+</p>
+
+<p>
+    However, when <b>Flat-URL</b> is set to <i>true</i> on a node, the URL of
+    the generated page is modified. Instead of having a direct correspondence
+    to the node file hierarchy, the node is moved directly up to the top of
+    the URL hierarchy. For example, this page was generated from the
+    <i><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/flat-url/index">nodes/headers/flat-url/index</a></i>
+    node, but since <b>Flat-URL</b> is set to <i>true</i> on this node, the
+    resulting URL is
+    <i><a href="{{node-url:headers/flat-url/index}}">{{node-url:headers/flat-url/index}}</a></i>.
+    Notice how the <i>/headers/</i> portion of the URL has disappeared?
+    (The <i>index</i> portion isn&apos;t part of the URL because it is an index page.)
+</p>
+
+<p>
+    The usual node
+    <a href="{{node-url:headers/index}}">header inheritance rules</a>
+    apply, so once <b>Flat-URL</b> is set to <i>true</i> on a node, all child
+    nodes will inherit that setting as well, unless the header is deleted.
+</p>
+
+<h3>Examples</h3>
+
+<table>
+    <tr>
+        <th>Node</th>
+        <th>URL</th>
+        <th>Flat-URL</th>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/flat-url/index">nodes/headers/flat-url/index</a>
+        </td>
+        <td><a href="{{node-url:headers/flat-url/index}}">{{node-url:headers/flat-url/index}}</a></td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/flat-url/true">nodes/headers/flat-url/true</a>
+        </td>
+        <td><a href="{{node-url:headers/flat-url/true}}">{{node-url:headers/flat-url/true}}</a></td>
+        <td>true</td>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/flat-url/false">nodes/headers/flat-url/false</a>
+        </td>
+        <td><a href="{{node-url:headers/flat-url/false}}">{{node-url:headers/flat-url/false}}</a></td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/title">nodes/headers/title</a>
+        </td>
+        <td><a href="{{node-url:headers/title}}">{{node-url:headers/title}}</a></td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/index">nodes/headers/index</a>
+        </td>
+        <td><a href="{{node-url:headers/index}}">{{node-url:headers/index}}</a></td>
+        <td>false</td>
+    </tr>
+    <tr>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/index">nodes/index</a>
+        </td>
+        <td><a href="{{node-url:index}}">{{node-url:index}}</a></td>
+        <td>false</td>
+    </tr>
+</table>
+

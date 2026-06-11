@@ -1,0 +1,14 @@
+Title: RSS-Include: true
+
+<p>
+    This node does not have an <b>RSS-Include</b> header defined directly.
+    However, it inherited a <i>true</i> value for this header from its
+    <a href="{{node-url:headers/rss-include/index}}">parent node</a>.
+</p>
+
+<p>
+    As a result, it is eligible for inclusion in the
+    generated RSS feed (<a href="{{rss:url}}">{{rss:url}}</a>).
+</p>
+
+<p>Compare this with {{node-link:headers/rss-include/false}}</p>

@@ -1,0 +1,48 @@
+Title: static
+Tags: static, robots-txt
+
+<p>
+    The <b>static</b> directory is copied directly into the
+    {{node-link:directories/public}} directory containing your finished web
+    site.
+</p>
+
+<p>
+    If you want any static files to appear in your finished web site, simply
+    put them in the <b>static</b> directory, and they will show up in the
+    corresponding location in the <b>public</b> directory after your site
+    is generated.
+</p>
+
+<p>
+    For example, this documentation site has a <i>static/foo.jpg</i> file.
+    When the site is built, this file is copied into <i>public/foo.jpg</i>.
+</p>
+
+<p>
+    The <b>static</b> directory is where you want to put images, style
+    sheets, JavaScript files, downloadable content, etc.
+</p>
+
+<p>
+    If a file is created dynamically by Uriel, but is also included in the
+    <b>static</b> directory, the static version will end up overriding the
+    dynamically-created version in the <b>public</b> directory when the
+    site is generated. This can be useful if you need to override something
+    like the generated <a href="{{node-url:generated}}">robots.txt</a> file.
+</p>
+
+<p>
+    If you want to link to static files from the web site, the most reliable
+    way to do this is to use the {{node-link:parameters/static-url}}
+    substitution parameter. This parameter will reference the static files
+    in a way that also verifies that the expected path exists at build time.
+</p>
+
+<p>
+    There is also a {{node-link:parameters/static-hash-url}} parameter that
+    works in a similar fashion, except that it copies the files to unique
+    file names. This offers some additional benefits when working with CSS and
+    JavaScript files.
+</p>
+

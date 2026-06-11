@@ -1,0 +1,46 @@
+Title: Project Directories
+
+<p>
+    When you
+    <a href="{{node-url:quickstart}}">create a project with Uriel</a>,
+    a new project directory is created, with the following subdirectories
+    inside:
+</p>
+
+<table>
+    <tr>
+        <th>Directory</th>
+        <th>Notes</th>
+    </tr>
+    <tr>
+        <td>{{node-link:directories/templates}}</td>
+        <td>Templates to merge with dynamic content nodes</td>
+    </tr>
+    <tr>
+        <td>{{node-link:directories/nodes}}</td>
+        <td>Dynamic content nodes to merge with templates</td>
+    </tr>
+    <tr>
+        <td>{{node-link:directories/lib}}</td>
+        <td>
+            User-defined Python code
+            (<a href="{{node-url:soju}}">soju.py</a>,
+             <a href="{{node-url:handlers}}">handlers.py</a>)
+        </td>
+    </tr>
+    <tr>
+        <td>{{node-link:directories/static}}</td>
+        <td>Static content to copy to the web site unmodified</td>
+    </tr>
+    <tr>
+        <td>{{node-link:directories/public}}</td>
+        <td>Rendered web site</td>
+    </tr>
+</table>
+
+<p>
+    Generally speaking, elements of the first four directories are combined
+    into a finished, rendered web site in the {{node-link:directories/public}}
+    directory.
+</p>
+

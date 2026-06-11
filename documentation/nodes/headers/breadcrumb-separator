@@ -1,0 +1,34 @@
+Title: Breadcrumb-Separator
+Tags: headers, breadcrumbs
+Breadcrumb-Separator: /
+
+<p>
+    Breadcrumbs are a navigation element that shows where you are in the
+    context of a web site. You can see them at the very top of this page.
+</p>
+
+<p>
+    <b>Breadcrumb-Separator</b> sets the separator string used by the
+    {{node-link:parameters/breadcrumbs}} substitution parameter.
+</p>
+
+<p>
+    The default value is <i>&amp;raquo;</i> which looks like this when
+    rendered in HTML: &raquo;
+</p>
+
+<p>
+    Notice how on this page, the navigation breadcrumbs at the top of the page
+    use a slash as a separator, unlike every other page on this site? This is
+    because the <b>Breadcrumb-Separator</b> header has been set to <i>/</i>
+    on the <a href="{{node-url:directories/nodes}}">content node</a> for this
+    page.
+</p>
+
+<p>
+    This header is closely related to the
+    {{node-link:headers/breadcrumb-separator-spaces/index}} parameter, which
+    controls whether spaces will be added on either side of the breadcrumb
+    separator.
+</p>
+

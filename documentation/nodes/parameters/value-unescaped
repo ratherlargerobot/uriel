@@ -1,0 +1,65 @@
+Title: {{value-unescaped:foo}}
+Foo: <i>Foo Header Value</i>
+
+<p>
+    The <b>&lbrace;&lbrace;value-unescaped:foo&rbrace;&rbrace;</b>
+    substitution parameter evaluates to the value of the header referenced by
+    its rvalue.
+</p>
+
+<p>
+    However, unlike the {{node-link:parameters/value}} parameter, the
+    <b>&lbrace;&lbrace;value-unescaped:foo&rbrace;&rbrace;</b> parameter does
+    not perform any HTML escaping.
+</p>
+
+<p>
+    For example, this node has a <b>Foo</b> header defined like this:
+</p>
+
+<p><pre>Foo: &lt;i&gt;Foo Header Value&lt;/i&gt;</pre></pre>
+
+<p>
+    If we used the <b>&lbrace;&lbrace;value:foo&rbrace;&rbrace;</b>
+    parameter on this page, it will be replaced with the HTML escaped value of
+    the header when the page is rendered.
+</p>
+
+<p>
+    This is the HTML escaped value of the <i>Foo</i> header:
+    <b>{{value:foo}}</b>
+</p>
+
+<p>
+    However, if we use the
+    <b>&lbrace;&lbrace;value-unescaped:foo&rbrace;&rbrace;</b> parameter
+    instead, the HTML tags in the value will be passed directly through,
+    causing the text to display in italic:
+</p>
+
+<p>
+    This is the unescaped value of the <i>Foo</i> header:
+    <b>{{value-unescaped:foo}}</b>
+</p>
+
+<h3>HTML Escaping</h3>
+
+<p>
+    When the HTML pages are rendered, the value of the
+    <b>&lbrace;&lbrace;value-unescaped:foo&rbrace;&rbrace;</b> parameter will
+    not be HTML escaped.
+</p>
+
+<p>
+    There is also another variant of this parameter,
+    {{node-link:parameters/value}}, which works identically, except that the
+    values are HTML escaped.
+</p>
+
+<p>
+    Generally, you probably want HTML escaping most of the time, unless you
+    have a compelling reason to intentionally bypass it.
+</p>
+
+{{include:header-parameter-naming-convention.html}}
+

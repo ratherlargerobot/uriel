@@ -1,0 +1,419 @@
+Title: Node Classes
+
+<p>
+    The <b>Node</b> family of classes represent
+    <a href="{{node-url:directories/nodes}}">nodes</a> as Python objects.
+</p>
+
+<p>
+    There are three <b>Node</b> classes, with a parent/child relationship:
+</p>
+
+<ul>
+    <li>
+        <b>Node</b> - all methods implemented here, do not instantiate directly
+    </li>
+    <ul>
+        <li><b>FileNode</b> - turns a node file into a <b>Node</b> instance</li>
+        <li><b>VirtualNode</b> - creates a <b>Node</b> not backed by a node file
+    </ul>
+</ul>
+
+<p>
+    These classes are all defined in the
+    <a href="https://github.com/ratherlargerobot/uriel/blob/main/uriel">Uriel source code</a>.
+</p>
+
+<h3>Working With Nodes</h3>
+
+<p>
+    There are two places where you can encounter <b>Node</b> instances:
+</p>
+
+<ul>
+    <li><a href="{{node-url:soju}}">lib/soju.py</a></li>
+    <li><a href="{{node-url:handlers}}">lib/handlers.py</a></li>
+</ul>
+
+<p>
+    Each <a href="{{node-url:parameters/soju-hello-world}}">Soju function</a>
+    is capable of accepting a <i>node</i> argument as input, which represents
+    the current node. You can call any of the <b>Node</b> methods on it.
+</p>
+
+<p>
+    Most of the <a href="{{node-url:handlers}}">Handler functions</a> accept a
+    <i>root_node</i> parameter, which represents the root node. You can call
+    any of the <b>Node</b> methods on it.
+</p>
+
+<p>
+    The <b>Node</b>, <b>FileNode</b>, and <b>VirtualNode</b> symbols are also
+    imported into the
+    <a href="{{node-url:handlers}}">lib/handlers.py</a> module automatically.
+</p>
+
+<p>
+    See the {{node-link:soju}} and {{node-link:handlers}} sections for more
+    details on how to work with <b>Node</b> instances within those contexts.
+</p>
+
+<h3>Creating Your Own Nodes</h3>
+
+<p>
+    If you want to create your own nodes dynamically, creating one or more
+    <b>VirtualNode</b> instances in the
+    <a href="{{node-url:handlers}}">before_render_node_tree(project_root, root_node)</a>
+    method of <a href="{{node-url:handlers}}">lib/handlers.py</a> is probably
+    the best place to start.
+</p>
+
+<p>
+    If you want to create a <b>Node</b> instance, do not instantiate it
+    directly.
+</p>
+
+<ul>
+    <li>
+        Instantiate a <b>FileNode</b> if you want to load a node file into a
+        <b>Node</b> instance. Uriel already does this for each node file, so
+        you probably just need to find the node you want.
+    </li>
+    <li>
+        Instantiate a <b>VirtualNode</b> if you want to create a <b>Node</b>
+        instance that is not backed by a node file. This is how you create
+        your own nodes dynamically from a user-defined
+        <a href="{{node-url:handlers}}">handler</a>.
+    </li>
+</ul>
+
+<h3>VirtualNode Constructor Reference</h3>
+
+<p><pre>class <b>VirtualNode</b>(Node):
+    """
+    Represents a virtual node, not backed by a file.
+
+    To use this class:
+      - call set_body() to set the node body (which will be merged with
+        template later)
+      - set headers (although it inherits headers from the parent node)
+      - add children (if necessary)
+
+    """
+
+    <b>def __init__(self,
+                 project_root: str,
+                 path: str,
+                 parent_node: Optional[Node] = None) -> None:</b>
+
+        """
+        Accepts the project root directory.
+
+        Accepts the path (as a subdirectory of the node root).
+
+        Optionally accepts a parent Node instance.
+
+        """</pre></p>
+
+<p>
+    See the {{node-link:handlers}} section for examples of how to use
+    <b>VirtualNode</b> from a handler function.
+</p>
+
+<h3>Node Method Reference</h3>
+
+
+<p>
+    The following is a curated list of <b>Node</b> methods that are likely to
+    be useful when creating a web site.
+</p>
+
+<p>
+    Take a look at the very bottom of this page to see the results of some of
+    these methods when they are called on the node for this page on the
+    documentation web site.
+</p>
+
+<p><pre><b>get_parent_node(self) -> Optional["Node"]</b>
+
+Get the parent Node, or None if this is the root.</pre></p>
+
+
+<p><pre><b>get_path(self) -> str</b>
+
+Get the node path (e.g. "index", "foo/bar").</pre></p>
+
+
+<p><pre><b>get_node_type(self) -> str</b>
+
+Get the Node type as a string (e.g. "file", "virtual").</pre></p>
+
+
+<p><pre><b>add_child(self, node: "Node") -> None</b>
+
+Add the given Node as a child of this Node.</pre></p>
+
+
+<p><pre><b>get_children(self) -> List["Node"]</b>
+
+Get a list of child Node entries immediately under this Node.</pre></p>
+
+
+<p><pre><b>get_url(self) -> str</b>
+
+Get the URL path for this Node.
+
+URL paths are relative to the root of the site.
+
+Example URL paths:
+    /
+    /foo/
+    /foo/bar/
+
+This method is the authoritative source of where a node will be
+placed in the rendered files.
+
+This method never returns canonical URLs, only URL paths.</pre></p>
+
+
+<p><pre><b>get_canonical_url(self) -> str</b>
+
+Get the canonical URL for this Node.
+
+This method only returns canonical URLs. If the Canonical-URL header
+is not set, it will raise an error.</pre></p>
+
+
+<p><pre><b>get_name(self) -> str</b>
+
+Get the name of this Node (e.g. "index", "bar").
+
+This is generally the most specific dirent from the URL path. For example, a
+node with a node path of "foo/index" and a URL path of "/foo/" will have a
+node name of "foo".
+
+As a special case, the name of the top-level index node is "index".</pre></p>
+
+
+<p><pre><b>get_display_name(self) -> str</b>
+
+Get the display name of the node.
+
+This is constructed from the base node name, but is formatted to be
+more human readable. For example, if the base node name is
+"hello-world", then this method will return "Hello World".
+
+It is used as a fallback plan in case a Title header is not set.</pre></p>
+
+
+<p><pre><b>get_title(self) -> str</b>
+
+Get the title of the node, as set by the Title header.
+
+If that doesn't work, fall back on using the node display name.</pre></p>
+
+
+<p><pre><b>get_escaped_title(self) -> str</b>
+
+Get the escaped title of the node, as set by the Title header.
+
+If the Escape-Title: false header is set, return the Title
+without escaping.
+
+If that doesn't work, fall back on using the node display name.</pre></p>
+
+
+<p><pre><b>get_link(self) -> str</b>
+
+Get a link to this node, using its title as the link text.
+
+This method never returns canonical URL links.</pre></p>
+
+
+<p><pre><b>get_canonical_link(self) -> str</b>
+
+Get a canonical link to this node, using its title as the link text.
+
+This method only returns canonical URL links. If the Canonical-URL
+header is not set, it will raise an error.</pre></p>
+
+
+<p><pre><b>get_link_prefix(self) -> str</b>
+
+Get the HTML prefix to use in generated lists of links.
+
+Returns the unescaped value of the Link-Prefix header,
+or a default of &lt;p&gt;</pre></p>
+
+
+<p><pre><b>get_link_suffix(self) -> str</b>
+
+Get the HTML suffix to use in generated lists of links.
+
+Returns the unescaped value of the Link-Suffix header,
+or a default of &lt;/p&gt;</pre></p>
+
+
+<p><pre><b>get_tags(self) -> List[str]</b>
+
+Get the list of tags associated with this Node.
+
+Returns a list of tags.</pre></p>
+
+
+<p><pre><b>get_dest_dir(self) -> str</b>
+
+Get the destination directory in the public website that will
+contain this page.</pre></p>
+
+
+<p><pre><b>get_dest_file(self) -> str</b>
+
+Get the destination file in the public website that will
+contain this page.</pre></p>
+
+
+<p><pre><b>get_boolean_header_value(self, header: str, default: bool) -> bool</b>
+
+Get the boolean value for a header as True or False.
+
+For example, if the value of the header is "true", then this method
+will return True.
+
+If the header is not set, return the provided default value.
+
+Raises an UrielError if any other value is found.</pre></p>
+
+
+<p><pre><b>get_breadcrumb_separator(self) -> str</b>
+
+Get the unescaped breadcrumb separator for this node, possibly
+surrounded by spaces.
+ 
+If the Breadcrumb-Separator header is not set, then "&amp;raquo;"
+is used as the default value.
+
+If the Breadcrumb-Separator-Spaces header is not explicitly set to
+"false", then the return value will contain a space before and after
+the breadcrumb separator.
+
+The default return value, if neither of these headers are set, is
+" &amp;raquo; "</pre></p>
+
+
+<p><pre><b>find_node_by_path(self,
+                  path:str,
+                  raise_exceptions: bool = True) -> Optional["Node"]</b>
+
+Find the Node that matches the given node path.
+
+Returns the given node.
+
+Raises a UrielError if the node can not be found.
+
+If the optional raise_exceptions parameter is set to False,
+then instead of raising an exception, it will return None instead.</pre></p>
+
+
+<p><pre><b>get_root_node(self) -> "Node"</b>
+
+Get the root Node.</pre></p>
+
+
+<p><pre><b>get_tag_node(self) -> Optional["Node"]</b>
+
+Get the tag node, by looking at the value of the Tag-Node header,
+and then returning the matching node.
+
+There is only one tag node, and the Tag-Node header should only be
+set on the root node.
+
+Returns the tag node, or None if the tag node is not configured.
+
+Raises a UrielError if the tag node is configured, but can not be
+found.</pre></p>
+
+
+<p><pre><b>get_tag_node_index(self) -> Dict[str, Set["Node"]]</b>
+
+Get the tag node index.
+
+The tag node index is a dict of tags, with sets of Node as values.
+
+Returns the tag node index, or raises a UrielError if the tag node
+index has not already been created.</pre></p>
+
+
+<p><pre><b>get_vnode_for_tag(self, tag: str) -> Optional["Node"]</b>
+
+Get the virtual node that represents the given tag
+(e.g. the node for /tag/$SOME_TAG/)</pre></p>
+
+
+<p><pre><b>get_body(self) -> Optional[str]</b>
+
+Get the unrendered Node body as a multi-line string.</pre></p>
+
+
+<p><pre><b>get_rendered_body(self) -> Optional[str]</b>
+
+Get the rendered Node body as a multi-line string.</pre></p>
+
+
+<p><pre><b>set_body(self, body: Optional[str]) -> None</b>
+
+Set the unrendered Node body. Accepts a multi-line string.</pre></p>
+
+
+<p><pre><b>set_rendered_body(self, rendered_body: Optional[str]) -> None</b>
+
+Replace the contents of the Node body (e.g. with a rendered version).</pre></p>
+
+
+<p><pre><b>has_header(self, header: str) -> bool</b>
+
+Does the given header exist on this node?
+
+Inside the program, headers should all be lowercase.</pre></p>
+
+
+<p><pre><b>get_header(self, header: str) -> str</b>
+
+Get the value associated with the given header.
+
+Inside the program, headers should all be lowercase.</pre></p>
+
+
+<p><pre><b>set_header(self, header: str, value: str) -> None</b>
+
+Set the given header to the specified value.
+
+Inside the program, headers should all be lowercase.</pre></p>
+
+
+<p><pre><b>delete_header(self, header: str) -> None</b>
+
+Delete the given header.
+
+Inside the program, headers should all be lowercase.</pre></p>
+
+
+<p><pre><b>get_header_keys(self) -> List[str]</b>
+
+Get each of the headers for this node.</pre></p>
+
+
+<p><pre><b>get_header_key_values(self) -> List[Tuple[str, str]]</b>
+
+Get each key/value element of the headers and their values,
+as a list of two-element tuples.</pre></p>
+
+
+<p><pre><b>get_datetime_from_date_str(self, date_str: str) -> datetime.datetime</b>
+
+Get a datetime.datetime instance from the provided date string.
+
+The date string must be in the ISO 8601 date format.
+
+Raises a UrielError if the date string conversion fails.</pre></p>
+

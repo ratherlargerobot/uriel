@@ -1,0 +1,121 @@
+Title: RSS, Sitemap, robots.txt
+Tags: rss, sitemap, robots-txt, headers, parameters, static, root-node
+
+<h3>Additional Generated Files</h3>
+
+<table>
+    <tr>
+        <th>Resource</th>
+        <th>URL</th>
+        <th>Project File</th>
+    </tr>
+    <tr>
+        <td>RSS</td>
+        <td><a href="{{value:rss-url}}">{{value:rss-url}}</a></td>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public{{value:rss-url}}">public{{value:rss-url}}</a></td>
+    </tr>
+    <tr>
+        <td>Sitemap</td>
+        <td><a href="{{value:sitemap-url}}">{{value:sitemap-url}}</a></td>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public{{value:sitemap-url}}">public{{value:sitemap-url}}</a></td>
+    </tr>
+    <tr>
+        <td>robots.txt</td>
+        <td><a href="/robots.txt">/robots.txt</a></td>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public/robots.txt">public/robots.txt</a></td>
+    </tr>
+</table>
+
+<h3>RSS</h3>
+
+<p>Uriel can be configured to generate an RSS feed.</p>
+
+<p>In order to generate an RSS feed, the following conditions must be met:</p>
+
+<ul>
+    <li>
+        {{node-link:headers/canonical-url}} must be set on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+    <li>
+        {{node-link:headers/rss-url}} must be set on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+    <li>
+        {{node-link:headers/rss-description}} must be set on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+</ul>
+
+<p>
+    In order for a node to be eligible for inclusion in the RSS feed, it must
+    have the {{node-link:headers/rss-include/index}} header set to
+    <i>true</i>.
+</p>
+
+<p>
+    There are also a number of other
+    <a href="{{node-url:headers/index}}">additional RSS headers</a> that can
+    optionally be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to customize the
+    RSS feed.
+</p>
+
+<p>
+    The RSS URL can be referenced in templates using the
+    {{node-link:parameters/rss-url}} substitution parameter.
+</p>
+
+<p>
+    The nodes that are eligible for inclusion in the RSS feed will be sorted
+    according to the <a href="{{node-url:directories/nodes}}">node sorting
+    rules</a>. This sorting prioritizes listing the latest content in the
+    RSS feed, and including up to the maximum number of RSS entries defined
+    by {{node-link:headers/rss-max-entries}}.
+</p>
+
+<h3>Sitemap</h3>
+
+<p>Uriel can be configured to generate a sitemap XML file.</p>
+
+<p>In order to generate a sitemap, the following conditions must be met:</p>
+
+<ul>
+    <li>
+        {{node-link:headers/canonical-url}} must be set on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+    <li>
+        {{node-link:headers/sitemap-url}} must be set on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+</ul>
+
+<p>
+    Every node will be included in the sitemap by default. To exclude a node
+    from the sitemap, set the {{node-link:headers/sitemap-include/index}}
+    header to <i>false</i> on that node. The usual header inheritance rules
+    apply.
+</p>
+
+<h3>robots.txt</h3>
+
+<p>
+    Uriel will automatically create an extremely minimal <i>robots.txt</i>
+    file if it is configured to create a sitemap. This <i>robots.txt</i> file
+    will be just enough to publish the location of the <i>sitemap.xml</i>
+    file, and nothing more.
+</p>
+
+<p>
+    If you need more control over your <i>robots.txt</i> file, create your own
+    custom <i>static/robots.txt</i> file in the project. If you like, you can
+    copy the generated file from <i>public/robots.txt</i> to
+    <i>static/robots.txt</i> as a starting point.
+</p>
+
+<p>
+    If a <i>static/robots.txt</i> file is present, Uriel will use your
+    customized file when it builds the site, instead of generating its own.
+</p>
+

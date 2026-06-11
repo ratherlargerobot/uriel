@@ -1,0 +1,26 @@
+Title: {{node-link:foo/bar}}
+
+<p>
+    The <b>&lbrace;&lbrace;node-link:foo/bar&rbrace;&rbrace;</b> parameter
+    evaluates to an HTML link to the node referenced in the rvalue portion
+    of the parameter, with the HTML escaped title of the referenced node as
+    the text.
+</p>
+
+<p>
+    For example, we have a node on this documentation site with the path
+    <i>parameters/some-other-node</i>. If we use that node as the rvalue
+    portion of the parameter using
+    <b>&lbrace;&lbrace;node-link:parameters/some-other-node&rbrace;&rbrace;</b>,
+    the parameter evaluates to:
+</p>
+
+<p><pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre></p>
+
+<p>And the actual HTML on the page looks like this: {{node-link:parameters/some-other-node}}</a>
+
+<p>
+    Compare this with the {{node-link:parameters/node-link}} parameter, which
+    evaluates to a link to the current node.
+</p>
+

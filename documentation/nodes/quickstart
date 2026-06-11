@@ -1,0 +1,277 @@
+Title: Quick Start
+
+<h3>Download Uriel</h3>
+
+<p>
+    Download and install the latest version of
+    <a href="https://uriel.foo/">Uriel</a>.
+</p>
+
+<p>
+    This documentation shows how to download and install Uriel version
+    {{soju:uriel_version()}}:
+</p>
+
+<p><pre>curl -O https://uriel.foo/downloads/uriel-{{soju:uriel_version()}}.tar.gz
+tar -xzvf uriel-{{soju:uriel_version()}}.tar.gz
+cd uriel-{{soju:uriel_version()}}/</pre></p>
+
+<h3>Install Uriel</h3>
+
+<p>
+    Uriel is a single, standalone Python script. You don&apos;t actually have
+    to install it at all.
+<p>
+    If you would like to install the <b>uriel</b> program, along with a man
+    page, run:
+</p>
+
+<p><pre>sudo make install</pre></p>
+
+<p>
+    As an alternative, you can copy the <b>uriel</b> script anywhere you want,
+    and run it from whatever path you choose.
+</p>
+
+<h3>Create a New Project</h3>
+
+<p>
+    The example commands will assume that you have installed <b>uriel</b>, so
+    that the script is in your <i>$PATH</i>. If you are using the script
+    without installing it, adjust the commands you run accordingly.
+</p>
+
+<p>
+    To create a new project, simply run the <b>uriel</b> program, and pass
+    the path to the new directory it should create for the project. If you
+    want it to create the project under the current directory, then this
+    argument will simply be the directory name for the new project.
+</p>
+
+<p>
+    For example, let&apos;s create a new project called
+    <b>my-first-project</b>:
+</p>
+
+<p><pre>uriel my-first-project</pre></p>
+
+<p>
+    You should see the following output from this command:
+</p>
+
+<p><pre>creating 'my-first-project'
+creating 'my-first-project/nodes'
+creating 'my-first-project/templates'
+creating 'my-first-project/static'
+creating 'my-first-project/lib'
+copying 'my-first-project/static' to 'my-first-project/public', overwriting previous contents
+creating 'my-first-project/templates/default.html'
+creating 'my-first-project/nodes/index'
+creating 'my-first-project/lib/soju.py'
+creating 'my-first-project/lib/handlers.py'
+creating 'my-first-project/Makefile'
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+creating pages in 'my-first-project/public' from nodes and templates
+--------+-------+----
+type    | node  | url
+--------+-------+----
+file    | index | /
+--------+-------+----
+created 1 page (1 file, 0 virtual)
+copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
+
+<p>Your new project contains the following files and directories:</p>
+
+<p><pre>
+<a href="{{node-url:directories/index}}">my-first-project</a>
+├── <a href="{{node-url:directories/lib}}">lib</a>
+│   ├── <a href="{{node-url:handlers}}">handlers.py</a>
+│   └── <a href="{{node-url:soju}}">soju.py</a>
+├── Makefile
+├── <a href="{{node-url:directories/nodes}}">nodes</a>
+│   └── index
+├── <a href="{{node-url:directories/public}}">public</a>
+│   └── index.html
+├── <a href="{{node-url:directories/static}}">static</a>
+└── <a href="{{node-url:directories/templates}}">templates</a>
+    └── default.html</pre></p>
+
+<p>
+    The links above take you to the relevant Uriel documentation for each
+    respective part of the project.
+</p>
+
+<h3>Building the Project</h3>
+
+<p>
+    Now that you have a new project, let&apos;s see how to build it, so that
+    you can start experimenting and making changes.
+</p>
+
+<p>
+    When you first created this project, <b>uriel</b> already built the
+    project.
+</p>
+
+<p>
+    To build the project again, simply call the <b>uriel</b> program again,
+    with your project directory as an argument.
+</p>
+
+<p>
+    The <b>uriel</b> program is invoked the same way to create a new project,
+    or to build an existing project. The only difference is whether the
+    directory already exists or not.
+</p>
+
+<p>
+    In fact, this is the only way to invoke the <b>uriel</b> command at all.
+    It doesn&apos;t have any other command-line flags. This is it.
+</p>
+
+<p>
+    If you are in your project root directory, you can use a dot as an
+    argument to indicate the current directory:
+</p>
+
+<p><pre>uriel .</pre></p>
+
+<h3>Using the Makefile (Optional)</h3>
+
+<p>
+    The <b>uriel</b> command itself does not have any dependencies besides
+    the <b>python3</b> interpreter.
+</p>
+
+<p>
+    As an optional convenience, <b>uriel</b> creates a <i>Makefile</i> when
+    you first create a new project. If you have the <b>make</b> command
+    installed, you can optionally use it to build your web site.
+</p>
+
+<p>
+    While in your project directory, simply run:
+</p>
+
+<p><pre>make</pre></p>
+
+<p>
+    If you have <b>make</b> installed, this will run the <b>uriel</b>
+    command, with your project directory as an argument, and rebuild your
+    site.
+</p>
+
+<p>
+    When the <i>Makefile</i> is first created, the <i>URIEL</i> variable
+    that points to the <b>uriel</b> command is set to the path where the
+    <b>uriel</b> program was when you ran it. If you move the <b>uriel</b>
+    script away from the location where it was when you created the project,
+    then <b>make</b> will no longer be able to find it.
+</p>
+
+<p>
+    Therefore, you are encouraged to update the <i>URIEL</i> path in the
+    <i>Makefile</i> accordingly.
+</p>
+
+<p>
+    If you don&apos;t want to install <b>uriel</b>, another option is to
+    simply copy it into your project, so it stays with the project.
+    For example:
+</p>
+
+<p><pre>cd my-first-project
+mkdir bin
+cp /path/to/the/uriel/script bin/
+
+# edit Makefile to set URIEL=bin/uriel</pre></p>
+
+<p>
+    This is the most portable option. Your web site project directory will
+    contain the tools to build itself.
+</p>
+
+<h3>Previewing Your Web Site</h3>
+
+<p>
+    The web sites that Uriel generates are intended to be viewed through a web
+    server. Fortunately, Python comes with a built-in web server.
+
+    The following shell commands show how to start the Python web server to
+    preview your web site:
+</p>
+
+<p><pre># change into the project directory for your web site
+# (in this case, this documentation site)
+cd documentation/
+
+# change into the public directory (within your project)
+cd public/
+
+# run the built-in Python web server
+python3 -m http.server</pre></p>
+
+<p>
+    This will start a built-in Python web server on port 8000. You can now
+    preview your site using the following link:
+    <a href="http://localhost:8000/">http://localhost:8000/</a>
+</p>
+
+<p>
+    If you have <b>make</b> installed, you can also use the <i>preview</i> target
+    that comes with the <i>Makefile</i> Uriel created for your project:
+
+<p><pre>make preview</pre></p>
+
+<h3>Publish Your Web Site</h3>
+
+<p>
+    The {{node-link:directories/public}} directory contains your generated
+    web site.
+</p>
+
+<p>
+    You have a lot of options when it comes to hosting a static web site.
+    Almost any possible web hosting service should work.
+</p>
+
+<p>
+    Your web hosting service will need to be configured to treat
+    <i>index.html</i> files as directory indexes. This is already the default
+    pretty much everywhere. If your hosting provider does not do this already,
+    then you&apos;ll need to figure out how to enable that with your provider.
+</p>
+
+<p>
+    If you are using <b>make</b> to build your web site, consider adding a
+    <i>publish</i> target to the <i>Makefile</i> in your project. That way, you
+    can upload changes to your web site with a single command that stays with
+    your project. 
+</p>
+
+<h3>Building the Documentation Project</h3>
+
+<p>
+    The documentation you are reading is generated from a Uriel project.
+    The <i>documentation</i> directory from the Uriel source code is the
+    Uriel project that was used to generate the web site you are reading now.
+</p>
+
+<p>
+    The <i>documentation</i> example project also demonstrates the use of
+    most of the features Uriel has to offer.
+</p>
+
+<p>
+    To build the documentation site, simply navigate to the
+    <i>documentation</i> subdirectory of the Uriel source code distribution,
+    and build it in the same way that you would build any other Uriel project.
+    For example:
+</p>
+
+<p><pre>cd uriel-{{soju:uriel_version()}}/documentation/
+make</pre></p>
+

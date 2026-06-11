@@ -1,0 +1,21 @@
+Title: Uriel API
+
+<p>
+    Selected portions of the Uriel API that are especially likely to be useful
+    when called from
+    <a href="{{node-url:directories/lib}}">user-defined Python code</a>.
+</p>
+
+<p>
+    For the full documentation, see the well-commented
+    <a href="https://github.com/ratherlargerobot/uriel/blob/main/uriel">source code</a>
+    for the Uriel program.
+</p>
+
+<p><a href="{{node-url:uriel/node}}">Node Classes</a></p>
+
+<p><a href="{{node-url:uriel/functions}}">Functions</a></p>
+
+<p><a href="{{node-url:uriel/constants}}">Constants</a></p>
+
+<p><a href="{{node-url:uriel/exceptions}}">Exceptions</a></p>

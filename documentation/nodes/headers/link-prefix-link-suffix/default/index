@@ -1,0 +1,21 @@
+Title: Link-Prefix / Link-Suffix (default)
+
+<p>
+    This page does not have the
+    {{node-link:headers/link-prefix-link-suffix/index}}
+    headers set, and is using the default values.
+</p>
+
+<p>
+    Notice how the {{node-link:parameters/node-list/index}} parameter below
+    is rendered with <i>&lt;p&gt;</i> and <i>&lt;/p&gt;</i> tags around
+    each <a href="{{node-url:directories/nodes}}">child node</a>?
+</p>
+
+{{node-list:*}}
+
+<p>
+    Compare this with the
+    {{node-link:headers/link-prefix-link-suffix/custom/index}} page.
+</p>
+

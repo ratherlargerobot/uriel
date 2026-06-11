@@ -1,0 +1,20 @@
+Title: RSS-Include: false
+RSS-Include: false
+
+<p>
+    This node has an <b>RSS-Include</b> header value of <i>false</i>.
+</p>
+
+<p>
+    As a result, it is not eligible for inclusion in the
+    generated RSS feed (<a href="{{rss:url}}">{{rss:url}}</a>).
+</p>
+
+<p>
+    Most other nodes on this documentation site don&apos;t have the
+    <b>RSS-Include</b> header set at all. As a result, they have the
+    implicit default value of <i>false</i>, and are also not eligible
+    for inclusion in the generated RSS feed.
+</p>
+
+<p>Compare this with {{node-link:headers/rss-include/true}}</p>

@@ -1,0 +1,116 @@
+Title: Substitution Parameters
+Tags: parameters
+++-Tags: *
+
+<p>
+    Substitution parameters can be used in content
+    <a href="{{node-url:directories/nodes}}">nodes</a> and HTML
+    <a href="{{node-url:directories/templates}}">templates</a>.
+</p>
+
+<p>
+    When a substitution parameter is encountered, it will be replaced with
+    its value during web site rendering.
+</p>
+
+<table>
+    <tr>
+        <th>Parameter</th>
+        <th>Notes</th>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-body}}</td>
+        <td>Entire node body contents</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/include}}</td>
+        <td>include:path/to/template.html</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/value}}</td>
+        <td>rvalue is &lt;lowercase-header-name&gt;</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/value-unescaped}}</td>
+        <td>rvalue is &lt;lowercase-header-name&gt;</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/breadcrumbs}}</td>
+        <td>HTML navigation breadcrumbs</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/breadcrumbs-root}}</td>
+        <td>Breadcrumbs (including root node)</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/created}}</td>
+        <td>
+            man
+            <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+        </td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/modified}}</td>
+        <td>
+            man
+            <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+        </td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/static-url}}</td>
+        <td>a.jpg, i/a.jpg, /a.jpg</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/static-hash-url}}</td>
+        <td>a.css, c/a.css, /a.css</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/rss-url}}</td>
+        <td>Canonical RSS URL</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-url}}</td>
+        <td>Node URL</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-name}}</td>
+        <td>Node name (e.g. index, bar)</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-title}}</td>
+        <td>Node title</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-link}}</td>
+        <td>&lt;a href=&quot;/node-url/&quot;&gt;Node Title&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-url-some-other-node}}</td>
+        <td>Node URL for the <i>foo/bar</i> node</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-name-some-other-node}}</td>
+        <td>Node name for the <i>foo/bar</i> node</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-title-some-other-node}}</td>
+        <td>Node title for the <i>foo/bar</i> node</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-link-some-other-node}}</td>
+        <td>Node link for the <i>foo/bar</i> node</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/node-list/index}}</td>
+        <td>Links to child nodes</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/tag-list}}</td>
+        <td>Links to relevant tags</td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/soju-hello-world}}</td>
+        <td>See <a href="{{node-url:soju}}">lib/soju.py</a></td>
+    </tr>
+</table>
+

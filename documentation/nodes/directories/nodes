@@ -1,0 +1,200 @@
+Title: nodes
+Tags: root-node
+
+<p>
+    The <b>nodes</b> directory contains content nodes that can be combined
+    with {{node-link:directories/templates}}.
+</p>
+
+<p>
+    When Uriel builds your web site, it combines the nodes and templates
+    together to create rendered pages in the
+    {{node-link:directories/public}} directory containing your finished web
+    site.
+</p>
+
+<p>
+    Each node is stored in a file in the <b>nodes</b> directory of your
+    project, and will result in one corresponding page being generated in the
+    {{node-link:directories/public}} directory when the site is generated.
+</p>
+
+<p>
+    The nodes form a tree structure that has a direct correspondence to the
+    URL structure of the generated web site.
+</p>
+
+<p>
+    The first node in a directory must always be named <i>index</i>. This is
+    the index node. Additional nodes can be added to that directory, and they
+    will be children of the index node. Subdirectories can also be added, but
+    each subdirectory must at least have its own index node.
+</p>
+
+<p>
+    An example will make this clearer. Here is a selection of some of the
+    nodes from this documentation site, along with their URL paths on the
+    rendered web site. All node paths are under the <b>nodes</b> directory,
+    and all URL paths are under the {{node-link:directories/public}}
+    directory.
+</p>
+
+<table>
+    <tr>
+        <th>Node</th>
+        <th>URL</th>
+        <th>Comments</th>
+    </tr>
+    <tr>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/index">index</a></td>
+        <td><a href="{{node-url:index}}">{{node-url:index}}</a></td>
+        <td>Root Node</td>
+    </tr>
+    <tr>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/directories/index">directories/index</a></td>
+        <td><a href="{{node-url:directories/index}}">{{node-url:directories/index}}</a></td>
+        <td></td>
+    </tr>
+    <tr>
+        <td><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/directories/nodes">directories/nodes</a></td>
+        <td><a href="{{node-url:directories/nodes}}">{{node-url:directories/nodes}}</a></td>
+        <td></td>
+    </tr>
+</table>
+
+<h3>Root Node</h3>
+
+<p>
+    The root node is simply the node at the very top of the site. It is the
+    <i>nodes/index</i> file, as shown in the table above.
+</p>
+
+<p>
+    The root node is special, because there are some
+    <a href="{{node-url:headers/index}}">node headers</a> that will only take
+    effect if they are set on the root node.
+</p>
+
+<h3>Node Headers and Body Content</h3>
+
+<p>
+    Each node is a text file, that can be divided into two main parts:
+</p>
+
+<ul>
+    <li>Headers</li>
+    <li>Body</li>
+</ul>
+
+<p>
+    Let&apos;s take a look at a simple example. Here are the complete contents
+    of the <i>nodes/hello-world</i> file in this documentation project:
+</p>
+
+<p><pre>Title: Hello World
+Template: default.html
+Created: 2026-06-07T23:05:25-04:00
+Modified: 2026-06-07T23:05:25-04:00
+Foo: This is foo
+
+Hello world!
+
+The value of the &lt;b&gt;Foo&lt;/b&gt; header is: &lbrace;&lbrace;value:foo&rbrace;&rbrace;</pre></p>
+
+<p>
+    You can see the rendered page here:
+    <a href="{{node-url:hello-world}}">{{node-url:hello-world}}</a>
+</p>
+
+<p>
+    The first stanza (Title, Template, Created, Modified, Foo) are all
+    <a href="{{node-url:headers/index}}">node headers</a>.
+</p>
+
+<p>Next comes a single blank line.</p>
+
+<p>
+    Finally, everything after this point, starting with the &ldquo;Hello
+    world!&rdquo; line, is the <i>node body</i>.
+</p>
+
+<p>
+    The headers act as metadata, and are not directly included in the web site
+    output (although they can be referenced by other means and get included
+    that way).
+</p>
+
+<p>
+    The node body content can be included in a
+    <a href="{{node-url:directories/templates}}">template</a> using the
+    {{node-link:parameters/node-body}} substitution parameter.
+</p>
+
+<h3>How Pages Are Constructed</h3>
+
+<p>
+    Each dynamically-generated page on your web site starts with a content
+    <b>node</b>.
+</p>
+
+<p>
+    Each node has a template associated with it. The template is defined in
+    the node, using the {{node-link:headers/template}} header. If a
+    template header is not defined, then the <i>default.html</i> template is
+    used instead.
+</p>
+
+<p>
+    Templates can use
+    <a href="{{node-url:parameters/index}}">substitution parameters</a>, which
+    can include all sorts of dynamically-generated content on the page,
+    including
+    <a href="{{node-url:parameters/soju-hello-world}}">user-defined Python code</a>.
+</p>
+
+<p>
+    When the page is rendered, the template is the first thing that is
+    included in the rendered page.
+</p>
+
+<p>
+    If you want the node body contents to show up on the page (and you almost
+    certainly do), then the {{node-link:parameters/node-body}} substitution
+    parameter should be included somewhere in the template. This is where the
+    node body content will be merged into the middle of your template.
+</p>
+
+<p>
+    Templates can include other templates using the
+    {{node-link:parameters/include}} substitution parameter. The node body
+    contents can also include templates using the same parameter.
+</p>
+
+<h3>Node Sorting Behavior</h3>
+
+<p>Nodes have an explicitly-defined sorting behavior.</p>
+
+<p>
+    This shows up in the {{node-link:parameters/node-list/index}} substitution
+    parameter, the
+    <a href="{{node-url:generated}}">generated RSS feed and sitemap</a>, and
+    any time <i>Node</i> objects are sorted in
+    <a href="{{node-url:tag/user-defined-python-code}}">user-defined Python code</a>.
+</p>
+
+<p>Nodes are sorted by:</p>
+
+<ul>
+    <li>
+        Date descending ({{node-link:headers/created}} if available, otherwise
+        {{node-link:headers/modified}})
+    </li>
+    <li>{{node-link:headers/title}} ascending</li>
+    <li>URL ascending</li>
+</ul>
+
+<p>
+    This has the effect of putting newer nodes first, and putting nodes with
+    the same age in alphabetical order.
+</p>
+

@@ -1,0 +1,43 @@
+Title: Sitemap-Max-Entries
+Tags: sitemap, sitemap-headers, root-node
+
+<p>
+    The <b>Sitemap-Max-Entries</b> header can optionally be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to control the
+    maximum number of entries that can show up in the generated sitemap.
+</p>
+
+<p>
+    This field is optional. The default value is <i>50000</i>.
+</p>
+
+<p>
+    If this field is set, the value must be an unsigned integer.
+</p>
+
+<p>
+    This header will only have an effect if the
+    {{node-link:headers/sitemap-url}} header is set on the root node.
+</p>
+
+<p>
+    On this documentation site, the <b>Sitemap-Max-Entries</b> header is set
+    on the root node to a value of <i>{{value:sitemap-max-entries}}</i>, like
+    this:
+</p>
+
+<p><pre>Sitemap-Max-Entries: {{value:sitemap-max-entries}}</pre></p>
+
+<p>
+    This causes Uriel to limit the number of entries in the generated sitemap
+    to {{value:sitemap-max-entries}} entries. You can see the generated
+    sitemap here: <a href="{{value:sitemap-url}}">{{value:sitemap-url}}</a>
+</p>
+
+<p>
+    On this documentation site, the maximum number of allowed sitemap entries
+    is larger than the number of nodes that are eligible for inclusion in the
+    sitemap, so you won&apos;t directly observe any effect without changing
+    the value and rebuilding the site.
+</p>
+

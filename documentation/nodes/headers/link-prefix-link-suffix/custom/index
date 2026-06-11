@@ -1,0 +1,27 @@
+Title: Link-Prefix / Link-Suffix (custom)
+Link-Prefix: 
+Link-Suffix: <br>
+
+<p>
+    This page has custom values set for the
+    {{node-link:headers/link-prefix-link-suffix/index}}
+    headers.
+</p>
+
+<p><b>Link-Prefix</b> is set to an empty string.</p>
+
+<p><b>Link-Suffix</b> is set to <i>&lt;br&gt;</i></p>
+
+<p>
+    Notice how the {{node-link:parameters/node-list/index}} parameter below
+    is rendered with a <i>&lt;br&gt;</i> tag after each
+    <a href="{{node-url:directories/nodes}}">child node</a>?
+</p>
+
+{{node-list:*}}
+
+<p>
+    Compare this with the
+    {{node-link:headers/link-prefix-link-suffix/default/index}} page.
+</p>
+

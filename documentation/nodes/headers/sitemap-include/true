@@ -1,0 +1,17 @@
+Title: Sitemap-Include: true
+Sitemap-Include: true
+
+<p>
+    This node has the {{node-link:headers/sitemap-include/index}} header set
+    to <i>true</i>. As a result, it is eligible for inclusion in the generated
+    sitemap (<a href="{{value:sitemap-url}}">{{value:sitemap-url}}</a>)
+</p>
+
+<p>
+    The default value for <b>Sitemap-Include</b> is <i>true</i>, so most
+    pages on this documentation site are also included in the sitemap as
+    well.
+</p>
+
+<p>Compare this with {{node-link:headers/sitemap-include/false}}</p>
+

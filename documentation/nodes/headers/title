@@ -1,0 +1,58 @@
+Title: Title
+
+<p>The title of a node is set with the <b>Title</b> header.</p>
+
+<p>
+    If a node does not have a <b>Title</b> header, then the name of the
+    <a href="{{node-url:directories/nodes}}">node file</a> is used as
+    the basis for a default node title.
+</p>
+
+<p>
+    The title of this node is &ldquo;{{node:title}}&rdquo;, which is
+    self-referential.
+</p>
+
+<p>
+    Most of the other nodes in this documentation site also have custom
+    <b>Title</b> headers.
+</p>
+
+<p>
+    When the node title is referenced elsewhere, it is HTML escaped by
+    default. You can override this behavior by setting the
+    {{node-link:headers/escape-title/index}} header to <i>false</i>.
+</p>
+
+<p>
+    The <b>Title</b> header is not inherited by
+    <a href="{{node-url:directories/nodes}}">child nodes</a>.
+</p>
+
+<p>The node title is used in various places, including:</p>
+
+<h3>Substitution Parameters</h3>
+
+<ul>
+    <li>{{node-link:parameters/node-title}}</li>
+    <li>{{node-link:parameters/node-link}}</li>
+    <li>{{node-link:parameters/node-title-some-other-node}}</li>
+    <li>{{node-link:parameters/node-link-some-other-node}}</li>
+    <li>{{node-link:parameters/breadcrumbs}}</li>
+    <li>{{node-link:parameters/node-list/index}}</li>
+    <li>
+        {{node-link:parameters/value}} when used in the form
+        <i>&lbrace;&lbrace;value:title&rbrace;&rbrace;</i>
+    </li>
+    <li>
+        {{node-link:parameters/value-unescaped}} when used in the form
+        <i>&lbrace;&lbrace;value-unescaped:title&rbrace;&rbrace;</i>
+    </li>
+</ul>
+
+<h3>RSS</h3>
+
+<ul>
+    <li><a href="{{node-url:generated}}">RSS Feed</a></li>
+</ul>
+

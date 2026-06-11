@@ -1,0 +1,71 @@
+Title: {{include:default.html}}
+
+<p>
+    The
+    <b>&lbrace;&lbrace;include:default.html&rbrace;&rbrace;</b>
+    parameter includes a template file to be incorporated into the rendered
+    page.
+</p>
+
+<p>
+    The rvalue of the parameter is the template file name to be included,
+    starting from the {{node-link:directories/templates}} directory.
+</p>
+
+<p>
+    For example, on this documentation site, there is a template file located
+    at the path
+    <i><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/templates/parameter-include-example.html">templates/parameter-include-example.html</a></i>.
+</p>
+
+<p>
+    The node for this page is about to include the file. Ready?
+</p>
+
+<p>--- RIGHT BEFORE THE INCLUDE ---</p>
+
+{{include:parameter-include-example.html}}
+
+<p>--- RIGHT AFTER THE INCLUDE ---</p>
+
+<h3>Include Loop Error Detection</h3>
+
+<p>
+    Nodes and templates can both include templates. And the template that you
+    include can also have includes of its own. However, Uriel will prevent you
+    from creating an infinite include loop.
+</p>
+
+<p>
+    Let&apos;s take a look at an example. This page is generated from the
+    following node and template:
+</p>
+
+<ul>
+    <li>The <i>parameters/include</i> node</li>
+    <li>Which uses the <i>default.html</i> template</li>
+</ul>
+
+<p>
+    What would happen if we got <i>default.html</i> to include a new template
+    called <i>loop.html</i>, but also made <i>loop.html</i> include
+    <i>default.html</i>? It would cause an infinite loop.
+</p>
+
+<p>
+    Fortunately, Uriel detects this, and provides a helpful error message so
+    that you can track down what happened:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+include loop error:
+  nodes/parameters/include
+>>> templates/default.html <<< LOOP STARTS HERE
+  > templates/loop.html
+>>> templates/default.html <<< WOULD REPEAT FOREVER
+uriel: include loop detected in: 'templates/default.html'</pre></p>
+

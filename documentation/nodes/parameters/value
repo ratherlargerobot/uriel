@@ -1,0 +1,39 @@
+Title: {{value:foo}}
+Foo: Foo Header Value
+
+<p>
+    The <b>&lbrace;&lbrace;value:foo&rbrace;&rbrace;</b> substitution
+    parameter evaluates to the value of the header referenced by its
+    rvalue.
+</p>
+
+<p>
+    For example, this node has a <b>Foo</b> header defined like this:
+</p>
+
+<p><pre>Foo: Foo Header Value</pre></pre>
+
+<p>
+    If we include the <b>&lbrace;&lbrace;value:foo&rbrace;&rbrace;</b>
+    parameter on the page, it will be replaced with the value of the
+    header when the page is rendered.
+</p>
+
+<p>This is the value of the <i>Foo</i> header: <b>{{value:foo}}</b></p>
+
+<h3>HTML Escaping</h3>
+
+<p>
+    When the HTML pages are rendered, the value of the
+    <b>&lbrace;&lbrace;value:foo&rbrace;&rbrace;</b> parameter will be HTML
+    escaped.
+</p>
+
+<p>
+    There is also another variant of this parameter,
+    {{node-link:parameters/value-unescaped}}, which works identically, except
+    without the HTML escaping step.
+</p>
+
+{{include:header-parameter-naming-convention.html}}
+

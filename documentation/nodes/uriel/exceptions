@@ -1,0 +1,94 @@
+Title: Exceptions
+
+<p>
+    A curated list of custom exception types defined in the <b>uriel</b>
+    program.
+</p>
+
+<p>
+    Each of these subclass the Python <b>Exception</b> class directly with
+    no additional modifications.
+</p>
+
+<table>
+    <tr>
+        <th>Exception</th>
+        <th>Purpose</th>
+    </tr>
+    <tr>
+        <td><b>SojuError</b></td>
+        <td>
+            Represents an error from
+            <a href="{{node-url:soju}}">user-defined soju code</a>
+            that should not throw
+            a stack trace.
+        </td>
+    </tr>
+    <tr>
+        <td><b>HandlerError</b></td>
+        <td>
+            Represents an error from
+            <a href="{{node-url:handlers}}">user-defined handler code</a>
+            that should not throw a stack trace.
+        </td>
+    </tr>
+</table>
+
+<p>
+    You can throw these exceptions from your own user-defined code.
+</p>
+
+<p>
+    If you throw these exceptions from their expected contexts, Uriel will
+    show the error message, along with information about how that code ended
+    up getting executed. However, if you throw these exceptions, Uriel will
+    omit additional detailed traceback information.
+</p>
+
+<p>
+    If you are handling an error where you understand the general cause,
+    throwing one of these exceptions can make the error messages a little
+    bit less verbose.
+</p>
+
+<h3>Throw SojuError From User-Defined Soju Function</h3>
+
+<p><pre># lib/soju.py
+def hello_world(node):
+    raise SojuError("oops")</pre></p>
+
+<p>
+    When the exception is raised, Uriel will display an error that looks like
+    this:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+reading node files
+rendering node content
+parameter error:
+  nodes/parameters/soju-hello-world
+    templates/default.html
+      nodes/parameters/soju-hello-world
+        '&lbrace;&lbrace;soju:hello_world(node)&rbrace;&rbrace;'
+          'oops'
+soju: error in function call to 'soju.hello_world(node)': 'oops'</pre></p>
+
+<h3>Throw HandlerError From User-Defined Handler Function</h3>
+
+<p><pre># lib/handlers.py
+def init(project_root):
+    raise HandlerError("oops")</pre></p>
+
+<p>
+    When the exception is raised, Uriel will display an error that looks like
+    this:
+</p>
+
+<p><pre>copying 'static' to 'public', overwriting previous contents
+initializing soju
+initializing handlers
+running handler: init
+uriel: error in handler function init(): 'oops'</pre></p>
+

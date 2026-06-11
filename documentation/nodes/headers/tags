@@ -1,0 +1,54 @@
+Title: Tags
+Tags: headers, foo, banana
+
+<p>
+    Tags are used to provide an additional way to link pages together.
+    Nodes can have various tags defined, and then Uriel can build a
+    <a href="{{node-url:tag}}">tag index</a> that cross-references pages
+    together by tags.
+</p>
+
+<p>
+    To get Uriel to build a tag index on your site, you have to give it a
+    little bit of information so it knows where to build the index.
+    See the {{node-link:tags}} page for the full details.
+</p>
+
+<p>
+    The <b>Tags</b> header sets one or more tags on a given
+    <a href="{{node-url:directories/nodes}}">node</a>. Tags are specified as
+    a comma-separated list.
+</p>
+
+<p>
+    For example, the node that generated this page has the following header
+    set:
+</p>
+
+<p><pre>Tags: {{value:tags}}</pre></p>
+
+<p>
+    When Uriel builds the site, it will take the following steps as a result:
+</p>
+
+<ul>
+    <li>
+        Create tag pages for each of the tags:
+        {{tag-list:*}}
+    </li>
+    <li>
+        Include links to this node (and any other nodes with those tags) on
+        the relevant tag pages.
+    </li>
+    <li>
+        Include the links to those tags on the main
+        <a href="{{node-url:tag}}">tag index</a> page.
+    </li>
+</ul>
+
+<p>
+    Additionally, links to the tag pages for each tag associated with this
+    node are now available from the {{node-link:parameters/tag-list}}
+    substitution parameter.
+</p>
+

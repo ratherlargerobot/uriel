@@ -1,0 +1,47 @@
+Title: {{modified:%B %d, %Y}}
+Modified: 2026-04-12T16:45:29-04:00
+
+<p>
+    The <b>&lbrace;&lbrace;modified:%B %d, %Y&rbrace;&rbrace;</b> substitution
+    parameter references the modification time of a node, and formats the
+    date/time value using an
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+    format string in the rvalue portion of the parameter.
+</p>
+
+<p>
+    For example, this node has the following {{node-link:headers/modified}}
+    header set:
+</p>
+
+<p><pre>Modified: 2026-04-12T16:45:29-04:00</pre></p>
+
+<p>
+    Here is what the <b>&lbrace;&lbrace;modified:%B %d, %Y&rbrace;&rbrace;</b>
+    substitution parameter evaluates to:
+</p>
+
+<p><pre>{{modified:%B %d, %Y}}</pre></p>
+
+<p>
+    The format string has a lot of different options. See the
+    <a href="https://docs.python.org/3.14/library/datetime.html#strftime-and-strptime-format-codes">Python datetime strftime() reference</a>
+    or the
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime(3)</a>
+    man page for further details.
+</p>
+
+<p>
+    {{node-link:headers/modified}} is an optional header. However, if the
+    {{node-link:headers/modified}} header is not set, the node is still
+    guaranteed to have a modification time (inferred from the node file
+    modification time). Because a modification time is always available,
+    the <b>&lbrace;&lbrace;modified:%B %d, %Y&rbrace;&rbrace;</b>
+    parameter can always be used on any node, regardless of what headers are
+    set.
+</p>
+
+<p>
+    Compare this with the {{node-link:parameters/created}} parameter.
+</p>
+

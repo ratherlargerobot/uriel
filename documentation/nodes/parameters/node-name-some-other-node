@@ -1,0 +1,23 @@
+Title: {{node-name:foo/bar}}
+
+<p>
+    The <b>&lbrace;&lbrace;node-name:foo/bar&rbrace;&rbrace;</b> parameter
+    evaluates to the relative file name of the other node specified in
+    the rvalue portion of the parameter, without any directories.
+</p>
+
+<p>
+    For example, on this documentation site, we have another node found at
+    <i>parameters/some-other-node</i>. When we reference the other node in the
+    rvalue portion of the parameter using
+    <b>&lbrace;&lbrace;node-name:parameters/some-other-node&rbrace;&rbrace;</b>,
+    the parameter evaluates to:
+</p>
+
+<p><pre>{{node-name:parameters/some-other-node}}</pre></p>
+
+<p>
+    Compare this with the {{node-link:parameters/node-name}} parameter, which
+    evaluates to the name of current node.
+</p>
+

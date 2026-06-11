@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>Node Headers</title>
+    <link rel="alternate" type="application/rss+xml" href="http://localhost:8000/rss.xml">
+    <link rel="stylesheet" type="text/css" href="/css/bce096b30da10f51c90533986e9c1762.css">
+    <link rel="canonical" href="https://documentation.uriel.foo/headers/">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="http://localhost:8000/headers/">
+    <meta property="og:title" content="Node Headers">
+    <meta property="og:image" content="http://localhost:8000/foo.jpg">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:domain" value="localhost">
+    <meta name="twitter:title" value="Node Headers">
+    <meta name="twitter:image" content="http://localhost:8000/foo.jpg">
+</head>
+
+<body>
+
+<div class="squish-page">
+
+<nav>
+    <p class="breadcrumbs"><a href="/">Uriel Documentation</a> &raquo; <a href="/headers/">Node Headers</a></p>
+</nav>
+
+<h1>Node Headers</h1>
+
+<p>
+    <a href="/directories/nodes/">Node files</a> support headers.
+    You can define any custom headers you want, and reference them in
+    <a href="/parameters/value/">substitution parameters</a>.
+</p>
+
+<p>
+    The headers listed on this page also have special meanings, and are
+    interpreted directly in various ways by Uriel.
+</p>
+
+<p>
+    Some special headers can be set on any node, while others will only
+    take effect if they are set on the
+    <a href="/directories/nodes/">root node</a>
+    (<i><a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/index">index</a></i>).
+</p>
+
+<h3>All Nodes</h3>
+
+<p>These headers will take effect on any node.</p>
+
+<table>
+    <tr>
+        <th>Header</th>
+        <th>Default</th>
+        <th>Notes</th>
+    </tr>
+    <tr>
+        <td><a href="/headers/title/">Title</a></td>
+        <td>&lt;inferred&gt;</td>
+        <td>Page title</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/escape-title/">Escape-Title</a></td>
+        <td><i>true</i></td>
+        <td>HTML escape title</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/template/">Template</a></td>
+        <td><i>default.html</i></td>
+        <td>Template file</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/format/">Format</a></td>
+        <td><i>html</i></td>
+        <td><i>html</i> or <i>text</i></td>
+    </tr>
+    <tr>
+        <td><a href="/headers/created/">Created</a></td>
+        <td></td>
+        <td>date -Is / date +%FT%T</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/modified/">Modified</a></td>
+        <td>node mtime</td>
+        <td>date -Is / date +%FT%T</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/breadcrumb-separator/">Breadcrumb-Separator</a></td>
+        <td><i>&amp;raquo;</i></td>
+        <td>Between breadcrumbs</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/breadcrumb-separator-spaces/">Breadcrumb-Separator-Spaces</a></td>
+        <td><i>true</i></td>
+        <td>Spaces around separator</td>
+    </tr>
+    <tr>
+        <td><a href="/flat-url/">Flat-URL</a></td>
+        <td><i>false</i></td>
+        <td>Move URL path to top</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/link-prefix-link-suffix/">Link-Prefix</a></td>
+        <td><i>&lt;p&gt;</i></td>
+        <td>For lists of links</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/link-prefix-link-suffix/">Link-Suffix</a></td>
+        <td><i>&lt;/p&gt;</i></td>
+        <td>For lists of links</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/tags/">Tags</a></td>
+        <td></td>
+        <td>foo, bar, baz, quux</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-include/">RSS-Include</a></td>
+        <td><i>false</i></td>
+        <td>Include node in RSS</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-add-node-title-header/">RSS-Add-Node-Title-Header</a></td>
+        <td><i>true</i></td>
+        <td>Add node title to RSS</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/sitemap-include/">Sitemap-Include</a></td>
+        <td><i>true</i></td>
+        <td>Include node in sitemap</td>
+    </tr>
+</table>
+
+<h3>Root Node</h3>
+
+<p>
+    These headers will only take effect if they are set on the
+    <a href="/directories/nodes/">root node</a>.
+</p>
+
+<table>
+    <tr>
+        <th>Header</th>
+        <th>Default</th>
+        <th>Notes</th>
+    </tr>
+    <tr>
+        <td><a href="/headers/canonical-url/">Canonical-URL</a></td>
+        <td></td>
+        <td>https://example.com</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/tag-node/">Tag-Node</a></td>
+        <td></td>
+        <td>tag</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-url/">RSS-URL</a></td>
+        <td></td>
+        <td>/rss.xml</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-description/">RSS-Description</a></td>
+        <td></td>
+        <td>Site description</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-title/">RSS-Title</a></td>
+        <td>&lt;value of <a href="/headers/title/">Title</a>&gt;</td>
+        <td>Site name</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-image-url/">RSS-Image-URL</a></td>
+        <td></td>
+        <td>/rss-icon.png</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-image-width/">RSS-Image-Width</a></td>
+        <td></td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-image-height/">RSS-Image-Height</a></td>
+        <td></td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/rss-max-entries/">RSS-Max-Entries</a></td>
+        <td><i>20</i></td>
+        <td>unsigned int</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/sitemap-url/">Sitemap-URL</a></td>
+        <td></td>
+        <td>/sitemap.xml</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/sitemap-max-entries/">Sitemap-Max-Entries</a></td>
+        <td><i>50000</i></td>
+        <td>unsigned int</td>
+    </tr>
+</table>
+
+<h3>Inheritance</h3>
+
+<p>
+    The <a href="/directories/nodes/">content nodes</a> form a tree
+    hierarchy, starting with the root node (index). Generally speaking, if a
+    header is set on a node, it will be inherited by all downstream child
+    nodes by default.
+</p>
+
+<p>
+    As an exception to this general rule, the following headers are
+    specifically not inherited:
+</p>
+
+<ul>
+    <li><a href="/headers/title/">Title</a></li>
+    <li><a href="/headers/created/">Created</a></li>
+    <li><a href="/headers/modified/">Modified</a></li>
+</ul>
+
+<p>To delete an inherited header from the current node:</p>
+
+<p><pre>-Foo: *</pre></p>
+
+<p>To set a header in child nodes, but not the current node:</p>
+
+<p><pre>+Foo: bar</pre></p>
+
+<p>
+    To leave a header alone in the current node, but unset it in child nodes:
+<p>
+
+<p><pre>+-Foo: *</pre></p>
+
+<p>To set a header in the current node, but unset it in child nodes:</p>
+
+<p><pre>Foo: bar
++-Foo: *</pre></p>
+
+<p>
+    Further combinations of + and - can be chained together, but a little bit
+    goes a long way.
+</p>
+
+<p>
+    The general rule is that each + at the beginning of a header name will
+    push it down one additional level in the node tree, but the first - at the
+    beginning of a header name that gets encountered will remove the header
+    from that node.
+</p>
+
+<h3>Naming Convention</h3>
+
+<p>
+    By convention, <a href="/headers/">headers</a> are set
+    using <i>Mixed-Case-With-Dashes</i>. However, when they are referenced in
+    <a href="/parameters/">substitution parameters</a>,
+    they are referenced in lowercase.
+</p>
+
+<p>
+    For example, a <a href="/directories/nodes/">node</a> might
+    set a header and reference the same header directly like this:
+</p>
+
+<p><pre>Title: Some Example Node
+Foo-Bar-Baz-Quux: Some Value
+
+Here is the value of Foo-Bar-Baz-Quux: &lbrace;&lbrace;value:foo-bar-baz-quux&rbrace;&rbrace;
+</pre></p>
+
+<p>
+    The example above would render in the generated page as:
+</p>
+
+<p><pre>Here is the value of Foo-Bar-Baz-Quux: Some Value</pre></p>
+
+
+<p><a href="/tag/">Tags</a>: </p>
+
+<div class="page-details">
+
+<p>This page was generated by <a href="https://uriel.foo/">Uriel</a> with the following settings:</p>
+
+<p><b>Page Details</b></p>
+
+<table>
+    <tr>
+        <th>Resource</th>
+        <th>Path</th>
+        <th>Project File</th>
+    </tr>
+    <tr>
+        <td><a href="/directories/nodes/">Node</a></td>
+        <td>headers/index</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/headers/index">nodes/headers/index</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/templates/">Template</a></td>
+        <td>default.html</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/templates/default.html">templates/default.html</a>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="/directories/public/">URL</a></td>
+        <td>/headers/</td>
+        <td>
+            <a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/public/headers/index.html">public/headers/index.html</a>
+        </td>
+    </tr>
+</table>
+
+<p><b>Node Headers</b></p>
+
+<table>
+    <tr align="left">
+        <th>Header (Lowercase)</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td><b>++-tags</b></td>
+        <td><b>*</b></td>
+    </tr>
+    <tr>
+        <td><b>+tags</b></td>
+        <td><b>headers</b></td>
+    </tr>
+    <tr>
+        <td><b>title</b></td>
+        <td><b>Node Headers</b></td>
+    </tr>
+    <tr>
+        <td>breadcrumb-separator</td>
+        <td>&amp;raquo;</td>
+    </tr>
+    <tr>
+        <td>canonical-url</td>
+        <td>http://localhost:8000</td>
+    </tr>
+    <tr>
+        <td>rss-description</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-image-height</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-image-url</td>
+        <td>/favicon-32x32.png</td>
+    </tr>
+    <tr>
+        <td>rss-image-width</td>
+        <td>32</td>
+    </tr>
+    <tr>
+        <td>rss-max-entries</td>
+        <td>50</td>
+    </tr>
+    <tr>
+        <td>rss-title</td>
+        <td>Uriel Documentation</td>
+    </tr>
+    <tr>
+        <td>rss-url</td>
+        <td>/rss.xml</td>
+    </tr>
+    <tr>
+        <td>sitemap-max-entries</td>
+        <td>10000</td>
+    </tr>
+    <tr>
+        <td>sitemap-url</td>
+        <td>/sitemap.xml</td>
+    </tr>
+    <tr>
+        <td>tag-node</td>
+        <td>tag</td>
+    </tr>
+    <tr>
+        <td>template</td>
+        <td>default.html</td>
+    </tr>
+</table>
+
+<p><b>Node Timestamps</b></p>
+
+<table>
+    <tr>
+        <th>Type</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>Created</td>
+        <td></td>
+    </tr>
+    <tr>
+        <td>Modified</td>
+        <td>2026-06-07T23:00:45-04:00</td>
+    </tr>
+</table>
+
+<p><b>Node Methods</b></p>
+
+<table>
+    <tr>
+        <th>Method</th>
+        <th>Value</th>
+    </tr>
+    <tr>
+        <td>get_parent_node()</td>
+        <td>index</td>
+    </tr>
+    <tr>
+        <td>get_path()</td>
+        <td>headers/index</td>
+    </tr>
+    <tr>
+        <td>get_node_type()</td>
+        <td>file</td>
+    </tr>
+    <tr>
+        <td>get_url()</td>
+        <td>/headers/</td>
+    </tr>
+    <tr>
+        <td>get_canonical_url()</td>
+        <td>http://localhost:8000/headers/</td>
+    </tr>
+    <tr>
+        <td>get_name()</td>
+        <td>headers</td>
+    </tr>
+    <tr>
+        <td>get_display_name()</td>
+        <td>Headers</td>
+    </tr>
+    <tr>
+        <td>get_title()</td>
+        <td>Node Headers</td>
+    </tr>
+    <tr>
+        <td>get_escaped_title()</td>
+        <td>Node Headers</td>
+    </tr>
+    <tr>
+        <td>get_link()</td>
+        <td>&lt;a href=&quot;/headers/&quot;&gt;Node Headers&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_canonical_link()</td>
+        <td>&lt;a href=&quot;http://localhost:8000/headers/&quot;&gt;Node Headers&lt;/a&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_prefix()</td>
+        <td>&lt;p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_link_suffix()</td>
+        <td>&lt;/p&gt;</td>
+    </tr>
+    <tr>
+        <td>get_tags()</td>
+        <td>[]</td>
+    </tr>
+    <tr>
+        <td>get_dest_dir()</td>
+        <td>./public/headers</td>
+    </tr>
+    <tr>
+        <td>get_dest_file()</td>
+        <td>./public/headers/index.html</td>
+    </tr>
+    <tr>
+        <td>get_breadcrumb_separator()</td>
+        <td> &amp;raquo; </td>
+    </tr>
+</table>
+
+</div>
+
+<footer>
+    <p class="fineprint">
+        &copy; 2026 <a href="https://nathanrosenquist.com/">Nathan Rosenquist</a>
+        |
+        <a href="https://uriel.foo/">Uriel</a>
+        |
+        <a href="https://documentation.uriel.foo/">Documentation</a>
+        |
+        <a href="https://github.com/ratherlargerobot/uriel">GitHub</a>
+    </p>
+</footer>
+
+</div>
+
+</body>
+</html>

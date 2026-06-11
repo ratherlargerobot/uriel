@@ -1,0 +1,23 @@
+Title: {{node-title:foo/bar}}
+
+<p>
+    The <b>&lbrace;&lbrace;node-title:foo/bar&rbrace;&rbrace;</b> parameter
+    evaluates to the title of the node referenced in the rvalue portion of the
+    parameter.
+</p>
+
+<p>
+    For example, on this documentation site, we have another node at the path
+    <i>parameters/some-other-node</i>. If we reference that other node in the
+    rvalue portion of this parameter using
+    <b>&lbrace;&lbrace;node-title:parameters/some-other-node&rbrace;&rbrace;</b>,
+    it evaluates to:
+</p>
+
+<p><pre>{{node-title:parameters/some-other-node}}</pre></p>
+
+<p>
+    Compare this with {{node-link:parameters/node-title}}, which evaluates to
+    the title of the current node.
+</p>
+

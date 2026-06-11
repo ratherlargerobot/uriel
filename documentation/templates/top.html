@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>{{node:title}}</title>
+    <link rel="alternate" type="application/rss+xml" href="{{rss:url}}">
+    <link rel="stylesheet" type="text/css" href="{{static-hash-url:/css/main.css}}">
+    <link rel="canonical" href="https://documentation.uriel.foo{{node:url}}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{value:canonical-url}}{{node:url}}">
+    <meta property="og:title" content="{{node:title}}">
+    <meta property="og:image" content="{{value:canonical-url}}{{static-url:/foo.jpg}}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:domain" value="{{soju:get_hostname_from_canonical_url(node)}}">
+    <meta name="twitter:title" value="{{node:title}}">
+    <meta name="twitter:image" content="{{value:canonical-url}}{{static-url:/foo.jpg}}">
+</head>
+
+<body>
+
+<div class="squish-page">

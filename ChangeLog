@@ -1,7 +1,28 @@
 ------------------------------------------------------------------------------
 Uriel changelog
-https://nathanrosenquist.com/uriel/
+https://uriel.foo/
 ------------------------------------------------------------------------------
+
+VERSION 1.4.0 (Jun 11 12:14 2026)
+------------------------------------------------------------------------------
+- Add comprehensive Uriel documentation, in the form of a Uriel project
+- Change all website URL references to https://uriel.foo/
+- Change tag validation to be more permissive
+- Correct {{node:name}} example in man page
+- Add additional header +/- inheritance examples in man page
+- Add various man page improvements
+- Add optional RSS-Max-Entries header
+- Add optional Sitemap-Max-Entries header
+- Add {{breadcrumbs-root:*}} substitution parameter
+- Add optional include_root parameter to Page create_breadcrumbs() method
+- Add version and documentation references to program usage information
+- Add log message with how many pages were created when building a project
+- Add Uriel website link to templates/default.html when creating projects
+- Add <meta charset="UTF-8"> to templates/default.html when creating projects
+- Add gzip compression option when writing sitemap (auto-detect .gz extension)
+- Add GzipFileWriter class
+- Improve error messages when nodes have invalid Created or Modified headers
+- Remove unused "subprocess" module import from uriel
 
 VERSION 1.3.13 (Mar 28 17:00 2026)
 ------------------------------------------------------------------------------

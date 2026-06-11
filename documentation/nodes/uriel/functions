@@ -1,0 +1,63 @@
+Title: Functions
+
+<p>
+    A small, curated list of Uriel functions that might be useful to call
+    from user-defined Python code.
+</p>
+
+<p>
+    See the {{node-link:soju}} and {{node-link:handlers}} sections for
+    information on how to call these functions.
+</p>
+
+<p>
+    Uriel has dozens of other functions. See the well-commented
+    <a href="https://github.com/ratherlargerobot/uriel/blob/main/uriel">Uriel source code</a>
+    for the full list.
+</p>
+
+
+<p><pre><b>log(s: str) -> None</b>
+
+Log the given string to stderr.</pre></p>
+
+
+<p><pre><b>escape(text: str) -> str</b>
+
+Escape HTML.
+
+Accepts unescaped text.
+
+Returns an HTML escaped string.</pre></p>
+
+
+<p><pre><b>get_eligible_nodes(node: Node,
+                   boolean_header: str,
+                   default: bool,
+                   node_set: Set[Node]) -> None</b>
+
+Get nodes that have the given header set to true.
+
+Accepts a Node, the name of the header to check for true status,
+and a node set to store the eligible nodes.
+
+Accepts the following arguments:
+    node            - root node to search
+    boolean_header  - header name to check for boolean value
+    default         - default boolean value to use if header not set
+    node_set        - set the node will be added to if eligible</pre></p>
+
+
+<p><pre><b>write_rss(project_root: str, root_node: Node) -> None</b>
+
+Write RSS feed to disk (if RSS-URL is enabled).
+
+Accepts the project root, and the root Node.</pre></p>
+
+
+<p><pre><b>write_sitemap(project_root: str, root_node: Node) -> None</b>
+
+Write sitemap file to disk (if Sitemap-URL enabled).
+
+Accepts the project root, and the root Node.</pre></p>
+

@@ -1,0 +1,45 @@
+Title: Template
+Template: default.html
+
+<p>
+    Sets the <a href="{{node-url:directories/templates">template</a> that the
+    <a href="{{node-url:directories/nodes">node</a> will use.
+</p>
+
+<p>
+    The template file name given is relative to the
+    <a href="{{node-url:directories/templates">templates directory</a>.
+</p>
+
+<p>
+    For example, the default template can be found at
+    <i>templates/default.html</i>. If you wanted to specify this template
+    specifically (even though it is the default value), you would set the
+    header like this:
+</p>
+
+<p><pre>Template: default.html</pre></p>
+
+<p>
+    Subdirectories within the template directory are also allowed:
+</p>
+
+<p><pre>Template: foo/bar/quux.html</pre></p>
+
+<p>
+    If you delete an inherited <b>Template</b> header on a node, then you are
+    back to the default value of <i>default.html</i>.
+</p>
+
+<p>
+    If you want to avoid using a template altogether, and only include the
+    contents of the node body, you can specify the null template like this:
+</p>
+
+<p><pre>Template: null</pre></p>
+
+<p>
+    What happens if you create a template file named <i>null</i>?
+    Uriel will not read it, and instead treat the null template as an
+    instruction to render the node without any template.
+</p>

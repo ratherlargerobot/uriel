@@ -1,0 +1,79 @@
+Title: public
+
+<p>
+    The <b>public</b> directory contains your finished web site.
+</p>
+
+<p>
+    Every time you run Uriel against your project directory, your web site is
+    completely regenerated from scratch.
+</p>
+
+<p>
+    Do not put anything in the <b>public</b> directory directly, or it will be
+    deleted or overwritten the next time you run Uriel against your project.
+</p>
+
+<p>
+    If you want to put a file in the <b>public</b> directory so that it ends
+    up on your web site, put it in the {{node-link:directories/static}}
+    directory instead. Then it will be copied into the <b>public</b> directory
+    every time Uriel rebuilds your web site.
+</p>
+
+<h3>Previewing Your Web Site</h3>
+
+<p>
+    The web sites that Uriel generates are intended to be viewed through a web
+    server. Fortunately, Python comes with a built-in web server.
+</p>
+
+<p>
+    The following shell commands show how to start the Python web server to
+    preview your web site:
+</p>
+
+<p><pre># change into the project directory for your web site
+# (in this case, this documentation site)
+cd documentation/
+
+# change into the public directory (within your project)
+cd public/
+
+# run the built-in Python web server
+python3 -m http.server</pre></p>
+
+<p>
+    This will start a built-in Python web server on port 8000. You can now
+    preview your site using the following link:
+    <a href="http://localhost:8000/">http://localhost:8000/</a>
+</p>
+
+<p>
+    If you have <i>make</i> installed, you can also use the <i>preview</i>
+    target that comes with the <i>Makefile</i> Uriel created for your project:
+</p>
+
+<p><pre>make preview</pre></p>
+
+<h3>Publishing Your Web Site</h3>
+
+<p>
+    You have a lot of options when it comes to hosting a static web site.
+    Almost any possible web hosting service should work.
+</p>
+
+<p>
+    Your web hosting service will need to be configured to treat
+    <i>index.html</i> files as directory indexes. This is already the default
+    pretty much everywhere. If your hosting provider does not do this already,
+    then you&apos;ll need to figure out how to enable that with your provider.
+</p>
+
+<p>
+    If you are using <i>make</i> to build your web site, consider adding a
+    <i>publish</i> target to the <i>Makefile</i> in your project. That way,
+    you can upload changes to your web site with a single command that stays
+    with your project.
+</p>
+

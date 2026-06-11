@@ -1,0 +1,14 @@
+Title: Breadcrumb-Separator-Spaces: true
+Breadcrumb-Separator-Spaces: true
+
+<p>
+    This page has the {{node-link:headers/breadcrumb-separator-spaces/index}}
+    parameter set to <i>true</i>.
+</p>
+
+<p>
+    Since this is the default value, it doesn&apos;t look any different from
+    any other pages on this site, which use the default value.
+</p>
+
+<p>Compare with {{node-link:headers/breadcrumb-separator-spaces/false}}</p>

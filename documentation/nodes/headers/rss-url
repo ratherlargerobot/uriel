@@ -1,0 +1,53 @@
+Title: RSS-URL
+Tags: headers, rss, rss-headers, root-node
+
+<p>
+    The <b>RSS-URL</b> header can be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to specify the URL
+    path for Uriel to write the RSS feed for the web site.
+</p>
+
+<p>
+    If the <b>RSS-URL</b> header is not set, then Uriel will not write an RSS
+    feed.
+</p>
+
+<p>
+    If the <b>RSS-URL</b> header is set, then the
+    {{node-link:headers/canonical-url}} and
+    {{node-link:headers/rss-description}} headers must also be set on the
+    root node.
+</p>
+
+<p>
+    The <b>RSS-URL</b> value is a URL path, starting with a slash, where Uriel
+    will write the RSS feed.
+</p>
+
+<p>
+    For example, on this documentation site, the <b>RSS-URL</b> header is set
+    on the root node to a value of <i>{{value:rss-url}}</i>, like this:
+</p>
+
+<p><pre>RSS-URL: {{value:rss-url}}</pre></p>
+
+<p>
+    This causes Uriel to write an RSS feed to the specified path, which you
+    can see here: <a href="{{value:rss-url}}">{{value:rss-url}}</a>
+</p>
+
+<p>
+    You can write an RSS feed into a subdirectory. However, the subdirectory
+    must already exist.
+</p>
+
+<p>
+     The RSS URL can be referenced in templates using the
+    {{node-link:parameters/rss-url}} substitution parameter. 
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate an RSS feed.
+</p>
+

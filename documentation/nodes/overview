@@ -1,0 +1,106 @@
+Title: Overview
+
+<p>
+    Uriel is a minimalistic, stable, feature complete static site generator,
+    written in Python.
+</p>
+
+<p>
+    Named for the archangel Uriel in the novel
+    <a href="http://unsongbook.com/">Unsong</a>, whose job was to perform the
+    fantastic and mundane work necessary to keep the world functioning.
+</p>
+
+<p>
+    Built to last for years without requiring any maintenance. It is feature
+    complete, and only depends on Python, with no third-party module
+    dependencies. That means that it won't break unexpectedly years from now,
+    after you've built a site around it.
+</p>
+
+<p>
+    As long as you can still get a working copy of <b>python3</b>, your site will
+    still build the same way in the future.
+</p>
+
+<h3>Features</h3>
+
+<ul>
+    <li>
+        Generates a static website you can host on pretty much any web server
+    </li>
+    <li>Minimalistic philosophy and approach</li>
+    <li>Useful error messages</li>
+    <li>Built-in tag index system</li>
+    <li>Built-in breadcrumb navigation support</li>
+    <li>Flat URL support to make some or all content nodes top-level URLs</li>
+    <li>
+        Inheritance and override system for content node settings and values
+    </li>
+    <li>
+        Optional dynamic naming of static files (to force browser cache misses
+        for CSS and JavaScript files when content changes)
+    </li>
+    <li>
+        RSS feed generator, with ability to include or exclude content nodes
+        from feed
+    </li>
+    <li>
+        sitemap.xml generator, with ability to include or exclude content
+        nodes from sitemap
+    </li>
+    <li>Minimalistic robots.txt generator</li>
+    <li>Ability to include unmodified static files</li>
+    <li>
+        Ability to selectively override dynamically generated files with
+        static files when necessary
+    </li>
+    <li>Simple but flexible templating system</li>
+    <li>
+        Supports a variety of useful built-in node/template replacement
+        parameters
+    </li>
+    <li>
+        Supports arbitrary user-defined Python code in node/template
+        replacement parameters
+    </li>
+    <li>
+        Supports arbitrary user-defined Python code in lifecycle handlers
+        during generation
+    </li>
+    <li>
+        Ability to generate static pages dynamically from user-defined Python
+        code
+    </li>
+    <li>
+        Implemented in pure Python 3, using only the built-in library modules
+    </li>
+    <li>Stable platform to build on</li>
+    <li>Feature complete</li>
+    <li>Minimal dependencies, pure Python 3 with no third-party modules</li>
+    <li>GPL version 3 license</li>
+</ul>
+
+<p>
+    Why another static site generator? Why this one? Because I wanted an
+    extremely stable platform to build my own web sites on, that I would be
+    able to maintain and understand many years into the future. For this
+    project, simplicity and stability is prioritized over new features.
+</p>
+
+<p>
+    This documentation site is built with Uriel (along with various local
+    <a href="{{node-url:soju}}">Soju</a> extensions.
+</p>
+
+<p>
+    If you prefer something with a maximal feature set, and all the latest
+    features, this probably won&apos;t be for you.
+</p>
+
+<p>
+    On the other hand, this system is so simple that it will pretty much keep
+    working indefinitely, without any ongoing maintenance. For me, this is the
+    main appeal.
+</p>
+

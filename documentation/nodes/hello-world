@@ -1,0 +1,9 @@
+Title: Hello World
+Template: default.html
+Created: 2026-06-07T23:05:25-04:00
+Modified: 2026-06-07T23:05:25-04:00
+Foo: This is foo
+
+Hello world!
+
+The value of the <b>Foo</b> header is: {{value:foo}}

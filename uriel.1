@@ -1,4 +1,4 @@
-.TH "uriel" "1" "March 2026" "uriel 1.3.13" "User Commands"
+.TH "uriel" "1" "June 2026" "uriel 1.4.0" "User Commands"
 
 .SH NAME
 
@@ -15,7 +15,7 @@
 Uriel is a minimalistic, stable, feature complete static site generator,
 written in Python.
 
-https://nathanrosenquist.com/uriel/
+https://uriel.foo/
 
 .SH OVERVIEW
 
@@ -26,6 +26,9 @@ can be hosted pretty much anywhere.
 This man page is not a comprehensive reference. It is intended to act more
 like a cheat sheet, as an additional supplement to the full documentation.
 
+The complete documentation is included with the source code distribution,
+and can also be found at https://uriel.foo/
+
 .SH USAGE
 
 \fBuriel\fP <project-root>
@@ -34,6 +37,32 @@ If the project root is a directory that does not exist, it will be created and
 initialized with new project files. Subsequent invocations of the \fBuriel\fP
 command against the project root will regenerate the static files of the web
 site from the project files.
+
+When \fBuriel\fP creates a new project, it also creates a \fBMakefile\fP
+inside of the project directory. If you have the \fBmake\fP command installed,
+typing \fBmake\fP inside of a Uriel project directory will rebuild the web
+site.
+
+Please note that the \fBuriel\fP command will completely overwrite the
+\fBpublic\fP subdirectory under the project root directory every time it runs.
+
+.SH PROJECT DIRECTORIES
+
+When you create a project with \fBuriel\fP, a new project directory
+is created, with the following directories inside:
+
+.TS
+tab(@), left, box;
+l | l
+lB | l.
+Directory@Notes
+
+templates@Templates to merge with dynamic content nodes
+nodes@Dynamic content nodes to merge with templates
+lib@User-defined Python code (soju.py, handlers.py)
+static@Static content to copy to the web site unmodified
+public@Rendered web site
+.TE
 
 .SH HEADERS
 
@@ -78,23 +107,25 @@ Header@Default@Notes
 Canonical-URL@@https://example.com
 Tag-Node@@tag
 RSS-URL@@/rss.xml
-RSS-Title@<value of Title>@Site name
 RSS-Description@@Site description
+RSS-Title@<value of Title>@Site name
 RSS-Image-URL@@/rss-icon.png
 RSS-Image-Width@@32
 RSS-Image-Height@@32
+RSS-Max-Entries@20@unsigned int
 Sitemap-URL@@/sitemap.xml
+Sitemap-Max-Entries@50000@unsigned int
 .TE
 
 .B Inheritance
 
 The content nodes form a tree hierarchy, starting with the root node
 (\fIindex\fP).
-Generally speaking, if a header is set on a node, it will be inherited by
-all downstream child nodes by default.
+Generally speaking, if a header is set on a node, it will be inherited
+by all downstream child nodes by default.
 
-As an exception to this general rule, the following headers are specifically
-not inherited:
+As an exception to this general rule, the following headers are
+specifically not inherited:
 
 .RS
 .nf
@@ -110,19 +141,43 @@ To delete an inherited header from the current node:
 .B -Foo: *
 .RE
 
-Set a header in child nodes, but not the current node:
+To set a header in child nodes, but not the current node:
 
 .RS
 .nf
 .B +Foo: bar
 .RE
 
+To leave a header alone in the current node, but unset it in child
+nodes:
+
+.RS
+.nf
+.B +-Foo: *
+.RE
+
+To set a header in the current node, but unset it in child nodes:
+
+.RS
+.nf
+.B Foo: bar
+.B +-Foo: *
+.RE
+
+Further combinations of + and - can be chained together, but a little
+bit goes a long way.
+
+The general rule is that each + at the beginning of a header name will
+push it down one additional level in the node tree, but the first - at
+the beginning of a header name that gets encountered will remove the
+header from that node.
+
 .SH SUBSTITUTION PARAMETERS
 
 Substitution parameters can be used in content nodes and HTML templates.
 
-When a substitution parameter is encountered, it will be replaced with its
-value during web site rendering.
+When a substitution parameter is encountered, it will be replaced with
+its value during web site rendering.
 
 .TS
 tab(@), left, box;
@@ -135,13 +190,14 @@ Parameter@Notes
 {{value:foo}}@rvalue is <lowercase-header-name>
 {{value-unescaped:foo}}@rvalue is <lowercase-header-name>
 {{breadcrumbs:*}}@HTML navigation breadcrumbs
+{{breadcrumbs-root:*}}@Breadcrumbs (including root node)
 {{created:%B %d, %Y}}@man strftime
 {{modified:%B %d, %Y}}@man strftime
 {{static-url:foo.jpg}}@a.jpg, i/a.jpg, /a.jpg
 {{static-hash-url:foo.css}}@a.css, c/a.css, /a.css
 {{rss:url}}@Canonical RSS URL
 {{node:url}}@Node URL
-{{node:name}}@Node name (e.g. foo/bar)
+{{node:name}}@Node name (e.g. index, bar)
 {{node:title}}@Node title
 {{node:link}}@<a href="/node-url/">Node Title</a>
 {{node-url:foo/bar}}@Node URL for the foo/bar node
@@ -153,23 +209,34 @@ Parameter@Notes
 {{soju:your_code_here()}}@See lib/soju.py
 .TE
 
-.SH PROJECT DIRECTORIES
+.SH SECURITY
 
-When you create a project with \fBuriel\fP, a new project directory
-is created, with the following directories inside:
+Each Uriel project can contain user-defined Python code, which
+can be executed every time Uriel builds that project.
+
+The user-defined code is located in the following project files:
+
+.RS
+.nf
+.B lib/soju.py
+.B lib/handlers.py
+.RE
+
+Since projects can execute code during the build phase, make sure
+you trust the project before building it.
+
+.SH EXIT VALUES
 
 .TS
 tab(@), left, box;
 l | l
 lB | l.
-Directory@Notes
+Exit Code@Notes
 
-templates@Templates to merge with dynamic content nodes
-nodes@Dynamic content nodes to merge with templates
-lib@User-defined Python code (soju.py, handlers.py)
-static@Static content to copy to the web site unmodified
-public@Rendered web site
+0@Success
+1@Error
 .TE
+
 
 .SH SEE ALSO
 \fBpython3\fP(1), \fBmake\fP(1), \fBdate\fP(1), \fBstrftime\fP(3)
