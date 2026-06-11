@@ -53,7 +53,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 
 # exit codes
 EXIT_OK = 0
@@ -2003,6 +2003,11 @@ class Page:
 
         """
 
+        if "null" == token.value:
+            self.line_error(
+                token,
+                "can not include 'null' template: reserved word")
+
         # get the path to the template file
         template_file = os.path.join(self.project_root,
                                      TEMPLATES_ROOT,
@@ -2616,9 +2621,12 @@ class Page:
 
         # if Template is set to "null"
         if "null" == self.template:
-            # return a minimal template that just includes the node
-            # contents, but allows for parameter substitution
-            return self.merge_lines(["{{node:body}}"])
+            # and we are being called based on the node template,
+            # instead of an {{include:*}} for a different template
+            if "null" == template:
+                # return a minimal template that just includes the node
+                # contents, but allows for parameter substitution
+                return self.merge_lines(["{{node:body}}"])
 
         # read all of the lines from the template
         lines = []

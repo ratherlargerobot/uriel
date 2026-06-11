@@ -28,6 +28,19 @@ Title: {{include:default.html}}
 
 <p>--- RIGHT AFTER THE INCLUDE ---</p>
 
+<p>
+    Template files generally have <i>html</i> file extensions, but this is not
+    a requirement.
+</p>
+
+<h3>The <i>null</i> Template</h3>
+
+<p>
+    As a special case, you can not include a template named <i>null</i>.
+    This is because the null template has special meaning when used as a value
+    in the {{node-link:headers/template}} node header.
+</p>
+
 <h3>Include Loop Error Detection</h3>
 
 <p>

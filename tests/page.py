@@ -1255,6 +1255,46 @@ class TestPage(unittest.TestCase):
                 page.merge_token_include,
                 uriel.Token("{{include:a.html}}"))
 
+    def test_merge_token_include_null_template_file_exists(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            template_null = os.path.join(project_root, "templates/null")
+
+            os.mkdir(templates_root)
+
+            with open(template_null, "w") as f:
+                f.write("null is a reserved word, and can not be included")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(
+                uriel.UrielError,
+                page.merge_token_include,
+                uriel.Token("{{include:null}}"))
+
+    def test_merge_token_include_null_template_file_does_not_exist(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            template_null = os.path.join(project_root, "templates/null")
+
+            os.mkdir(templates_root)
+
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(
+                uriel.UrielError,
+                page.merge_token_include,
+                uriel.Token("{{include:null}}"))
+
     def test_merge_token_include(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -2779,6 +2819,68 @@ class TestPage(unittest.TestCase):
 
             self.assertEqual(
                 "<h1>\nbar\n</h1>\n",
+                page.merge_template("null"))
+
+    def test_merge_template_null_with_include_in_node(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_dir = os.path.join(project_root, "templates")
+            template_file = os.path.join(templates_dir, "default.html")
+
+            os.mkdir(templates_dir)
+
+            with open(template_file, "w") as f:
+                f.write("<p>\n")
+                f.write("{{value:foo}}\n")
+                f.write("</p>\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("foo", "bar")
+            root.set_body("{{include:default.html}}")
+            page = uriel.Page(project_root, root)
+
+            # node -> Template: null
+            # merge_template() assigns {{node:body}} as the null template contents
+            # {{node:body}} contains {{include:default.html}}
+            # {{include:default.html}} contains "<p>\n{{value:foo}}\n</p>"
+            # the final rendered page has the value of the foo header: "bar"
+            self.assertEqual(
+                "<p>\nbar\n</p>",
+                page.merge_template("null"))
+
+    def test_merge_template_null_with_include_in_node_and_included_template(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_dir = os.path.join(project_root, "templates")
+            template_a = os.path.join(templates_dir, "a.html")
+            template_b = os.path.join(templates_dir, "b.html")
+
+            os.mkdir(templates_dir)
+
+            with open(template_a, "w") as f:
+                f.write("{{include:b.html}}\n")
+                f.close()
+
+            with open(template_b, "w") as f:
+                f.write("<p>\n")
+                f.write("{{value:foo}}\n")
+                f.write("</p>\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("foo", "bar")
+            root.set_body("{{include:a.html}}")
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual(
+                "<p>\nbar\n</p>",
                 page.merge_template("null"))
 
     def test_merge_template(self):

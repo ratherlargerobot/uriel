@@ -3,6 +3,11 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.4.1 (Jun 11 18:41 2026)
+------------------------------------------------------------------------------
+- Fix regression for 'Template: null' + {{include:*}} combination on node
+- Explicitly prevent {{include:null}} to preserve null template semantics
+
 VERSION 1.4.0 (Jun 11 12:14 2026)
 ------------------------------------------------------------------------------
 - Add comprehensive Uriel documentation, in the form of a Uriel project

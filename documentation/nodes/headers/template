@@ -31,6 +31,8 @@ Template: default.html
     back to the default value of <i>default.html</i>.
 </p>
 
+<h3>The <i>null</i> Template</h3>
+
 <p>
     If you want to avoid using a template altogether, and only include the
     contents of the node body, you can specify the null template like this:
@@ -41,5 +43,8 @@ Template: default.html
 <p>
     What happens if you create a template file named <i>null</i>?
     Uriel will not read it, and instead treat the null template as an
-    instruction to render the node without any template.
+    instruction to render the node without any template. Additionally, it is
+    not possible to include the <i>null</i> template using the
+    {{node-link:parameters/include}} substitution parameter.
 </p>
+

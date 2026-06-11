@@ -2,75 +2,83 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
         <loc>http://localhost:8000/tag/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/banana/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/bar/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/breadcrumbs/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/foo/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/headers/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/parameters/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/robots-txt/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/root-node/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss-headers/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap-headers/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/soju/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/static/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/user-defined-python-code/</loc>
-        <lastmod>2026-06-10T23:56:00-04:00</lastmod>
+        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/template/</loc>
+        <lastmod>2026-06-11T18:33:35-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/include/</loc>
+        <lastmod>2026-06-11T18:31:36-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/uriel/constants/</loc>
+        <lastmod>2026-06-11T17:54:24-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/</loc>
         <lastmod>2026-06-10T23:53:47-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/template/</loc>
-        <lastmod>2026-06-10T23:47:24-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/headers/link-prefix-link-suffix/custom/a/</loc>
@@ -153,10 +161,6 @@
         <lastmod>2026-06-09T23:33:01-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/include/</loc>
-        <lastmod>2026-06-09T21:43:46-04:00</lastmod>
-    </url>
-    <url>
         <loc>http://localhost:8000/uriel/</loc>
         <lastmod>2026-06-09T17:26:04-04:00</lastmod>
     </url>
@@ -171,10 +175,6 @@
     <url>
         <loc>http://localhost:8000/parameters/</loc>
         <lastmod>2026-06-08T18:52:13-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/uriel/constants/</loc>
-        <lastmod>2026-06-08T18:52:02-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/uriel/exceptions/</loc>

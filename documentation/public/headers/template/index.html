@@ -56,6 +56,8 @@
     back to the default value of <i>default.html</i>.
 </p>
 
+<h3>The <i>null</i> Template</h3>
+
 <p>
     If you want to avoid using a template altogether, and only include the
     contents of the node body, you can specify the null template like this:
@@ -66,8 +68,11 @@
 <p>
     What happens if you create a template file named <i>null</i>?
     Uriel will not read it, and instead treat the null template as an
-    instruction to render the node without any template.
+    instruction to render the node without any template. Additionally, it is
+    not possible to include the <i>null</i> template using the
+    <a href="/parameters/include/">{{include:default.html}}</a> substitution parameter.
 </p>
+
 
 <p><a href="/tag/">Tags</a>: <a href="/tag/headers/">headers</a></p>
 
@@ -192,7 +197,7 @@
     </tr>
     <tr>
         <td>Modified</td>
-        <td>2026-06-10T23:47:24-04:00</td>
+        <td>2026-06-11T18:33:35-04:00</td>
     </tr>
 </table>
 
