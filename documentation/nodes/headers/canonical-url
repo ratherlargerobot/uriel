@@ -13,7 +13,7 @@ Tags: headers, rss, rss-headers, sitemap, sitemap-headers, root-node
     URL for this documentation web site:
 </p>
 
-<p><pre>{{value:canonical-url}}</pre></p>
+<pre>{{value:canonical-url}}</pre>
 
 <p>
     Uriel will prepend the canonical URL to the node URL path when a

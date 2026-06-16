@@ -226,38 +226,6 @@ def get_project_file(node):
         '<a href="https://github.com/ratherlargerobot/uriel/blob/main/documentation/nodes/' + \
         path + '">nodes/' + path + '</a>'
 
-# {{soju:latest_year(node)}}
-def latest_year(node):
-    """
-    Get the latest year in this or any of the child nodes.
-
-    This is useful to show the latest copyright date for a given section of a
-    web site.
-
-    If the site has a tag index, the root node will always show the current
-    year, because the tag node is a child of the root node, and tags are
-    always assigned the current time when the site is built.
-
-    """
-
-    # traverse this and the child nodes, find all the
-    # created/modified dates, and stick them in the dates set
-    def __get_all_dates_in_child_nodes(node, dates):
-        if node.created:
-            dates.add(node.created)
-        dates.add(node.modified)
-
-        for child in node.get_children():
-            __get_all_dates_in_child_nodes(child, dates)
-
-    # call the nested function
-    dates = set()
-    __get_all_dates_in_child_nodes(node, dates)
-
-    # pick the latest date out of the set
-    for latest in reversed(sorted(dates)):
-        return latest.strftime("%Y")
-
 # get the uriel version number that built this site
 # {{soju:uriel_version()}}
 def uriel_version():

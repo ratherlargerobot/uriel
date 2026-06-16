@@ -11,9 +11,6 @@ The documentation can be read directly. But in addition to that, the project
 files that created the documentation also use most of the features of Uriel,
 and can be examined to see how the documentation was generated.
 
-The documentation project can be found in the **`documentation/`** directory
-of this source code distribution.
-
 Since the documentation is also a Uriel project, it is best viewed as a web
 site, through a web server. Fortunately, if you can run Uriel, then you have
 everything you need to run a web server to view the documentation.

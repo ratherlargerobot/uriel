@@ -37,7 +37,7 @@ Title: Escape-Title
     the following set of headers to achieve this:
 </p>
 
-<p><pre>Escape-Title: false
+<pre>Escape-Title: false
 +Escape-Title: true
-</pre></p>
+</pre>
 

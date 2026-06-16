@@ -1,4 +1,4 @@
-.TH "uriel" "1" "June 2026" "uriel 1.4.1" "User Commands"
+.TH "uriel" "1" "June 2026" "uriel 1.5.0" "User Commands"
 
 .SH NAME
 
@@ -92,6 +92,7 @@ Flat-URL@false@Move URL path to top
 Link-Prefix@<p>@For lists of links
 Link-Suffix@</p>@For lists of links
 Tags@@foo, bar, baz, quux
+Require-Tags@false@Require Tags header
 RSS-Include@false@Include node in RSS
 RSS-Add-Node-Title-Header@true@Add node title to RSS
 Sitemap-Include@true@Include node in sitemap
@@ -114,6 +115,8 @@ RSS-Image-Width@@32
 RSS-Image-Height@@32
 RSS-Max-Entries@20@unsigned int
 Sitemap-URL@@/sitemap.xml
+Sitemap-Index@false@index + multiple sitemaps
+Sitemap-Max-Files@500@unsigned int
 Sitemap-Max-Entries@50000@unsigned int
 .TE
 
@@ -193,6 +196,8 @@ Parameter@Notes
 {{breadcrumbs-root:*}}@Breadcrumbs (including root node)
 {{created:%B %d, %Y}}@man strftime
 {{modified:%B %d, %Y}}@man strftime
+{{oldest:%B %d, %Y}}@man strftime
+{{latest:%B %d, %Y}}@man strftime
 {{static-url:foo.jpg}}@a.jpg, i/a.jpg, /a.jpg
 {{static-hash-url:foo.css}}@a.css, c/a.css, /a.css
 {{rss:url}}@Canonical RSS URL

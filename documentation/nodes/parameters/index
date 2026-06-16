@@ -57,6 +57,20 @@ Tags: parameters
         </td>
     </tr>
     <tr>
+        <td>{{node-link:parameters/oldest/index}}</td>
+        <td>
+            man
+            <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+        </td>
+    </tr>
+    <tr>
+        <td>{{node-link:parameters/latest/index}}</td>
+        <td>
+            man
+            <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+        </td>
+    </tr>
+    <tr>
         <td>{{node-link:parameters/static-url}}</td>
         <td>a.jpg, i/a.jpg, /a.jpg</td>
     </tr>

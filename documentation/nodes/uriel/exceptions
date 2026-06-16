@@ -53,16 +53,16 @@ Title: Exceptions
 
 <h3>Throw SojuError From User-Defined Soju Function</h3>
 
-<p><pre># lib/soju.py
+<pre># lib/soju.py
 def hello_world(node):
-    raise SojuError("oops")</pre></p>
+    raise SojuError("oops")</pre>
 
 <p>
     When the exception is raised, Uriel will display an error that looks like
     this:
 </p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -73,22 +73,22 @@ parameter error:
       nodes/parameters/soju-hello-world
         '&lbrace;&lbrace;soju:hello_world(node)&rbrace;&rbrace;'
           'oops'
-soju: error in function call to 'soju.hello_world(node)': 'oops'</pre></p>
+soju: error in function call to 'soju.hello_world(node)': 'oops'</pre>
 
 <h3>Throw HandlerError From User-Defined Handler Function</h3>
 
-<p><pre># lib/handlers.py
+<pre># lib/handlers.py
 def init(project_root):
-    raise HandlerError("oops")</pre></p>
+    raise HandlerError("oops")</pre>
 
 <p>
     When the exception is raised, Uriel will display an error that looks like
     this:
 </p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 running handler: init
-uriel: error in handler function init(): 'oops'</pre></p>
+uriel: error in handler function init(): 'oops'</pre>
 

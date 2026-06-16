@@ -29,7 +29,7 @@ Tags: headers, rss, rss-headers, root-node
     on the root node to a value of <i>{{value:rss-url}}</i>, like this:
 </p>
 
-<p><pre>RSS-URL: {{value:rss-url}}</pre></p>
+<pre>RSS-URL: {{value:rss-url}}</pre>
 
 <p>
     This causes Uriel to write an RSS feed to the specified path, which you

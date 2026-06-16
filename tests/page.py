@@ -1359,6 +1359,52 @@ class TestPage(unittest.TestCase):
                 )
             )
 
+    def test_merge_token_oldest(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.created = get_datetime_from_date_str("2026-06-13T17:08:37-04:00")
+            root.modified = get_datetime_from_date_str("2026-06-13T17:08:37-04:00")
+
+            child = uriel.VirtualNode(project_root, "child", root)
+            child.created = get_datetime_from_date_str("1970-01-01T00:00:00-00:00")
+            child.modified = get_datetime_from_date_str("1970-01-01T00:00:00-00:00")
+            root.add_child(child)
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual(
+                "&lt;January 01, 1970&gt;",
+                page.merge_token_oldest(
+                    uriel.Token("{{oldest:<%B %d, %Y>}}")
+                )
+            )
+
+    def test_merge_token_latest(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.created = get_datetime_from_date_str("1970-01-01T00:00:00-00:00")
+            root.modified = get_datetime_from_date_str("1970-01-01T00:00:00-00:00")
+
+            child = uriel.VirtualNode(project_root, "child", root)
+            child.created = get_datetime_from_date_str("2026-06-13T17:08:37-04:00")
+            child.modified = get_datetime_from_date_str("2026-06-13T17:08:37-04:00")
+            root.add_child(child)
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual(
+                "&lt;June 13, 2026&gt;",
+                page.merge_token_latest(
+                    uriel.Token("{{latest:<%B %d, %Y>}}")
+                )
+            )
+
     def test_merge_token_breadcrumbs_invalid(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -2948,4 +2994,89 @@ class TestPage(unittest.TestCase):
             page.template = "default.html"
 
             self.assertEqual("<p>\nbar\n</p>\n", page.render())
+
+    def test_render_require_tags_true_tags_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("require-tags", "true")
+            root.set_header("tags", "foo")
+            root.set_body("OK")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("OK\n", page.render())
+
+    def test_render_require_tags_true_tags_not_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("require-tags", "true")
+            root.set_body("FAIL")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(uriel.UrielError, page.render)
+
+    def test_render_require_tags_false_tags_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("require-tags", "false")
+            root.set_header("tags", "foo")
+            root.set_body("OK")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("OK\n", page.render())
+
+    def test_render_require_tags_false_tags_not_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("require-tags", "false")
+            root.set_body("OK")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("OK\n", page.render())
+
+    def test_render_require_tags_not_set_tags_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("tags", "foo")
+            root.set_body("OK")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("OK\n", page.render())
+
+    def test_render_require_tags_not_set_tags_not_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_body("OK")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("OK\n", page.render())
 

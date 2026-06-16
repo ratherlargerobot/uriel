@@ -91,7 +91,7 @@ Tags: root-node
     of the <i>nodes/hello-world</i> file in this documentation project:
 </p>
 
-<p><pre>Title: Hello World
+<pre>Title: Hello World
 Template: default.html
 Created: 2026-06-07T23:05:25-04:00
 Modified: 2026-06-07T23:05:25-04:00
@@ -99,7 +99,7 @@ Foo: This is foo
 
 Hello world!
 
-The value of the &lt;b&gt;Foo&lt;/b&gt; header is: &lbrace;&lbrace;value:foo&rbrace;&rbrace;</pre></p>
+The value of the &lt;b&gt;Foo&lt;/b&gt; header is: &lbrace;&lbrace;value:foo&rbrace;&rbrace;</pre>
 
 <p>
     You can see the rendered page here:

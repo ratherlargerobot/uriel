@@ -15,7 +15,7 @@ Title: {{node-link:foo/bar}}
     the parameter evaluates to:
 </p>
 
-<p><pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre></p>
+<pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre>
 
 <p>And the actual HTML on the page looks like this: {{node-link:parameters/some-other-node}}</a>
 

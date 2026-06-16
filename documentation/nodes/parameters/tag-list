@@ -12,7 +12,7 @@ Tags: parameters, foo
     tags that this node is associated with:
 </p>
 
-<p><pre>Tags: {{value:tags}}</pre></p>
+<pre>Tags: {{value:tags}}</pre>
 
 <p>
     When the <b>&lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</b> is used on this
@@ -38,7 +38,7 @@ Tags: parameters, foo
     For example, the following fragment:
 </p>
 
-<p><pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre></p>
+<pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre>
 
 <p>
     Evaluates to this when displayed as HTML on the page:

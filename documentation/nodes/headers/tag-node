@@ -20,7 +20,7 @@ Tags: headers, root-node
     to the root node:
 </p>
 
-<p><pre>Tag-Node: tag</pre></p>
+<pre>Tag-Node: tag</pre>
 
 <p>
     Here, the value <i>tag</i> refers to the <i>nodes/tag</i> node file.

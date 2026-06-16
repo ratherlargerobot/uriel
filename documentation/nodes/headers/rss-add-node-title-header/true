@@ -12,7 +12,7 @@ RSS-Add-Node-Title-Header: true
     (<a href="{{rss:url}}">{{rss:url}}</a>):
 </p>
 
-<p><pre>&lt;h1&gt;RSS-Add-Node-Title-Header: true&lt;/h1&gt;</pre></p>
+<pre>&lt;h1&gt;RSS-Add-Node-Title-Header: true&lt;/h1&gt;</pre>
 
 <p>Compare this with {{node-link:headers/rss-add-node-title-header/false}}</p>
 

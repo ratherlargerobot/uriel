@@ -14,7 +14,7 @@ Title: {{node-name:foo/bar}}
     the parameter evaluates to:
 </p>
 
-<p><pre>{{node-name:parameters/some-other-node}}</pre></p>
+<pre>{{node-name:parameters/some-other-node}}</pre>
 
 <p>
     Compare this with the {{node-link:parameters/node-name}} parameter, which

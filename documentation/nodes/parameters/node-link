@@ -11,7 +11,7 @@ Title: {{node:link}}
     <b>&lbrace;&lbrace;node:link&rbrace;&rbrace;</b> parameter evaluates to:
 </p>
 
-<p><pre>&lt;a href="{{node:url}}"&gt;{{node:title}}&lt;/a&gt;</pre></p>
+<pre>&lt;a href="{{node:url}}"&gt;{{node:title}}&lt;/a&gt;</pre>
 
 <p>And the actual HTML on the page looks like this: {{node:link}}</a>
 
@@ -26,7 +26,7 @@ Title: {{node:link}}
     evaluate to:
 </p>
 
-<p><pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre></p>
+<pre>&lt;a href="{{node-url:parameters/some-other-node}}"&gt;{{node-title:parameters/some-other-node}}&lt;/a&gt;</pre>
 
 <p>
     And if this parameter were used on that page, the actual HTML on the page

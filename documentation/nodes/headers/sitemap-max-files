@@ -1,0 +1,27 @@
+Title: Sitemap-Max-Files
+Tags: headers, root-node, sitemap, sitemap-headers
+
+<p>
+    The <b>Sitemap-Max-Files</b> header can optionally be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a> to control the
+    maximum number of sitemap files that be created.
+</p>
+
+<p>This field is optional. The default value is <i>500</i>.</p>
+
+<p>
+    The <b>Sitemap-Max-Files</b> header only has an effect when the
+    {{node-link:headers/sitemap-url}} header is set, and the
+    {{node-link:headers/sitemap-index}} header is set to <i>true</i>.
+</p>
+
+<p>
+    The {{node-link:headers/sitemap-max-entries}} header controls the maximum
+    number of entries that will be added to an individual sitemap file.
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate a sitemap. 
+</p>
+

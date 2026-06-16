@@ -1,0 +1,17 @@
+Title: Child Node
+Created: 1970-01-01T00:00:00-00:00
+Modified: 1970-01-11T00:00:00-00:00
+
+<p>
+    This is a child node with the following {{node-link:headers/created}} and
+    {{node-link:headers/modified}} headers set:
+</p>
+
+<pre>Created: {{value:created}}
+Modified: {{value:modified}}</pre>
+
+<p>
+    This node is one part of an example. See the
+    {{node-link:parameters/oldest/index}} page for details.
+</p>
+

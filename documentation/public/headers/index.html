@@ -115,6 +115,11 @@
         <td>foo, bar, baz, quux</td>
     </tr>
     <tr>
+        <td><a href="/headers/require-tags/">Require-Tags</a></td>
+        <td>false</td>
+        <td>Require Tags header</td>
+    </tr>
+    <tr>
         <td><a href="/headers/rss-include/">RSS-Include</a></td>
         <td><i>false</i></td>
         <td>Include node in RSS</td>
@@ -195,6 +200,16 @@
         <td>/sitemap.xml</td>
     </tr>
     <tr>
+        <td><a href="/headers/sitemap-index/">Sitemap-Index</a></td>
+        <td>false</td>
+        <td>index + multiple sitemaps</td>
+    </tr>
+    <tr>
+        <td><a href="/headers/sitemap-max-files/">Sitemap-Max-Files</a></td>
+        <td><i>500</i></td>
+        <td>unsigned int</td>
+    </tr>
+    <tr>
         <td><a href="/headers/sitemap-max-entries/">Sitemap-Max-Entries</a></td>
         <td><i>50000</i></td>
         <td>unsigned int</td>
@@ -223,22 +238,22 @@
 
 <p>To delete an inherited header from the current node:</p>
 
-<p><pre>-Foo: *</pre></p>
+<pre>-Foo: *</pre>
 
 <p>To set a header in child nodes, but not the current node:</p>
 
-<p><pre>+Foo: bar</pre></p>
+<pre>+Foo: bar</pre>
 
 <p>
     To leave a header alone in the current node, but unset it in child nodes:
 <p>
 
-<p><pre>+-Foo: *</pre></p>
+<pre>+-Foo: *</pre>
 
 <p>To set a header in the current node, but unset it in child nodes:</p>
 
-<p><pre>Foo: bar
-+-Foo: *</pre></p>
+<pre>Foo: bar
++-Foo: *</pre>
 
 <p>
     Further combinations of + and - can be chained together, but a little bit
@@ -266,17 +281,17 @@
     set a header and reference the same header directly like this:
 </p>
 
-<p><pre>Title: Some Example Node
+<pre>Title: Some Example Node
 Foo-Bar-Baz-Quux: Some Value
 
 Here is the value of Foo-Bar-Baz-Quux: &lbrace;&lbrace;value:foo-bar-baz-quux&rbrace;&rbrace;
-</pre></p>
+</pre>
 
 <p>
     The example above would render in the generated page as:
 </p>
 
-<p><pre>Here is the value of Foo-Bar-Baz-Quux: Some Value</pre></p>
+<pre>Here is the value of Foo-Bar-Baz-Quux: Some Value</pre>
 
 
 <p><a href="/tag/">Tags</a>: </p>
@@ -402,7 +417,7 @@ Here is the value of Foo-Bar-Baz-Quux: &lbrace;&lbrace;value:foo-bar-baz-quux&rb
     </tr>
     <tr>
         <td>Modified</td>
-        <td>2026-06-07T23:00:45-04:00</td>
+        <td>2026-06-14T19:54:15-04:00</td>
     </tr>
 </table>
 

@@ -1,5 +1,5 @@
 Title: Sitemap-Max-Entries
-Tags: sitemap, sitemap-headers, root-node
+Tags: headers, sitemap, sitemap-headers, root-node
 
 <p>
     The <b>Sitemap-Max-Entries</b> header can optionally be set on the
@@ -26,7 +26,7 @@ Tags: sitemap, sitemap-headers, root-node
     this:
 </p>
 
-<p><pre>Sitemap-Max-Entries: {{value:sitemap-max-entries}}</pre></p>
+<pre>Sitemap-Max-Entries: {{value:sitemap-max-entries}}</pre>
 
 <p>
     This causes Uriel to limit the number of entries in the generated sitemap
@@ -39,5 +39,16 @@ Tags: sitemap, sitemap-headers, root-node
     is larger than the number of nodes that are eligible for inclusion in the
     sitemap, so you won&apos;t directly observe any effect without changing
     the value and rebuilding the site.
+</p>
+
+<p>
+    The <b>Sitemap-Max-Entries</b> header can be useful for tuning the size
+    of individual sitemap files when the {{node-link:headers/sitemap-index}}
+    header is set to <i>true</i>.
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate a sitemap. 
 </p>
 

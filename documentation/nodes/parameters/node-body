@@ -36,7 +36,7 @@ Title: {{node:body}}
     site:
 </p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -46,5 +46,5 @@ node body include loop error:
     templates/default.html
       nodes/parameters/node-body
         '&lbrace;&lbrace;node:body&rbrace;&rbrace;'
-uriel: node body include loop detected in node: 'parameters/node-body'</pre></p>
+uriel: node body include loop detected in node: 'parameters/node-body'</pre>
 

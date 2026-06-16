@@ -17,7 +17,7 @@ Tags: headers, rss, rss-headers, root-node
     documentation web site is:
 </p>
 
-<p><pre>{{value:rss-description}}</pre></p>
+<pre>{{value:rss-description}}</pre>
 
 <p>
     You can see how it shows up in the

@@ -12,9 +12,9 @@ Title: Quick Start
     {{soju:uriel_version()}}:
 </p>
 
-<p><pre>curl -O https://uriel.foo/downloads/uriel-{{soju:uriel_version()}}.tar.gz
+<pre>curl -O https://uriel.foo/downloads/uriel-{{soju:uriel_version()}}.tar.gz
 tar -xzvf uriel-{{soju:uriel_version()}}.tar.gz
-cd uriel-{{soju:uriel_version()}}/</pre></p>
+cd uriel-{{soju:uriel_version()}}/</pre>
 
 <h3>Install Uriel</h3>
 
@@ -26,7 +26,7 @@ cd uriel-{{soju:uriel_version()}}/</pre></p>
     page, run:
 </p>
 
-<p><pre>sudo make install</pre></p>
+<pre>sudo make install</pre>
 
 <p>
     As an alternative, you can copy the <b>uriel</b> script anywhere you want,
@@ -53,13 +53,13 @@ cd uriel-{{soju:uriel_version()}}/</pre></p>
     <b>my-first-project</b>:
 </p>
 
-<p><pre>uriel my-first-project</pre></p>
+<pre>uriel my-first-project</pre>
 
 <p>
     You should see the following output from this command:
 </p>
 
-<p><pre>creating 'my-first-project'
+<pre>creating 'my-first-project'
 creating 'my-first-project/nodes'
 creating 'my-first-project/templates'
 creating 'my-first-project/static'
@@ -81,11 +81,11 @@ type    | node  | url
 file    | index | /
 --------+-------+----
 created 1 page (1 file, 0 virtual)
-copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
+copying 'my-first-project/static' to 'my-first-project/public'</pre>
 
 <p>Your new project contains the following files and directories:</p>
 
-<p><pre>
+<pre>
 <a href="{{node-url:directories/index}}">my-first-project</a>
 ├── <a href="{{node-url:directories/lib}}">lib</a>
 │   ├── <a href="{{node-url:handlers}}">handlers.py</a>
@@ -97,7 +97,7 @@ copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
 │   └── index.html
 ├── <a href="{{node-url:directories/static}}">static</a>
 └── <a href="{{node-url:directories/templates}}">templates</a>
-    └── default.html</pre></p>
+    └── default.html</pre>
 
 <p>
     The links above take you to the relevant Uriel documentation for each
@@ -137,7 +137,7 @@ copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
     argument to indicate the current directory:
 </p>
 
-<p><pre>uriel .</pre></p>
+<pre>uriel .</pre>
 
 <h3>Using the Makefile (Optional)</h3>
 
@@ -156,7 +156,7 @@ copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
     While in your project directory, simply run:
 </p>
 
-<p><pre>make</pre></p>
+<pre>make</pre>
 
 <p>
     If you have <b>make</b> installed, this will run the <b>uriel</b>
@@ -183,11 +183,11 @@ copying 'my-first-project/static' to 'my-first-project/public'</pre></p>
     For example:
 </p>
 
-<p><pre>cd my-first-project
+<pre>cd my-first-project
 mkdir bin
 cp /path/to/the/uriel/script bin/
 
-# edit Makefile to set URIEL=bin/uriel</pre></p>
+# edit Makefile to set URIEL=bin/uriel</pre>
 
 <p>
     This is the most portable option. Your web site project directory will
@@ -204,7 +204,7 @@ cp /path/to/the/uriel/script bin/
     preview your web site:
 </p>
 
-<p><pre># change into the project directory for your web site
+<pre># change into the project directory for your web site
 # (in this case, this documentation site)
 cd documentation/
 
@@ -212,7 +212,7 @@ cd documentation/
 cd public/
 
 # run the built-in Python web server
-python3 -m http.server</pre></p>
+python3 -m http.server</pre>
 
 <p>
     This will start a built-in Python web server on port 8000. You can now
@@ -224,7 +224,7 @@ python3 -m http.server</pre></p>
     If you have <b>make</b> installed, you can also use the <i>preview</i> target
     that comes with the <i>Makefile</i> Uriel created for your project:
 
-<p><pre>make preview</pre></p>
+<pre>make preview</pre>
 
 <h3>Publish Your Web Site</h3>
 
@@ -272,6 +272,6 @@ python3 -m http.server</pre></p>
     For example:
 </p>
 
-<p><pre>cd uriel-{{soju:uriel_version()}}/documentation/
-make</pre></p>
+<pre>cd uriel-{{soju:uriel_version()}}/documentation/
+make</pre>
 

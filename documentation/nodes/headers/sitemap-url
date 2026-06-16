@@ -1,5 +1,5 @@
 Title: Sitemap-URL
-Tags: sitemap, sitemap-headers, root-node
+Tags: headers, sitemap, sitemap-headers, root-node
 
 <p>
     The <b>Sitemap-URL</b> header can be set on the
@@ -29,7 +29,7 @@ Tags: sitemap, sitemap-headers, root-node
     this:
 </p>
 
-<p><pre>Sitemap-URL: {{value:sitemap-url}}</pre></p>
+<pre>Sitemap-URL: {{value:sitemap-url}}</pre>
 
 <p>
     This causes Uriel to write a sitemap to the specified path, which you

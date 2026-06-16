@@ -76,7 +76,10 @@ Tags: rss, sitemap, robots-txt, headers, parameters, static, root-node
 
 <h3>Sitemap</h3>
 
-<p>Uriel can be configured to generate a sitemap XML file.</p>
+<p>
+    Uriel can be configured to generate a sitemap XML file, or multiple
+    sitemap files with a sitemap index.
+</p>
 
 <p>In order to generate a sitemap, the following conditions must be met:</p>
 
@@ -92,19 +95,42 @@ Tags: rss, sitemap, robots-txt, headers, parameters, static, root-node
 </ul>
 
 <p>
+    In order to generate a sitemap index and multiple sitemap files (for
+    larger sites), all of the conditions above must be met, and:
+</p>
+
+<ul>
+    <li>
+        {{node-link:headers/sitemap-index}} must be set to <i>true</i> on the
+        <a href="{{node-url:directories/nodes}}">root node</a>
+    </li>
+</ul>
+
+<p>
     Every node will be included in the sitemap by default. To exclude a node
     from the sitemap, set the {{node-link:headers/sitemap-include/index}}
     header to <i>false</i> on that node. The usual header inheritance rules
     apply.
 </p>
 
+<p>
+    The {{node-link:headers/sitemap-max-files}} header controls the maximum
+    number of sitemap files that can be written when
+    {{node-link:headers/sitemap-index}} is enabled.
+</p>
+
+<p>
+    The {{node-link:headers/sitemap-max-entries}} header controls the maximum
+    number of entries that can be added to an individual sitemap file.
+</p>
+
 <h3>robots.txt</h3>
 
 <p>
     Uriel will automatically create an extremely minimal <i>robots.txt</i>
-    file if it is configured to create a sitemap. This <i>robots.txt</i> file
-    will be just enough to publish the location of the <i>sitemap.xml</i>
-    file, and nothing more.
+    file if it is configured to create a sitemap (or sitemap index). This
+    <i>robots.txt</i> file will be just enough to publish the location of the
+    {{node-link:headers/sitemap-url}}, and nothing more.
 </p>
 
 <p>

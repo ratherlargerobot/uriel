@@ -3,6 +3,18 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.5.0 (Jun 15 22:30 2026)
+------------------------------------------------------------------------------
+- Fix node URL bug where "index" name suffix would be elided from URL
+- Add Require-Tags header
+- Add Sitemap-Index root node header to optionally build multiple sitemaps
+- Add Sitemap-Max-Files root node header
+- Add {{oldest:%B %d, %Y}} substitution parameter
+- Add {{latest:%B %d, %Y}} substitution parameter
+- Add case canonicalization to Node header methods
+- Change sort order in sitemap contents to order by URL
+- Change warnings to errors when sitemap capacity is exceeded
+
 VERSION 1.4.1 (Jun 11 18:41 2026)
 ------------------------------------------------------------------------------
 - Fix regression for 'Template: null' + {{include:*}} combination on node

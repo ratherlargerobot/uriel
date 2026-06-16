@@ -25,21 +25,21 @@ RSS-Include: true
     this:
 </p>
 
-<p><pre>/parameters/node-url/</pre></p>
+<pre>/parameters/node-url/</pre>
 
 <p>
     In the <a href="{{node-url:generated}}">generated RSS feed</a>, the URL
     will include the {{node-link:headers/canonical-url}}. Like this:
 </p>
 
-<p><pre>{{value:canonical-url}}/parameters/node-url/</pre></p>
+<pre>{{value:canonical-url}}/parameters/node-url/</pre>
 
 <p>
     The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
     current context evaluates to:
 </p>
 
-<p><pre>{{node:url}}</pre></p>
+<pre>{{node:url}}</pre>
 
 <p>
     View this in both the <a href="{{node:url}}">web page</a> and the

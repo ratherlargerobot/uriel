@@ -16,7 +16,7 @@ Tags: headers, rss, rss-headers
     documentation web site is:
 </p>
 
-<p><pre>{{value:rss-title}}</pre></p>
+<pre>{{value:rss-title}}</pre>
 
 <p>
     You can see how it shows up in the

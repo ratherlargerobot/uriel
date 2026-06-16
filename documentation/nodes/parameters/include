@@ -70,7 +70,7 @@ Title: {{include:default.html}}
     that you can track down what happened:
 </p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -80,5 +80,5 @@ include loop error:
 >>> templates/default.html <<< LOOP STARTS HERE
   > templates/loop.html
 >>> templates/default.html <<< WOULD REPEAT FOREVER
-uriel: include loop detected in: 'templates/default.html'</pre></p>
+uriel: include loop detected in: 'templates/default.html'</pre>
 

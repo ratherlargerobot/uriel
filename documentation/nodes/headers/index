@@ -91,6 +91,11 @@ Title: Node Headers
         <td>foo, bar, baz, quux</td>
     </tr>
     <tr>
+        <td>{{node-link:headers/require-tags}}</td>
+        <td>false</td>
+        <td>Require Tags header</td>
+    </tr>
+    <tr>
         <td>{{node-link:headers/rss-include/index}}</td>
         <td><i>false</i></td>
         <td>Include node in RSS</td>
@@ -171,6 +176,16 @@ Title: Node Headers
         <td>/sitemap.xml</td>
     </tr>
     <tr>
+        <td>{{node-link:headers/sitemap-index}}</td>
+        <td>false</td>
+        <td>index + multiple sitemaps</td>
+    </tr>
+    <tr>
+        <td>{{node-link:headers/sitemap-max-files}}</td>
+        <td><i>500</i></td>
+        <td>unsigned int</td>
+    </tr>
+    <tr>
         <td>{{node-link:headers/sitemap-max-entries}}</td>
         <td><i>50000</i></td>
         <td>unsigned int</td>
@@ -199,22 +214,22 @@ Title: Node Headers
 
 <p>To delete an inherited header from the current node:</p>
 
-<p><pre>-Foo: *</pre></p>
+<pre>-Foo: *</pre>
 
 <p>To set a header in child nodes, but not the current node:</p>
 
-<p><pre>+Foo: bar</pre></p>
+<pre>+Foo: bar</pre>
 
 <p>
     To leave a header alone in the current node, but unset it in child nodes:
 <p>
 
-<p><pre>+-Foo: *</pre></p>
+<pre>+-Foo: *</pre>
 
 <p>To set a header in the current node, but unset it in child nodes:</p>
 
-<p><pre>Foo: bar
-+-Foo: *</pre></p>
+<pre>Foo: bar
++-Foo: *</pre>
 
 <p>
     Further combinations of + and - can be chained together, but a little bit

@@ -33,7 +33,7 @@ RSS-Include: true
     creates a new project:
 </p>
 
-<p><pre>##############################################################################
+<pre>##############################################################################
 # soju.py                                                                    #
 ##############################################################################
 
@@ -53,7 +53,7 @@ RSS-Include: true
 
 # &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
 def node_title(node):
-    return escape(node.get_title())</pre></p>
+    return escape(node.get_title())</pre>
 
 <p>
     You can add your own functions to this file, and
@@ -152,9 +152,9 @@ def node_title(node):
     creates a new project contains the following function:
 </p>
 
-<p><pre># &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
+<pre># &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
 def node_title(node):
-    return escape(node.get_title())</pre></p>
+    return escape(node.get_title())</pre>
 
 <p>
     We can reference that function by including the
@@ -164,7 +164,7 @@ def node_title(node):
     function:
 </p>
 
-<p><pre>{{soju:node_title(node)}}</pre></p>
+<pre>{{soju:node_title(node)}}</pre>
 
 <p>
     The function evaluated to the HTML escaped title of the current node, and
@@ -179,7 +179,7 @@ def node_title(node):
     file for this documentation site:
 </p>
 
-<p><pre># &lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;
+<pre># &lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;
 def example(page, node, project_root, use_canonical_url):
     """
     Example Soju function, demonstrating several things in one place.
@@ -228,7 +228,7 @@ def example(page, node, project_root, use_canonical_url):
     #raise SojuError("oops")
 
     # combine and return the lines as a string
-    return "\n".join(lines)</pre></p>
+    return "\n".join(lines)</pre>
 
 <p>
     When we call this function, by including it a node or template, using the<br>
@@ -237,13 +237,13 @@ def example(page, node, project_root, use_canonical_url):
     on the rendered page:
 </p>
 
-<p><pre>{{soju:example(page, node, project_root, use_canonical_url)}}</pre></p>
+<pre>{{soju:example(page, node, project_root, use_canonical_url)}}</pre>
 
 <p>
     You can see the output of the <b>log()</b> function when the site builds:
 </p>
 
-<p><pre>
+<pre>
 copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
@@ -260,7 +260,7 @@ creating 'public/rss.xml'
 creating 'public/sitemap.xml'
 creating 'public/robots.txt'
 copying 'static' to 'public'
-</pre></p>
+</pre>
 
 <p>
     Notice that the <b>log()</b> message shows up twice? This is because the
@@ -322,7 +322,7 @@ copying 'static' to 'public'
 
 <p>Example <b>SojuError</b> build error message:</p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -334,5 +334,5 @@ parameter error:
       nodes/soju
         '&lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;'
           'oops'
-soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre></p>
+soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre>
 

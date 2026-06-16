@@ -14,14 +14,14 @@ Modified: 2026-04-12T16:45:29-04:00
     header set:
 </p>
 
-<p><pre>Modified: 2026-04-12T16:45:29-04:00</pre></p>
+<pre>Modified: 2026-04-12T16:45:29-04:00</pre>
 
 <p>
     Here is what the <b>&lbrace;&lbrace;modified:%B %d, %Y&rbrace;&rbrace;</b>
     substitution parameter evaluates to:
 </p>
 
-<p><pre>{{modified:%B %d, %Y}}</pre></p>
+<pre>{{modified:%B %d, %Y}}</pre>
 
 <p>
     The format string has a lot of different options. See the
@@ -42,6 +42,8 @@ Modified: 2026-04-12T16:45:29-04:00
 </p>
 
 <p>
-    Compare this with the {{node-link:parameters/created}} parameter.
+    Compare this with the {{node-link:parameters/created}},
+    {{node-link:parameters/oldest/index}} and
+    {{node-link:parameters/latest/index}} parameters.
 </p>
 

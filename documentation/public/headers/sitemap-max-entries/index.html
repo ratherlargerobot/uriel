@@ -51,7 +51,7 @@
     this:
 </p>
 
-<p><pre>Sitemap-Max-Entries: 10000</pre></p>
+<pre>Sitemap-Max-Entries: 10000</pre>
 
 <p>
     This causes Uriel to limit the number of entries in the generated sitemap
@@ -66,8 +66,19 @@
     the value and rebuilding the site.
 </p>
 
+<p>
+    The <b>Sitemap-Max-Entries</b> header can be useful for tuning the size
+    of individual sitemap files when the <a href="/headers/sitemap-index/">Sitemap-Index</a>
+    header is set to <i>true</i>.
+</p>
 
-<p><a href="/tag/">Tags</a>: <a href="/tag/root-node/">root-node</a>, <a href="/tag/sitemap/">sitemap</a>, <a href="/tag/sitemap-headers/">sitemap-headers</a></p>
+<p>
+    See the <a href="/generated/">RSS, Sitemap, robots.txt</a> page for additional details about how to
+    generate a sitemap.
+</p>
+
+
+<p><a href="/tag/">Tags</a>: <a href="/tag/headers/">headers</a>, <a href="/tag/root-node/">root-node</a>, <a href="/tag/sitemap/">sitemap</a>, <a href="/tag/sitemap-headers/">sitemap-headers</a></p>
 
 <div class="page-details">
 
@@ -113,7 +124,7 @@
     </tr>
     <tr>
         <td><b>tags</b></td>
-        <td><b>sitemap, sitemap-headers, root-node</b></td>
+        <td><b>headers, sitemap, sitemap-headers, root-node</b></td>
     </tr>
     <tr>
         <td><b>title</b></td>
@@ -190,7 +201,7 @@
     </tr>
     <tr>
         <td>Modified</td>
-        <td>2026-06-07T22:59:06-04:00</td>
+        <td>2026-06-15T22:15:58-04:00</td>
     </tr>
 </table>
 
@@ -255,7 +266,7 @@
     </tr>
     <tr>
         <td>get_tags()</td>
-        <td>[&apos;root-node&apos;, &apos;sitemap&apos;, &apos;sitemap-headers&apos;]</td>
+        <td>[&apos;headers&apos;, &apos;root-node&apos;, &apos;sitemap&apos;, &apos;sitemap-headers&apos;]</td>
     </tr>
     <tr>
         <td>get_dest_dir()</td>

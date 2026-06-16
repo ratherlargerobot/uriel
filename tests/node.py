@@ -389,6 +389,25 @@ class TestNode(unittest.TestCase):
             self.assertEqual("/bar/baz/", baz.get_url())
             self.assertEqual("/bar/baz/quux/", quux.get_url())
 
+    def test_get_url_with_dash_index(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            foo = uriel.VirtualNode(project_root, "foo-index/index", root)
+            bar = uriel.VirtualNode(project_root, "foo-index/bar-index/index", foo)
+            baz = uriel.VirtualNode(project_root, "foo-index/bar-index/baz-index/index", bar)
+            quux = uriel.VirtualNode(project_root, "foo-index/bar-index/baz-index/quux", baz)
+            quux_index = uriel.VirtualNode(project_root, "foo-index/bar-index/baz-index/quux-index", baz)
+
+            self.assertEqual("/", root.get_url())
+            self.assertEqual("/foo-index/", foo.get_url())
+            self.assertEqual("/foo-index/bar-index/", bar.get_url())
+            self.assertEqual("/foo-index/bar-index/baz-index/", baz.get_url())
+            self.assertEqual("/foo-index/bar-index/baz-index/quux/", quux.get_url())
+            self.assertEqual("/foo-index/bar-index/baz-index/quux-index/", quux_index.get_url())
+
     def test_get_canonical_url_header_not_set(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -1464,7 +1483,12 @@ class TestNode(unittest.TestCase):
             root.set_header("foo", "bar")
 
             self.assertTrue(root.has_header("foo"))
+            self.assertTrue(root.has_header("Foo"))
+            self.assertTrue(root.has_header("FOO"))
+
             self.assertFalse(root.has_header("quux"))
+            self.assertFalse(root.has_header("Quux"))
+            self.assertFalse(root.has_header("QUUX"))
 
     def test_get_header(self):
         c = UrielContainer()
@@ -1476,8 +1500,12 @@ class TestNode(unittest.TestCase):
             root.set_header("foo", "bar")
 
             self.assertEqual("bar", root.get_header("foo"))
+            self.assertEqual("bar", root.get_header("Foo"))
+            self.assertEqual("bar", root.get_header("FOO"))
 
             self.assertRaises(Exception, root.get_header, "quux")
+            self.assertRaises(Exception, root.get_header, "Quux")
+            self.assertRaises(Exception, root.get_header, "QUUX")
 
     def test_invalidate_cache_by_header_title(self):
         c = UrielContainer()
@@ -1526,8 +1554,10 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
 
             root.set_header("foo", "bar")
+            root.set_header("Baz", "quux")
 
             self.assertEqual("bar", root.get_header("foo"))
+            self.assertEqual("quux", root.get_header("baz"))
 
     def test_set_header_invalidates_cache(self):
         c = UrielContainer()
@@ -1551,9 +1581,12 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
 
             root.set_header("foo", "bar")
+            root.set_header("baz", "quux")
             root.delete_header("foo")
+            root.delete_header("Baz")
 
             self.assertFalse(root.has_header("foo"))
+            self.assertFalse(root.has_header("baz"))
 
     def test_delete_header_invalidates_cache(self):
         c = UrielContainer()

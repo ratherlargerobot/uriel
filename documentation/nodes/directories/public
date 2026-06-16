@@ -33,7 +33,7 @@ Title: public
     preview your web site:
 </p>
 
-<p><pre># change into the project directory for your web site
+<pre># change into the project directory for your web site
 # (in this case, this documentation site)
 cd documentation/
 
@@ -41,7 +41,7 @@ cd documentation/
 cd public/
 
 # run the built-in Python web server
-python3 -m http.server</pre></p>
+python3 -m http.server</pre>
 
 <p>
     This will start a built-in Python web server on port 8000. You can now
@@ -54,7 +54,7 @@ python3 -m http.server</pre></p>
     target that comes with the <i>Makefile</i> Uriel created for your project:
 </p>
 
-<p><pre>make preview</pre></p>
+<pre>make preview</pre>
 
 <h3>Publishing Your Web Site</h3>
 

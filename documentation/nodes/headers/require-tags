@@ -1,0 +1,63 @@
+Title: Require-Tags
+Require-Tags: true
+Tags: headers
+
+<p>
+    The <b>Require-Tags</b> header determines whether the <b>Tags</b> header
+    must be set on a node.
+</p>
+
+<p>
+    The <b>Require-Tags</b> header has two valid values:
+</p>
+
+<ul>
+    <li><i>true</i></li>
+    <li><i>false</i></li>
+</ul>
+
+<p>The default value is <i>false</i>.</p>
+
+<p>
+    When <b>Require-Tags</b> is set to <i>true</i> on a node, then the
+    {{node-link:headers/tags}} header must also be set, or the build will
+    fail.
+</p>
+
+<p>
+    When <b>Require-Tags</b> is set to <i>false</i> (or not set) on a node,
+    then it has no effect.
+</p>
+
+<h3>When to Use the Require-Tags Header</h3>
+
+<p>
+    If you want to ensure that every page in a section of your site has at
+    least one tag defined, you can set the <b>Require-Tags</b> header on a
+    parent node, and it will be inherited by all downstream child nodes in
+    that section.
+</p>
+
+<p>
+    For instance, if you had a node called <i>articles/index</i>, you could
+    add the following header to force all nodes under the <i>articles</i>
+    section to define at least one tag:
+</p>
+
+<pre>+Require-Tags: true</pre>
+
+<p>
+    Using the <a href="{{node-url:headers/index}}">inheritance rules</a>, if
+    you set the header above in <i>articles/index</i>, then the top-level node
+    would not require any tags to be set, but all child nodes (e.g. each
+    article in that section) would be required to define at least one tag.
+</p>
+
+<p>
+    If you want to avoid setting the {{node-link:headers/tags}} header on a
+    child node where <b>Require-Tags</b> is set to <i>true</i>, you can always
+    delete the <b>Require-Tags</b> header locally:
+</p>
+
+<pre>-Require-Tags: *</pre>
+

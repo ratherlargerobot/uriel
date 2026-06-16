@@ -89,7 +89,7 @@ Title: Node Classes
 
 <h3>VirtualNode Constructor Reference</h3>
 
-<p><pre>class <b>VirtualNode</b>(Node):
+<pre>class <b>VirtualNode</b>(Node):
     """
     Represents a virtual node, not backed by a file.
 
@@ -113,7 +113,7 @@ Title: Node Classes
 
         Optionally accepts a parent Node instance.
 
-        """</pre></p>
+        """</pre>
 
 <p>
     See the {{node-link:handlers}} section for examples of how to use
@@ -134,32 +134,32 @@ Title: Node Classes
     documentation web site.
 </p>
 
-<p><pre><b>get_parent_node(self) -> Optional["Node"]</b>
+<pre><b>get_parent_node(self) -> Optional["Node"]</b>
 
-Get the parent Node, or None if this is the root.</pre></p>
-
-
-<p><pre><b>get_path(self) -> str</b>
-
-Get the node path (e.g. "index", "foo/bar").</pre></p>
+Get the parent Node, or None if this is the root.</pre>
 
 
-<p><pre><b>get_node_type(self) -> str</b>
+<pre><b>get_path(self) -> str</b>
 
-Get the Node type as a string (e.g. "file", "virtual").</pre></p>
-
-
-<p><pre><b>add_child(self, node: "Node") -> None</b>
-
-Add the given Node as a child of this Node.</pre></p>
+Get the node path (e.g. "index", "foo/bar").</pre>
 
 
-<p><pre><b>get_children(self) -> List["Node"]</b>
+<pre><b>get_node_type(self) -> str</b>
 
-Get a list of child Node entries immediately under this Node.</pre></p>
+Get the Node type as a string (e.g. "file", "virtual").</pre>
 
 
-<p><pre><b>get_url(self) -> str</b>
+<pre><b>add_child(self, node: "Node") -> None</b>
+
+Add the given Node as a child of this Node.</pre>
+
+
+<pre><b>get_children(self) -> List["Node"]</b>
+
+Get a list of child Node entries immediately under this Node.</pre>
+
+
+<pre><b>get_url(self) -> str</b>
 
 Get the URL path for this Node.
 
@@ -173,18 +173,18 @@ Example URL paths:
 This method is the authoritative source of where a node will be
 placed in the rendered files.
 
-This method never returns canonical URLs, only URL paths.</pre></p>
+This method never returns canonical URLs, only URL paths.</pre>
 
 
-<p><pre><b>get_canonical_url(self) -> str</b>
+<pre><b>get_canonical_url(self) -> str</b>
 
 Get the canonical URL for this Node.
 
 This method only returns canonical URLs. If the Canonical-URL header
-is not set, it will raise an error.</pre></p>
+is not set, it will raise an error.</pre>
 
 
-<p><pre><b>get_name(self) -> str</b>
+<pre><b>get_name(self) -> str</b>
 
 Get the name of this Node (e.g. "index", "bar").
 
@@ -192,10 +192,10 @@ This is generally the most specific dirent from the URL path. For example, a
 node with a node path of "foo/index" and a URL path of "/foo/" will have a
 node name of "foo".
 
-As a special case, the name of the top-level index node is "index".</pre></p>
+As a special case, the name of the top-level index node is "index".</pre>
 
 
-<p><pre><b>get_display_name(self) -> str</b>
+<pre><b>get_display_name(self) -> str</b>
 
 Get the display name of the node.
 
@@ -203,77 +203,77 @@ This is constructed from the base node name, but is formatted to be
 more human readable. For example, if the base node name is
 "hello-world", then this method will return "Hello World".
 
-It is used as a fallback plan in case a Title header is not set.</pre></p>
+It is used as a fallback plan in case a Title header is not set.</pre>
 
 
-<p><pre><b>get_title(self) -> str</b>
+<pre><b>get_title(self) -> str</b>
 
 Get the title of the node, as set by the Title header.
 
-If that doesn't work, fall back on using the node display name.</pre></p>
+If that doesn't work, fall back on using the node display name.</pre>
 
 
-<p><pre><b>get_escaped_title(self) -> str</b>
+<pre><b>get_escaped_title(self) -> str</b>
 
 Get the escaped title of the node, as set by the Title header.
 
 If the Escape-Title: false header is set, return the Title
 without escaping.
 
-If that doesn't work, fall back on using the node display name.</pre></p>
+If that doesn't work, fall back on using the node display name.</pre>
 
 
-<p><pre><b>get_link(self) -> str</b>
+<pre><b>get_link(self) -> str</b>
 
 Get a link to this node, using its title as the link text.
 
-This method never returns canonical URL links.</pre></p>
+This method never returns canonical URL links.</pre>
 
 
-<p><pre><b>get_canonical_link(self) -> str</b>
+<pre><b>get_canonical_link(self) -> str</b>
 
 Get a canonical link to this node, using its title as the link text.
 
 This method only returns canonical URL links. If the Canonical-URL
-header is not set, it will raise an error.</pre></p>
+header is not set, it will raise an error.</pre>
 
 
-<p><pre><b>get_link_prefix(self) -> str</b>
+<pre><b>get_link_prefix(self) -> str</b>
 
 Get the HTML prefix to use in generated lists of links.
 
 Returns the unescaped value of the Link-Prefix header,
-or a default of &lt;p&gt;</pre></p>
+or a default of &lt;p&gt;</pre>
 
 
-<p><pre><b>get_link_suffix(self) -> str</b>
+<pre><b>get_link_suffix(self) -> str</b>
 
 Get the HTML suffix to use in generated lists of links.
 
 Returns the unescaped value of the Link-Suffix header,
-or a default of &lt;/p&gt;</pre></p>
+or a default of &lt;/p&gt;</pre>
 
 
-<p><pre><b>get_tags(self) -> List[str]</b>
+<pre><b>get_tags(self) -> List[str]</b>
 
 Get the list of tags associated with this Node.
 
-Returns a list of tags.</pre></p>
+Returns a list of tags.</pre>
 
 
-<p><pre><b>get_dest_dir(self) -> str</b>
+<pre><b>get_dest_dir(self) -> str</b>
 
 Get the destination directory in the public website that will
-contain this page.</pre></p>
+contain this page.</pre>
 
 
-<p><pre><b>get_dest_file(self) -> str</b>
+<pre><b>get_dest_file(self) -> str</b>
 
 Get the destination file in the public website that will
-contain this page.</pre></p>
+contain this page.</pre>
 
 
-<p><pre><b>get_boolean_header_value(self, header: str, default: bool) -> bool</b>
+<pre><b>get_boolean_header_value(self, header: str, default: bool) -> bool</b>
 
 Get the boolean value for a header as True or False.
 
@@ -282,10 +282,10 @@ will return True.
 
 If the header is not set, return the provided default value.
 
-Raises an UrielError if any other value is found.</pre></p>
+Raises an UrielError if any other value is found.</pre>
 
 
-<p><pre><b>get_breadcrumb_separator(self) -> str</b>
+<pre><b>get_breadcrumb_separator(self) -> str</b>
 
 Get the unescaped breadcrumb separator for this node, possibly
 surrounded by spaces.
@@ -298,10 +298,10 @@ If the Breadcrumb-Separator-Spaces header is not explicitly set to
 the breadcrumb separator.
 
 The default return value, if neither of these headers are set, is
-" &amp;raquo; "</pre></p>
+" &amp;raquo; "</pre>
 
 
-<p><pre><b>find_node_by_path(self,
+<pre><b>find_node_by_path(self,
                   path:str,
                   raise_exceptions: bool = True) -> Optional["Node"]</b>
 
@@ -312,15 +312,15 @@ Returns the given node.
 Raises a UrielError if the node can not be found.
 
 If the optional raise_exceptions parameter is set to False,
-then instead of raising an exception, it will return None instead.</pre></p>
+then instead of raising an exception, it will return None instead.</pre>
 
 
-<p><pre><b>get_root_node(self) -> "Node"</b>
+<pre><b>get_root_node(self) -> "Node"</b>
 
-Get the root Node.</pre></p>
+Get the root Node.</pre>
 
 
-<p><pre><b>get_tag_node(self) -> Optional["Node"]</b>
+<pre><b>get_tag_node(self) -> Optional["Node"]</b>
 
 Get the tag node, by looking at the value of the Tag-Node header,
 and then returning the matching node.
@@ -331,89 +331,89 @@ set on the root node.
 Returns the tag node, or None if the tag node is not configured.
 
 Raises a UrielError if the tag node is configured, but can not be
-found.</pre></p>
+found.</pre>
 
 
-<p><pre><b>get_tag_node_index(self) -> Dict[str, Set["Node"]]</b>
+<pre><b>get_tag_node_index(self) -> Dict[str, Set["Node"]]</b>
 
 Get the tag node index.
 
 The tag node index is a dict of tags, with sets of Node as values.
 
 Returns the tag node index, or raises a UrielError if the tag node
-index has not already been created.</pre></p>
+index has not already been created.</pre>
 
 
-<p><pre><b>get_vnode_for_tag(self, tag: str) -> Optional["Node"]</b>
+<pre><b>get_vnode_for_tag(self, tag: str) -> Optional["Node"]</b>
 
 Get the virtual node that represents the given tag
-(e.g. the node for /tag/$SOME_TAG/)</pre></p>
+(e.g. the node for /tag/$SOME_TAG/)</pre>
 
 
-<p><pre><b>get_body(self) -> Optional[str]</b>
+<pre><b>get_body(self) -> Optional[str]</b>
 
-Get the unrendered Node body as a multi-line string.</pre></p>
-
-
-<p><pre><b>get_rendered_body(self) -> Optional[str]</b>
-
-Get the rendered Node body as a multi-line string.</pre></p>
+Get the unrendered Node body as a multi-line string.</pre>
 
 
-<p><pre><b>set_body(self, body: Optional[str]) -> None</b>
+<pre><b>get_rendered_body(self) -> Optional[str]</b>
 
-Set the unrendered Node body. Accepts a multi-line string.</pre></p>
-
-
-<p><pre><b>set_rendered_body(self, rendered_body: Optional[str]) -> None</b>
-
-Replace the contents of the Node body (e.g. with a rendered version).</pre></p>
+Get the rendered Node body as a multi-line string.</pre>
 
 
-<p><pre><b>has_header(self, header: str) -> bool</b>
+<pre><b>set_body(self, body: Optional[str]) -> None</b>
+
+Set the unrendered Node body. Accepts a multi-line string.</pre>
+
+
+<pre><b>set_rendered_body(self, rendered_body: Optional[str]) -> None</b>
+
+Replace the contents of the Node body (e.g. with a rendered version).</pre>
+
+
+<pre><b>has_header(self, header: str) -> bool</b>
 
 Does the given header exist on this node?
 
-Inside the program, headers should all be lowercase.</pre></p>
+Inside the program, headers should all be lowercase.</pre>
 
 
-<p><pre><b>get_header(self, header: str) -> str</b>
+<pre><b>get_header(self, header: str) -> str</b>
 
 Get the value associated with the given header.
 
-Inside the program, headers should all be lowercase.</pre></p>
+Inside the program, headers should all be lowercase.</pre>
 
 
-<p><pre><b>set_header(self, header: str, value: str) -> None</b>
+<pre><b>set_header(self, header: str, value: str) -> None</b>
 
 Set the given header to the specified value.
 
-Inside the program, headers should all be lowercase.</pre></p>
+Inside the program, headers should all be lowercase.</pre>
 
 
-<p><pre><b>delete_header(self, header: str) -> None</b>
+<pre><b>delete_header(self, header: str) -> None</b>
 
 Delete the given header.
 
-Inside the program, headers should all be lowercase.</pre></p>
+Inside the program, headers should all be lowercase.</pre>
 
 
-<p><pre><b>get_header_keys(self) -> List[str]</b>
+<pre><b>get_header_keys(self) -> List[str]</b>
 
-Get each of the headers for this node.</pre></p>
+Get each of the headers for this node.</pre>
 
 
-<p><pre><b>get_header_key_values(self) -> List[Tuple[str, str]]</b>
+<pre><b>get_header_key_values(self) -> List[Tuple[str, str]]</b>
 
 Get each key/value element of the headers and their values,
-as a list of two-element tuples.</pre></p>
+as a list of two-element tuples.</pre>
 
 
-<p><pre><b>get_datetime_from_date_str(self, date_str: str) -> datetime.datetime</b>
+<pre><b>get_datetime_from_date_str(self, date_str: str) -> datetime.datetime</b>
 
 Get a datetime.datetime instance from the provided date string.
 
 The date string must be in the ISO 8601 date format.
 
-Raises a UrielError if the date string conversion fails.</pre></p>
+Raises a UrielError if the date string conversion fails.</pre>
 

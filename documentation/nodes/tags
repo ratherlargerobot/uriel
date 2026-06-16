@@ -72,7 +72,7 @@ Tags: foo, bar
     <a href="{{node-url:directories/nodes}}">root node</a>:
 </p>
 
-<p><pre>Tag-Node: tag</pre></p>
+<pre>Tag-Node: tag</pre>
 
 <p>
     In this case, <i>tag</i> refers to the node defined in the
@@ -102,7 +102,7 @@ Tags: foo, bar
     The {{node-link:headers/tags}} header for this node looks like this:
 </p>
 
-<p><pre>Tags: {{value:tags}}</pre></p>
+<pre>Tags: {{value:tags}}</pre>
 
 <p>
     Adding these tags to this node causes several things to happen:
@@ -134,7 +134,7 @@ Tags: foo, bar
     on pages of your web site that have tags:
 </p>
 
-<p><pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre></p>
+<pre>&lbrace;&lbrace;node-link:tag&rbrace;&rbrace;: &lbrace;&lbrace;tag-list:*&rbrace;&rbrace;</pre>
 
 <p>This is what the code above evaluates to on this node:</p>
 

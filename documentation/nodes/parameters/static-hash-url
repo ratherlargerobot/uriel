@@ -54,24 +54,24 @@ Tags: parameters, static
 
 <link rel="stylesheet" type="text/css" href="/css/f54d2ddbc897921c8041041f53b09a11.css">
 
-<p><pre>&lt;link rel="stylesheet"
+<pre>&lt;link rel="stylesheet"
       type="text/css"
-      href="&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;"&gt;</pre></p>
+      href="&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;"&gt;</pre>
 
 <p>
     When the site is built, this evaluates to:
 </p>
 
-<p><pre>&lt;link rel="stylesheet"
+<pre>&lt;link rel="stylesheet"
       type="text/css"
-      href="{{static-hash-url:/css/main.css}}"&gt;</pre></p>
+      href="{{static-hash-url:/css/main.css}}"&gt;</pre>
 
 <p>
     If the <i>/css/main.css</i> file is not present, then Uriel will generate
     an error like this when it tries to build the web site:
 </p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -81,7 +81,7 @@ parameter error:
     templates/default.html
       nodes/parameters/static-hash-url
         '&lbrace;&lbrace;static-hash-url:/css/main.css&rbrace;&rbrace;'
-uriel: file not found: '/css/main.css'</pre></p>
+uriel: file not found: '/css/main.css'</pre>
 
 <h3>File Paths</h3>
 
@@ -110,7 +110,7 @@ uriel: file not found: '/css/main.css'</pre></p>
     parameter with <i>/css/main.css</i> as the rvalue component:
 </p>
 
-<p><pre>{{static-hash-url:/css/main.css}}</pre></p>
+<pre>{{static-hash-url:/css/main.css}}</pre>
 
 <p>
     This works because:
@@ -134,7 +134,7 @@ uriel: file not found: '/css/main.css'</pre></p>
     parameter with <i>local.css</i> as the rvalue component:
 </p>
 
-<p><pre>{{static-hash-url:local.css}}</pre></p>
+<pre>{{static-hash-url:local.css}}</pre>
 
 <p>
     This works because:

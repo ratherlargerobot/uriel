@@ -1,84 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-        <loc>http://localhost:8000/tag/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/banana/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/bar/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/breadcrumbs/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/foo/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/headers/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/parameters/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/robots-txt/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/root-node/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/rss/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/rss-headers/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/sitemap/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/sitemap-headers/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/soju/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/static/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tag/user-defined-python-code/</loc>
-        <lastmod>2026-06-11T18:41:46-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/template/</loc>
-        <lastmod>2026-06-11T18:33:35-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/include/</loc>
-        <lastmod>2026-06-11T18:31:36-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/uriel/constants/</loc>
-        <lastmod>2026-06-11T17:54:24-04:00</lastmod>
-    </url>
-    <url>
         <loc>http://localhost:8000/</loc>
-        <lastmod>2026-06-10T23:53:47-04:00</lastmod>
+        <lastmod>2026-06-15T21:59:25-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/</loc>
+        <lastmod>2026-06-08T18:51:10-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/lib/</loc>
+        <lastmod>2026-06-08T18:52:49-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/nodes/</loc>
+        <lastmod>2026-06-14T18:36:29-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/public/</loc>
+        <lastmod>2026-06-14T18:36:18-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/static/</loc>
+        <lastmod>2026-06-07T21:39:25-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/directories/templates/</loc>
+        <lastmod>2026-06-07T22:39:01-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/flat-url/</loc>
+        <lastmod>2026-06-05T21:16:16-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/flat-url/false/</loc>
+        <lastmod>2026-06-05T21:11:17-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/generated/</loc>
+        <lastmod>2026-06-15T22:21:23-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/handlers/</loc>
+        <lastmod>2026-06-14T18:32:51-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/handlers/virtual/</loc>
+        <lastmod>2026-06-14T18:32:51-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/</loc>
+        <lastmod>2026-06-14T19:54:15-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/</loc>
+        <lastmod>2026-06-06T23:47:16-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/false/</loc>
+        <lastmod>2026-06-06T23:27:46-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/true/</loc>
+        <lastmod>2026-06-05T18:59:53-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/breadcrumb-separator/</loc>
+        <lastmod>2026-06-06T23:47:01-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/canonical-url/</loc>
+        <lastmod>2026-06-14T18:42:19-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/created/</loc>
+        <lastmod>2026-06-14T18:35:15-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/escape-title/</loc>
+        <lastmod>2026-06-14T18:35:51-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/escape-title/false/</loc>
+        <lastmod>2026-06-10T00:05:04-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/escape-title/true/</loc>
+        <lastmod>2026-06-10T00:04:57-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/format/</loc>
+        <lastmod>2026-06-05T17:43:23-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/format/html/</loc>
+        <lastmod>2026-06-05T21:06:26-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/format/text/</loc>
+        <lastmod>2026-06-05T21:06:19-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/link-prefix-link-suffix/</loc>
+        <lastmod>2026-06-05T20:53:02-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/link-prefix-link-suffix/custom/</loc>
+        <lastmod>2026-06-05T21:02:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/headers/link-prefix-link-suffix/custom/a/</loc>
@@ -93,6 +121,10 @@
         <lastmod>2026-06-10T23:45:51-04:00</lastmod>
     </url>
     <url>
+        <loc>http://localhost:8000/headers/link-prefix-link-suffix/default/</loc>
+        <lastmod>2026-06-05T21:02:36-04:00</lastmod>
+    </url>
+    <url>
         <loc>http://localhost:8000/headers/link-prefix-link-suffix/default/a/</loc>
         <lastmod>2026-06-10T23:45:47-04:00</lastmod>
     </url>
@@ -105,152 +137,160 @@
         <lastmod>2026-06-10T23:45:47-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/handlers/</loc>
-        <lastmod>2026-06-10T23:25:17-04:00</lastmod>
+        <loc>http://localhost:8000/headers/modified/</loc>
+        <lastmod>2026-06-05T18:11:52-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/handlers/virtual/</loc>
-        <lastmod>2026-06-10T23:25:17-04:00</lastmod>
+        <loc>http://localhost:8000/headers/require-tags/</loc>
+        <lastmod>2026-06-15T22:05:47-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/soju/</loc>
-        <lastmod>2026-06-10T23:23:30-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-add-node-title-header/</loc>
+        <lastmod>2026-06-06T17:02:39-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/generated/</loc>
-        <lastmod>2026-06-10T23:18:03-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-add-node-title-header/false/</loc>
+        <lastmod>2026-06-05T22:30:53-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/nodes/</loc>
-        <lastmod>2026-06-10T23:13:44-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-add-node-title-header/true/</loc>
+        <lastmod>2026-06-14T18:35:02-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/quickstart/</loc>
-        <lastmod>2026-06-10T23:11:51-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-description/</loc>
+        <lastmod>2026-06-14T18:34:40-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/overview/</loc>
-        <lastmod>2026-06-10T23:06:48-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-image-height/</loc>
+        <lastmod>2026-06-14T18:35:58-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/soju-hello-world/</loc>
-        <lastmod>2026-06-10T21:58:52-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-image-url/</loc>
+        <lastmod>2026-06-14T18:35:21-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/public/</loc>
-        <lastmod>2026-06-10T20:30:18-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-image-width/</loc>
+        <lastmod>2026-06-14T18:35:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/escape-title/false/</loc>
-        <lastmod>2026-06-10T00:05:04-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-include/</loc>
+        <lastmod>2026-06-06T17:02:44-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/escape-title/true/</loc>
-        <lastmod>2026-06-10T00:04:57-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-include/false/</loc>
+        <lastmod>2026-06-05T22:01:32-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/uriel/node/</loc>
-        <lastmod>2026-06-10T00:00:41-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-include/true/</loc>
+        <lastmod>2026-06-05T21:56:09-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/static-hash-url/</loc>
-        <lastmod>2026-06-09T23:33:11-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-max-entries/</loc>
+        <lastmod>2026-06-14T18:36:11-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/static-url/</loc>
-        <lastmod>2026-06-09T23:33:01-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-title/</loc>
+        <lastmod>2026-06-14T18:35:19-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/uriel/</loc>
-        <lastmod>2026-06-09T17:26:04-04:00</lastmod>
+        <loc>http://localhost:8000/headers/rss-url/</loc>
+        <lastmod>2026-06-14T18:34:23-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/uriel/functions/</loc>
-        <lastmod>2026-06-08T18:52:56-04:00</lastmod>
+        <loc>http://localhost:8000/headers/sitemap-include/</loc>
+        <lastmod>2026-06-06T17:03:07-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/lib/</loc>
-        <lastmod>2026-06-08T18:52:49-04:00</lastmod>
+        <loc>http://localhost:8000/headers/sitemap-include/true/</loc>
+        <lastmod>2026-06-05T22:46:14-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/</loc>
-        <lastmod>2026-06-08T18:52:13-04:00</lastmod>
+        <loc>http://localhost:8000/headers/sitemap-index/</loc>
+        <lastmod>2026-06-15T22:12:39-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/uriel/exceptions/</loc>
-        <lastmod>2026-06-08T18:51:52-04:00</lastmod>
+        <loc>http://localhost:8000/headers/sitemap-max-entries/</loc>
+        <lastmod>2026-06-15T22:15:58-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/</loc>
-        <lastmod>2026-06-08T18:51:10-04:00</lastmod>
+        <loc>http://localhost:8000/headers/sitemap-max-files/</loc>
+        <lastmod>2026-06-13T23:52:27-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/sitemap-url/</loc>
+        <lastmod>2026-06-14T18:35:45-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/tag-node/</loc>
+        <lastmod>2026-06-14T18:35:54-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/tags/</loc>
+        <lastmod>2026-06-14T19:59:58-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/template/</loc>
+        <lastmod>2026-06-14T18:36:08-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/headers/title/</loc>
+        <lastmod>2026-06-05T17:52:58-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/hello-world/</loc>
         <lastmod>2026-06-07T23:05:25-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/</loc>
-        <lastmod>2026-06-07T23:00:45-04:00</lastmod>
+        <loc>http://localhost:8000/overview/</loc>
+        <lastmod>2026-06-10T23:06:48-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/sitemap-max-entries/</loc>
-        <lastmod>2026-06-07T22:59:06-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/</loc>
+        <lastmod>2026-06-15T18:18:12-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/sitemap-url/</loc>
-        <lastmod>2026-06-07T22:59:03-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/breadcrumbs-root/</loc>
+        <lastmod>2026-06-06T23:46:21-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-max-entries/</loc>
-        <lastmod>2026-06-07T22:59:01-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/breadcrumbs/</loc>
+        <lastmod>2026-06-06T23:46:25-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-image-width/</loc>
-        <lastmod>2026-06-07T22:58:59-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/created/</loc>
+        <lastmod>2026-06-15T18:21:56-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-image-url/</loc>
-        <lastmod>2026-06-07T22:58:57-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/include/</loc>
+        <lastmod>2026-06-14T18:40:10-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-image-height/</loc>
-        <lastmod>2026-06-07T22:58:56-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/latest/</loc>
+        <lastmod>1970-01-11T00:00:00-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-description/</loc>
-        <lastmod>2026-06-07T22:58:38-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/latest/future/</loc>
+        <lastmod>2026-06-13T15:55:09-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-url/</loc>
-        <lastmod>2026-06-07T22:58:36-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/modified/</loc>
+        <lastmod>2026-04-12T16:45:29-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/tag-node/</loc>
-        <lastmod>2026-06-07T22:58:35-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-body/</loc>
+        <lastmod>2026-06-14T18:40:22-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/canonical-url/</loc>
-        <lastmod>2026-06-07T22:58:32-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-link-some-other-node/</loc>
+        <lastmod>2026-06-14T18:41:21-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/templates/</loc>
-        <lastmod>2026-06-07T22:39:01-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-link/</loc>
+        <lastmod>2026-06-14T18:41:32-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/directories/static/</loc>
-        <lastmod>2026-06-07T21:39:25-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/tags/</loc>
-        <lastmod>2026-06-07T19:33:11-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/tags/</loc>
-        <lastmod>2026-06-07T19:32:58-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/tag-list/</loc>
-        <lastmod>2026-06-07T19:32:08-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-list/</loc>
+        <lastmod>2026-06-14T18:40:04-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/node-list/a/</loc>
@@ -265,72 +305,60 @@
         <lastmod>2026-06-07T18:39:55-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-list/</loc>
-        <lastmod>2026-06-07T18:34:37-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-name-some-other-node/</loc>
+        <lastmod>2026-06-14T18:41:00-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-link-some-other-node/</loc>
-        <lastmod>2026-06-07T18:21:07-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-name/</loc>
+        <lastmod>2026-06-14T18:40:55-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-link/</loc>
-        <lastmod>2026-06-07T18:17:23-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/node-title-some-other-node/</loc>
+        <lastmod>2026-06-14T18:41:03-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/node-title/</loc>
-        <lastmod>2026-06-07T18:15:55-04:00</lastmod>
+        <lastmod>2026-06-14T18:40:13-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/node-url-some-other-node/</loc>
+        <lastmod>2026-06-14T18:41:42-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/node-url/</loc>
+        <lastmod>2026-06-14T18:40:42-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/oldest/</loc>
+        <lastmod>2026-06-13T15:55:09-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/oldest/future/</loc>
+        <lastmod>1970-01-11T00:00:00-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/rss-url/</loc>
+        <lastmod>2026-06-14T18:40:00-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/parameters/soju-hello-world/</loc>
+        <lastmod>2026-06-14T18:40:16-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/some-other-node/</loc>
         <lastmod>2026-06-07T18:14:48-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-title-some-other-node/</loc>
-        <lastmod>2026-06-07T18:11:23-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/static-hash-url/</loc>
+        <lastmod>2026-06-14T18:41:17-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-name-some-other-node/</loc>
-        <lastmod>2026-06-07T18:06:45-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/static-url/</loc>
+        <lastmod>2026-06-14T18:40:35-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/parameters/node-name/</loc>
-        <lastmod>2026-06-07T18:03:35-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/node-url-some-other-node/</loc>
-        <lastmod>2026-06-07T18:01:17-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/node-url/</loc>
-        <lastmod>2026-06-07T17:16:40-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/rss-url/</loc>
-        <lastmod>2026-06-07T16:57:43-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/node-body/</loc>
-        <lastmod>2026-06-07T00:21:30-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/</loc>
-        <lastmod>2026-06-06T23:47:16-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/breadcrumb-separator/</loc>
-        <lastmod>2026-06-06T23:47:01-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/breadcrumbs/</loc>
-        <lastmod>2026-06-06T23:46:25-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/breadcrumbs-root/</loc>
-        <lastmod>2026-06-06T23:46:21-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/false/</loc>
-        <lastmod>2026-06-06T23:27:46-04:00</lastmod>
+        <loc>http://localhost:8000/parameters/tag-list/</loc>
+        <lastmod>2026-06-14T18:41:27-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/value-unescaped/</loc>
@@ -341,103 +369,103 @@
         <lastmod>2026-06-06T18:37:06-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-title/</loc>
-        <lastmod>2026-06-06T17:07:20-04:00</lastmod>
+        <loc>http://localhost:8000/quickstart/</loc>
+        <lastmod>2026-06-14T18:33:45-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/sitemap-include/</loc>
-        <lastmod>2026-06-06T17:03:07-04:00</lastmod>
+        <loc>http://localhost:8000/soju/</loc>
+        <lastmod>2026-06-14T18:34:19-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-include/</loc>
-        <lastmod>2026-06-06T17:02:44-04:00</lastmod>
+        <loc>http://localhost:8000/tag/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-add-node-title-header/</loc>
-        <lastmod>2026-06-06T17:02:39-04:00</lastmod>
+        <loc>http://localhost:8000/tag/banana/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/sitemap-include/true/</loc>
-        <lastmod>2026-06-05T22:46:14-04:00</lastmod>
+        <loc>http://localhost:8000/tag/bar/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-add-node-title-header/false/</loc>
-        <lastmod>2026-06-05T22:30:53-04:00</lastmod>
+        <loc>http://localhost:8000/tag/breadcrumbs/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-add-node-title-header/true/</loc>
-        <lastmod>2026-06-05T22:29:01-04:00</lastmod>
+        <loc>http://localhost:8000/tag/foo/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-include/false/</loc>
-        <lastmod>2026-06-05T22:01:32-04:00</lastmod>
+        <loc>http://localhost:8000/tag/headers/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/rss-include/true/</loc>
-        <lastmod>2026-06-05T21:56:09-04:00</lastmod>
+        <loc>http://localhost:8000/tag/parameters/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/flat-url/</loc>
-        <lastmod>2026-06-05T21:16:16-04:00</lastmod>
+        <loc>http://localhost:8000/tag/robots-txt/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/escape-title/</loc>
-        <lastmod>2026-06-05T21:15:58-04:00</lastmod>
+        <loc>http://localhost:8000/tag/root-node/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/flat-url/false/</loc>
-        <lastmod>2026-06-05T21:11:17-04:00</lastmod>
+        <loc>http://localhost:8000/tag/rss-headers/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/rss/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/sitemap-headers/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/sitemap/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/soju/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/static/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tag/user-defined-python-code/</loc>
+        <lastmod>2026-06-15T22:23:31-04:00</lastmod>
+    </url>
+    <url>
+        <loc>http://localhost:8000/tags/</loc>
+        <lastmod>2026-06-14T18:32:26-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/true/</loc>
         <lastmod>2026-06-05T21:08:23-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/format/html/</loc>
-        <lastmod>2026-06-05T21:06:26-04:00</lastmod>
+        <loc>http://localhost:8000/uriel/</loc>
+        <lastmod>2026-06-09T17:26:04-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/format/text/</loc>
-        <lastmod>2026-06-05T21:06:19-04:00</lastmod>
+        <loc>http://localhost:8000/uriel/constants/</loc>
+        <lastmod>2026-06-14T18:39:45-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/link-prefix-link-suffix/custom/</loc>
-        <lastmod>2026-06-05T21:02:49-04:00</lastmod>
+        <loc>http://localhost:8000/uriel/exceptions/</loc>
+        <lastmod>2026-06-14T18:39:39-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/link-prefix-link-suffix/default/</loc>
-        <lastmod>2026-06-05T21:02:36-04:00</lastmod>
+        <loc>http://localhost:8000/uriel/functions/</loc>
+        <lastmod>2026-06-14T18:36:51-04:00</lastmod>
     </url>
     <url>
-        <loc>http://localhost:8000/headers/link-prefix-link-suffix/</loc>
-        <lastmod>2026-06-05T20:53:02-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/breadcrumb-separator-spaces/true/</loc>
-        <lastmod>2026-06-05T18:59:53-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/created/</loc>
-        <lastmod>2026-06-05T18:36:30-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/modified/</loc>
-        <lastmod>2026-06-05T18:11:52-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/title/</loc>
-        <lastmod>2026-06-05T17:52:58-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/headers/format/</loc>
-        <lastmod>2026-06-05T17:43:23-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/created/</loc>
-        <lastmod>2026-06-07T00:13:04-04:00</lastmod>
-    </url>
-    <url>
-        <loc>http://localhost:8000/parameters/modified/</loc>
-        <lastmod>2026-04-12T16:45:29-04:00</lastmod>
+        <loc>http://localhost:8000/uriel/node/</loc>
+        <lastmod>2026-06-14T18:39:17-04:00</lastmod>
     </url>
 </urlset>

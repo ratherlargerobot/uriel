@@ -47,7 +47,7 @@ def hello_world(node):
     on this node, it evaluates to:
 </p>
 
-<p><pre>{{soju:hello_world(node)}}</pre></p>
+<pre>{{soju:hello_world(node)}}</pre>
 
 <p>
     See the {{node-link:soju}} section for more information on writing

@@ -25,7 +25,7 @@ Tags: headers, rss, rss-headers, root-node
     on the root node to a value of <i>{{value:rss-max-entries}}</i>, like this:
 </p>
 
-<p><pre>RSS-Max-Entries: {{value:rss-max-entries}}</pre></p>
+<pre>RSS-Max-Entries: {{value:rss-max-entries}}</pre>
 
 <p>
     This causes Uriel to limit the number of entries in the generated RSS feed

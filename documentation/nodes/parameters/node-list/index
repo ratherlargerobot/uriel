@@ -34,9 +34,9 @@ Title: {{node-list:*}}
     <b>&lbrace;&lbrace;node-list:*&rbrace;&rbrace;</b> parameter evaluates to:
 </p>
 
-<p><pre>&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/a}}"&gt;{{node-title:parameters/node-list/a}}&lt;a&gt;&lt;p&gt;
+<pre>&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/a}}"&gt;{{node-title:parameters/node-list/a}}&lt;a&gt;&lt;p&gt;
 &lt;p&gt;&lt;a href="{{node-url:parameters/node-list/b}}"&gt;{{node-title:parameters/node-list/b}}&lt;a&gt;&lt;p&gt;
-&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/c}}"&gt;{{node-title:parameters/node-list/c}}&lt;a&gt;&lt;p&gt;</pre></p>
+&lt;p&gt;&lt;a href="{{node-url:parameters/node-list/c}}"&gt;{{node-title:parameters/node-list/c}}&lt;a&gt;&lt;p&gt;</pre>
 
 <p>And the generated HTML on the page looks like this:</p>
 

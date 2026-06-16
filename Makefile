@@ -2,7 +2,7 @@
 
 PREFIX=/usr/local
 
-VERSION=1.4.1
+VERSION=1.5.0
 
 default:
 	@echo "uriel is a single, executable Python script: nothing to build"
@@ -10,7 +10,7 @@ default:
 test:
 	./testsuite.py
 
-check: test mypy
+check: mypy test
 
 mypy:
 	mypy uriel

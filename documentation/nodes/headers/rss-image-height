@@ -23,7 +23,7 @@ Tags: headers, rss, rss-headers, root-node
     documentation web site is:
 </p>
 
-<p><pre>{{value:rss-image-height}}</pre></p>
+<pre>{{value:rss-image-height}}</pre>
 
 <p>
     You can see how it shows up in the

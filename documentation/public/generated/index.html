@@ -101,7 +101,10 @@
 
 <h3>Sitemap</h3>
 
-<p>Uriel can be configured to generate a sitemap XML file.</p>
+<p>
+    Uriel can be configured to generate a sitemap XML file, or multiple
+    sitemap files with a sitemap index.
+</p>
 
 <p>In order to generate a sitemap, the following conditions must be met:</p>
 
@@ -117,19 +120,42 @@
 </ul>
 
 <p>
+    In order to generate a sitemap index and multiple sitemap files (for
+    larger sites), all of the conditions above must be met, and:
+</p>
+
+<ul>
+    <li>
+        <a href="/headers/sitemap-index/">Sitemap-Index</a> must be set to <i>true</i> on the
+        <a href="/directories/nodes/">root node</a>
+    </li>
+</ul>
+
+<p>
     Every node will be included in the sitemap by default. To exclude a node
     from the sitemap, set the <a href="/headers/sitemap-include/">Sitemap-Include</a>
     header to <i>false</i> on that node. The usual header inheritance rules
     apply.
 </p>
 
+<p>
+    The <a href="/headers/sitemap-max-files/">Sitemap-Max-Files</a> header controls the maximum
+    number of sitemap files that can be written when
+    <a href="/headers/sitemap-index/">Sitemap-Index</a> is enabled.
+</p>
+
+<p>
+    The <a href="/headers/sitemap-max-entries/">Sitemap-Max-Entries</a> header controls the maximum
+    number of entries that can be added to an individual sitemap file.
+</p>
+
 <h3>robots.txt</h3>
 
 <p>
     Uriel will automatically create an extremely minimal <i>robots.txt</i>
-    file if it is configured to create a sitemap. This <i>robots.txt</i> file
-    will be just enough to publish the location of the <i>sitemap.xml</i>
-    file, and nothing more.
+    file if it is configured to create a sitemap (or sitemap index). This
+    <i>robots.txt</i> file will be just enough to publish the location of the
+    <a href="/headers/sitemap-url/">Sitemap-URL</a>, and nothing more.
 </p>
 
 <p>
@@ -264,7 +290,7 @@
     </tr>
     <tr>
         <td>Modified</td>
-        <td>2026-06-10T23:18:03-04:00</td>
+        <td>2026-06-15T22:21:23-04:00</td>
     </tr>
 </table>
 

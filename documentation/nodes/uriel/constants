@@ -14,7 +14,7 @@ Title: Constants
     information on how to reference these constants.
 </p>
 
-<p><pre># the name of the program
+<pre># the name of the program
 PROGRAM_NAME = "uriel"
 
 # program version
@@ -45,6 +45,10 @@ DEFAULT_TEMPLATE = "default.html"
 # (can be overridden via RSS-Max-Entries header)
 RSS_MAX_ENTRIES = 20
 
+# default maximum number of sitemap files
+# (can be overridden via Sitemap-Max-Files header)
+SITEMAP_MAX_FILES = 500
+
 # default maximum number of sitemap entries
 # (can be overridden via Sitemap-Max-Entries header)
 SITEMAP_MAX_ENTRIES = 50000
@@ -56,5 +60,5 @@ HTML_ESCAPE_MAP = {
     "'": "&amp;apos;",
     ">": "&amp;gt;",
     "<": "&amp;lt;"
-}</pre></p>
+}</pre>
 

@@ -25,7 +25,7 @@ Tags: headers, foo, banana
     set:
 </p>
 
-<p><pre>Tags: {{value:tags}}</pre></p>
+<pre>Tags: {{value:tags}}</pre>
 
 <p>
     When Uriel builds the site, it will take the following steps as a result:
@@ -50,5 +50,10 @@ Tags: headers, foo, banana
     Additionally, links to the tag pages for each tag associated with this
     node are now available from the {{node-link:parameters/tag-list}}
     substitution parameter.
+</p>
+
+<p>
+    If you want to ensure that every node in a section of your web site
+    defines tags, see the {{node-link:headers/require-tags}} header.
 </p>
 

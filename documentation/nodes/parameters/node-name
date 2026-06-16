@@ -11,7 +11,7 @@ Title: {{node:name}}
     parameter evaluates to:
 </p>
 
-<p><pre>{{node:name}}</pre></p>
+<pre>{{node:name}}</pre>
 
 <p>
     Compare this with the {{node-link:parameters/node-name-some-other-node}}

@@ -4,7 +4,7 @@
     <title>Uriel Documentation</title>
     <link>http://localhost:8000/</link>
     <description>Uriel Documentation</description>
-    <lastBuildDate>Thu, 11 Jun 2026 18:41:46 -0400</lastBuildDate>
+    <lastBuildDate>Mon, 15 Jun 2026 22:23:31 -0400</lastBuildDate>
     <image>
         <url>http://localhost:8000/favicon-32x32.png</url>
         <title>Uriel Documentation</title>
@@ -13,17 +13,140 @@
         <height>32</height>
     </image>
     <item>
-        <title>VirtualNode Example</title>
-        <link>http://localhost:8000/handlers/virtual/</link>
-        <description><![CDATA[<h1>VirtualNode Example</h1>
+        <title>{{node-url:foo/bar}}</title>
+        <link>http://localhost:8000/parameters/node-url-some-other-node/</link>
+        <description><![CDATA[<h1>{{node-url:foo/bar}}</h1>
 
-<p>Hello from a VirtualNode.</p>
+<p>
+    The <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b>
+    parameter evaluates to the URL for the node specified in the rvalue
+    portion of the parameter. Nodes are specified as paths starting from the
+    <a href="http://localhost:8000/directories/nodes/">nodes</a> directory.
+</p>
 
-<p>See the <a href="http://localhost:8000/handlers/">Handlers</a> page for more details.</p>
+<p>
+    For example, on this documentation site, we have another node with the
+    path <i>parameters/some-other-node</i>.
+</p>
 
-<p>This is a special message for RSS readers only.</p>]]></description>
-        <category>user-defined-python-code</category>
-        <pubDate>Wed, 10 Jun 2026 23:25:17 -0400</pubDate>
+<p>
+    If we reference it using <i>parameters/some-other-node</i> as the rvalue,
+    then
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    Compare this with <a href="http://localhost:8000/parameters/node-url/">{{node:url}}</a>, which lets you get
+    the URL of the current node.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<pre>/parameters/some-other-node/</pre>
+
+<p>
+    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
+    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    The actual value of
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    in the current context evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    View this in both the <a href="http://localhost:8000/parameters/node-url-some-other-node/">web page</a> and the
+    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
+</p>]]></description>
+        <category>parameters</category>
+        <pubDate>Sun, 14 Jun 2026 18:41:42 -0400</pubDate>
+    </item>
+    <item>
+        <title>{{node:url}}</title>
+        <link>http://localhost:8000/parameters/node-url/</link>
+        <description><![CDATA[<h1>{{node:url}}</h1>
+
+<p>
+    The <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> parameter evaluates
+    to the URL for the current node.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>Use this when you need to get the URL for the current page.</p>
+
+<p>For example: <a href="http://localhost:8000/parameters/node-url/">http://localhost:8000/parameters/node-url/</a></p>
+
+<p>
+    Compare this with <a href="http://localhost:8000/parameters/node-url-some-other-node/">{{node-url:foo/bar}}</a>, which
+    lets you get the URL of another node on the web site.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<pre>/parameters/node-url/</pre>
+
+<p>
+    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
+    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
+</p>
+
+<pre>http://localhost:8000/parameters/node-url/</pre>
+
+<p>
+    The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
+    current context evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/node-url/</pre>
+
+<p>
+    View this in both the <a href="http://localhost:8000/parameters/node-url/">web page</a> and the
+    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
+</p>]]></description>
+        <category>parameters</category>
+        <pubDate>Sun, 14 Jun 2026 18:40:42 -0400</pubDate>
+    </item>
+    <item>
+        <title>RSS-Add-Node-Title-Header: true</title>
+        <link>http://localhost:8000/headers/rss-add-node-title-header/true/</link>
+        <description><![CDATA[<h1>RSS-Add-Node-Title-Header: true</h1>
+
+<p>
+    This node has the <a href="http://localhost:8000/headers/rss-add-node-title-header/">RSS-Add-Node-Title-Header</a>
+    header set to <i>true</i>.
+</p>
+
+<p>
+    As a result, Uriel has added the following HTML code to the top of its
+    RSS <i>&lt;description&gt;</i> field in the generated RSS feed
+    (<a href="http://localhost:8000/rss.xml">http://localhost:8000/rss.xml</a>):
+</p>
+
+<pre>&lt;h1&gt;RSS-Add-Node-Title-Header: true&lt;/h1&gt;</pre>
+
+<p>Compare this with <a href="http://localhost:8000/headers/rss-add-node-title-header/false/">RSS-Add-Node-Title-Header: false</a></p>]]></description>
+        <pubDate>Sun, 14 Jun 2026 18:35:02 -0400</pubDate>
     </item>
     <item>
         <title>Soju</title>
@@ -61,7 +184,7 @@
     creates a new project:
 </p>
 
-<p><pre>##############################################################################
+<pre>##############################################################################
 # soju.py                                                                    #
 ##############################################################################
 
@@ -81,7 +204,7 @@
 
 # &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
 def node_title(node):
-    return escape(node.get_title())</pre></p>
+    return escape(node.get_title())</pre>
 
 <p>
     You can add your own functions to this file, and
@@ -180,9 +303,9 @@ def node_title(node):
     creates a new project contains the following function:
 </p>
 
-<p><pre># &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
+<pre># &lbrace;&lbrace;soju:node_title(node)&rbrace;&rbrace;
 def node_title(node):
-    return escape(node.get_title())</pre></p>
+    return escape(node.get_title())</pre>
 
 <p>
     We can reference that function by including the
@@ -192,7 +315,7 @@ def node_title(node):
     function:
 </p>
 
-<p><pre>Soju</pre></p>
+<pre>Soju</pre>
 
 <p>
     The function evaluated to the HTML escaped title of the current node, and
@@ -207,7 +330,7 @@ def node_title(node):
     file for this documentation site:
 </p>
 
-<p><pre># &lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;
+<pre># &lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;
 def example(page, node, project_root, use_canonical_url):
     """
     Example Soju function, demonstrating several things in one place.
@@ -256,7 +379,7 @@ def example(page, node, project_root, use_canonical_url):
     #raise SojuError("oops")
 
     # combine and return the lines as a string
-    return "\n".join(lines)</pre></p>
+    return "\n".join(lines)</pre>
 
 <p>
     When we call this function, by including it a node or template, using the<br>
@@ -265,9 +388,9 @@ def example(page, node, project_root, use_canonical_url):
     on the rendered page:
 </p>
 
-<p><pre>Hello from the <b>example()</b> function!
+<pre>Hello from the <b>example()</b> function!
 
-Generated by uriel version 1.4.1
+Generated by uriel version 1.5.0
 
 page:              soju [null]
 node:              soju
@@ -278,13 +401,13 @@ use_canonical_url: True
   <a href="/uriel/constants/">Constants</a>
   <a href="/uriel/exceptions/">Exceptions</a>
   <a href="/uriel/functions/">Functions</a>
-  <a href="/uriel/node/">Node Classes</a></pre></p>
+  <a href="/uriel/node/">Node Classes</a></pre>
 
 <p>
     You can see the output of the <b>log()</b> function when the site builds:
 </p>
 
-<p><pre>
+<pre>
 copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
@@ -301,7 +424,7 @@ creating 'public/rss.xml'
 creating 'public/sitemap.xml'
 creating 'public/robots.txt'
 copying 'static' to 'public'
-</pre></p>
+</pre>
 
 <p>
     Notice that the <b>log()</b> message shows up twice? This is because the
@@ -363,7 +486,7 @@ copying 'static' to 'public'
 
 <p>Example <b>SojuError</b> build error message:</p>
 
-<p><pre>copying 'static' to 'public', overwriting previous contents
+<pre>copying 'static' to 'public', overwriting previous contents
 initializing soju
 initializing handlers
 reading node files
@@ -375,124 +498,22 @@ parameter error:
       nodes/soju
         '&lbrace;&lbrace;soju:example(page, node, project_root, use_canonical_url)&rbrace;&rbrace;'
           'oops'
-soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre></p>]]></description>
+soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre>]]></description>
         <category>user-defined-python-code</category>
-        <pubDate>Wed, 10 Jun 2026 23:23:30 -0400</pubDate>
+        <pubDate>Sun, 14 Jun 2026 18:34:19 -0400</pubDate>
     </item>
     <item>
-        <title>{{node-url:foo/bar}}</title>
-        <link>http://localhost:8000/parameters/node-url-some-other-node/</link>
-        <description><![CDATA[<h1>{{node-url:foo/bar}}</h1>
+        <title>VirtualNode Example</title>
+        <link>http://localhost:8000/handlers/virtual/</link>
+        <description><![CDATA[<h1>VirtualNode Example</h1>
 
-<p>
-    The <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b>
-    parameter evaluates to the URL for the node specified in the rvalue
-    portion of the parameter. Nodes are specified as paths starting from the
-    <a href="http://localhost:8000/directories/nodes/">nodes</a> directory.
-</p>
+<p>Hello from a VirtualNode.</p>
 
-<p>
-    For example, on this documentation site, we have another node with the
-    path <i>parameters/some-other-node</i>.
-</p>
+<p>See the <a href="http://localhost:8000/handlers/">Handlers</a> page for more details.</p>
 
-<p>
-    If we reference it using <i>parameters/some-other-node</i> as the rvalue,
-    then
-    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
-    evaluates to:
-</p>
-
-<p><pre>http://localhost:8000/parameters/some-other-node/</pre></p>
-
-<p>
-    Compare this with <a href="http://localhost:8000/parameters/node-url/">{{node:url}}</a>, which lets you get
-    the URL of the current node.
-</p>
-
-<h3>URL Representation in HTML vs. RSS</h3>
-
-<p>
-    In generated HTML pages, the URL will include the full path to the URL
-    from the root of the web site, but will not include the domain name. Like
-    this:
-</p>
-
-<p><pre>/parameters/some-other-node/</pre></p>
-
-<p>
-    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
-    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
-</p>
-
-<p><pre>http://localhost:8000/parameters/some-other-node/</pre></p>
-
-<p>
-    The actual value of
-    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
-    in the current context evaluates to:
-</p>
-
-<p><pre>http://localhost:8000/parameters/some-other-node/</pre></p>
-
-<p>
-    View this in both the <a href="http://localhost:8000/parameters/node-url-some-other-node/">web page</a> and the
-    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
-</p>]]></description>
-        <category>parameters</category>
-        <pubDate>Sun, 07 Jun 2026 18:01:17 -0400</pubDate>
-    </item>
-    <item>
-        <title>{{node:url}}</title>
-        <link>http://localhost:8000/parameters/node-url/</link>
-        <description><![CDATA[<h1>{{node:url}}</h1>
-
-<p>
-    The <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> parameter evaluates
-    to the URL for the current node.
-</p>
-
-<h3>Typical Usage</h3>
-
-<p>Use this when you need to get the URL for the current page.</p>
-
-<p>For example: <a href="http://localhost:8000/parameters/node-url/">http://localhost:8000/parameters/node-url/</a></p>
-
-<p>
-    Compare this with <a href="http://localhost:8000/parameters/node-url-some-other-node/">{{node-url:foo/bar}}</a>, which
-    lets you get the URL of another node on the web site.
-</p>
-
-<h3>URL Representation in HTML vs. RSS</h3>
-
-<p>
-    In generated HTML pages, the URL will include the full path to the URL
-    from the root of the web site, but will not include the domain name. Like
-    this:
-</p>
-
-<p><pre>/parameters/node-url/</pre></p>
-
-<p>
-    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
-    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
-</p>
-
-<p><pre>http://localhost:8000/parameters/node-url/</pre></p>
-
-<p>
-    The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
-    current context evaluates to:
-</p>
-
-<p><pre>http://localhost:8000/parameters/node-url/</pre></p>
-
-<p>
-    View this in both the <a href="http://localhost:8000/parameters/node-url/">web page</a> and the
-    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
-</p>]]></description>
-        <category>parameters</category>
-        <pubDate>Sun, 07 Jun 2026 17:16:40 -0400</pubDate>
+<p>This is a special message for RSS readers only.</p>]]></description>
+        <category>user-defined-python-code</category>
+        <pubDate>Sun, 14 Jun 2026 18:32:51 -0400</pubDate>
     </item>
     <item>
         <title>RSS-Include</title>
@@ -625,27 +646,6 @@ soju: error in function call to 'soju.example(page, node, project_root, use_cano
 
 <p>Compare this with <a href="http://localhost:8000/headers/rss-add-node-title-header/true/">RSS-Add-Node-Title-Header: true</a></p>]]></description>
         <pubDate>Fri, 05 Jun 2026 22:30:53 -0400</pubDate>
-    </item>
-    <item>
-        <title>RSS-Add-Node-Title-Header: true</title>
-        <link>http://localhost:8000/headers/rss-add-node-title-header/true/</link>
-        <description><![CDATA[<h1>RSS-Add-Node-Title-Header: true</h1>
-
-<p>
-    This node has the <a href="http://localhost:8000/headers/rss-add-node-title-header/">RSS-Add-Node-Title-Header</a>
-    header set to <i>true</i>.
-</p>
-
-<p>
-    As a result, Uriel has added the following HTML code to the top of its
-    RSS <i>&lt;description&gt;</i> field in the generated RSS feed
-    (<a href="http://localhost:8000/rss.xml">http://localhost:8000/rss.xml</a>):
-</p>
-
-<p><pre>&lt;h1&gt;RSS-Add-Node-Title-Header: true&lt;/h1&gt;</pre></p>
-
-<p>Compare this with <a href="http://localhost:8000/headers/rss-add-node-title-header/false/">RSS-Add-Node-Title-Header: false</a></p>]]></description>
-        <pubDate>Fri, 05 Jun 2026 22:29:01 -0400</pubDate>
     </item>
     <item>
         <title>RSS-Include: true</title>

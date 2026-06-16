@@ -1,0 +1,84 @@
+Title: {{latest:%B %d, %Y}}
+Created: 1970-01-01T00:00:00-00:00
+Modified: 1970-01-11T00:00:00-00:00
+
+<p>
+    The <b>&lbrace;&lbrace;latest:%B %d, %Y&rbrace;&rbrace;</b> substitution
+    parameter references the latest created or modified time of a node, or any
+    of its child nodes, and formats the date/time value using an
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime</a>
+    format string in the rvalue portion of the parameter.
+</p>
+
+<p>
+    In other words, the
+    <b>&lbrace;&lbrace;latest:%B %d, %Y&rbrace;&rbrace;</b> parameter lets you
+    display the latest date that is found in a given node, or any node found
+    underneath it in the tree.
+</p>
+
+<p>
+    This can be especially useful for setting copyright dates, or displaying
+    the date that anything in a section of your web site was last updated.
+</p>
+
+<p>
+    For example, this node has the following {{node-link:headers/created}} and
+    {{node-link:headers/modified}} headers set in the distant past:
+</p>
+
+<pre>Created: {{value:created}}
+Modified: {{value:modified}}</pre>
+
+<p>
+    However, this node also has a
+    <a href="{{node-url:parameters/latest/future}}">child node</a>, with the
+    following headers set:
+</p>
+
+<pre>Created: 2026-06-13T15:55:09-04:00
+Modified: 2026-06-13T15:55:09-04:00</pre>
+
+<p>
+    Because the dates on the child node are in the future (relatively
+    speaking), here is what the
+    <b>&lbrace;&lbrace;latest:%B %d, %Y&rbrace;&rbrace;</b>
+    substitution parameter evaluates to on this node:
+</p>
+
+<pre>{{latest:%B %d, %Y}}</pre>
+
+<p>
+    The <b>&lbrace;&lbrace;latest:%B %d, %Y&rbrace;&rbrace;</b> parameter
+    checks all of the dates for every node in the tree, starting from the
+    current node and working its way down, and evaluates to the latest date
+    that it finds in any of the nodes.
+</p>
+
+<p>
+    You can put something like this into a template, to get every page to
+    display the copyright date of anything in that section of the site:
+</p>
+
+<pre>&amp;copy; &lbrace;&lbrace;latest:%Y&rbrace;&rbrace; Foo Bar, Inc.</pre>
+
+<p>
+    On this node, this evaluates to:
+</p>
+
+<pre>&copy; {{latest:%Y}} Foo Bar, Inc.</pre>
+
+<p>
+    The format string has a lot of different options. See the
+    <a href="https://docs.python.org/3.14/library/datetime.html#strftime-and-strptime-format-codes">Python datetime strftime() reference</a>
+    or the
+    <a href="https://www.man7.org/linux/man-pages/man3/strftime.3.html">strftime(3)</a>
+    man page for further details.
+</p>
+
+<p>
+    Compare this with the {{node-link:parameters/created}},
+    {{node-link:parameters/modified}} and
+    {{node-link:parameters/oldest/index}} parameters.
+</p>
+

@@ -18,13 +18,13 @@ Template: default.html
     header like this:
 </p>
 
-<p><pre>Template: default.html</pre></p>
+<pre>Template: default.html</pre>
 
 <p>
     Subdirectories within the template directory are also allowed:
 </p>
 
-<p><pre>Template: foo/bar/quux.html</pre></p>
+<pre>Template: foo/bar/quux.html</pre>
 
 <p>
     If you delete an inherited <b>Template</b> header on a node, then you are
@@ -38,7 +38,7 @@ Template: default.html
     contents of the node body, you can specify the null template like this:
 </p>
 
-<p><pre>Template: null</pre></p>
+<pre>Template: null</pre>
 
 <p>
     What happens if you create a template file named <i>null</i>?

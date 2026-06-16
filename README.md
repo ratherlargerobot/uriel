@@ -33,8 +33,8 @@ uriel <project-root>
 
 If the project root is a directory that does not exist, it will be created and
 initialized with new project files. Subsequent invocations of the uriel
-command against the project root will regenerate the static files of the web
-site from the project files.
+command against the project root will regenerate the web site from the project
+files.
 
 ## Documentation
 

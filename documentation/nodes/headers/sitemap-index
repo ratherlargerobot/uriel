@@ -1,0 +1,73 @@
+Title: Sitemap-Index
+Tags: headers, root-node, sitemap, sitemap-headers
+
+<p>
+    The <b>Sitemap-Index</b> header can optionally be set on the
+    <a href="{{node-url:directories/nodes}}">root node</a>
+    to enable or disable writing a sitemap index, along with multiple sitemap
+    files.
+</p>
+
+<p>
+    There are two possible values:
+</p>
+
+<ul>
+    <li><i>true</i></li>
+    <li><i>false</i></li>
+</ul>
+
+<p>The default value is <i>false</i></p>
+
+<p>
+    If the {{node-link:headers/sitemap-url}} header is not set, then
+    <b>Sitemap-Index</b> will have no effect.
+</p>
+
+<p>
+    When <b>Sitemap-Index</b> is set to <i>false</i>, then only a single
+    sitemap file will be written to the path specified by
+    {{node-link:headers/sitemap-url}}.
+</p>
+
+<p>
+    When <b>Sitemap-Index</b> is set to <i>true</i>, then a sitemap index
+    will be written at the path specified by
+    {{node-link:headers/sitemap-url}}, instead of a sitemap. This sitemap
+    index will contain links to additional sitemap files, which will also be
+    written dynamically.
+</p>
+
+<p>
+    The individual sitemap files will be based on the <b>Sitemap-URL</b> path,
+    with numbers added to each file.
+</p>
+
+<p>
+    For example, if {{node-link:headers/sitemap-url}} is set to
+    <i>/sitemap.xml.gz</i>, <b>Sitemap-Index</b> is set to <i>true</i>, and
+    three sitemap files end up being generated, then the following files
+    will appear in the {{node-link:directories/public}} directory when the
+    site is built:
+</p>
+
+<pre>sitemap.xml.gz
+sitemap-001.xml.gz
+sitemap-002.xml.gz
+sitemap-003.xml.gz</pre>
+
+<p>
+    The {{node-link:headers/sitemap-max-files}} header controls the maximum
+    number of sitemap files that will be written.
+</p>
+
+<p>
+    The {{node-link:headers/sitemap-max-entries}} header controls the maximum
+    number of entries that will be written to each individual sitemap file.
+</p>
+
+<p>
+    See the {{node-link:generated}} page for additional details about how to
+    generate a sitemap. 
+</p>
+
