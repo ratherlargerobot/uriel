@@ -3,6 +3,10 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.5.1 (Jul 2 17:22 2026)
+------------------------------------------------------------------------------
+- Remove readlines() method calls to improve memory usage with large files
+
 VERSION 1.5.0 (Jun 15 22:30 2026)
 ------------------------------------------------------------------------------
 - Fix node URL bug where "index" name suffix would be elided from URL

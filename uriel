@@ -53,7 +53,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.5.0"
+VERSION = "1.5.1"
 
 # exit codes
 EXIT_OK = 0
@@ -1424,7 +1424,7 @@ class FileNode(Node):
                 parsing_headers = True
 
                 # read each line in the node file
-                for line in f.readlines():
+                for line in f:
                     line = line.rstrip()
 
                     # if we're still parsing headers...
@@ -2751,7 +2751,7 @@ class Page:
         lines = []
         try:
             with open(template_file) as f:
-                for line in f.readlines():
+                for line in f:
                     lines.append(line)
 
         except FileNotFoundError:
