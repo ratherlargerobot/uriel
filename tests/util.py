@@ -117,7 +117,10 @@ def get_datetime_from_date_str(date_str):
         if dt.tzinfo is None:
             tmp_dt = datetime.datetime.fromtimestamp(
                 dt.timestamp(),
-                datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+                datetime.datetime.now(
+                    datetime.timezone.utc
+                ).astimezone().tzinfo
+            )
 
             dt = tmp_dt
 

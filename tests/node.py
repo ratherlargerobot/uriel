@@ -1892,7 +1892,10 @@ class TestFileNode(unittest.TestCase):
             node_modified = \
                 datetime.datetime.fromtimestamp(
                     node_file_mtime,
-                    datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+                    datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).astimezone().tzinfo
+                )
             self.assertEqual(root.modified, node_modified)
 
             # body is an empty string
@@ -2189,7 +2192,10 @@ class TestVirtualNode(unittest.TestCase):
         start_time = \
             datetime.datetime.fromtimestamp(
                 datetime.datetime.now().timestamp(),
-                datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+                datetime.datetime.now(
+                    datetime.timezone.utc
+                ).astimezone().tzinfo
+            )
 
         with TempDir() as project_root:
             # this will use the current date/time when setting the
@@ -2212,7 +2218,10 @@ class TestVirtualNode(unittest.TestCase):
         start_time = \
             datetime.datetime.fromtimestamp(
                 datetime.datetime.now().timestamp(),
-                datetime.datetime.now(datetime.UTC).astimezone().tzinfo)
+                datetime.datetime.now(
+                    datetime.timezone.utc
+                ).astimezone().tzinfo
+            )
 
         with TempDir() as project_root:
             # this will use the current date/time when setting the

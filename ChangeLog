@@ -3,6 +3,10 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.5.2 (Jul 9 17:09 2026)
+------------------------------------------------------------------------------
+- Change datetime.UTC to datetime.timezone.utc in unit tests (Python 3.9)
+
 VERSION 1.5.1 (Jul 2 17:22 2026)
 ------------------------------------------------------------------------------
 - Remove readlines() method calls to improve memory usage with large files
