@@ -51,14 +51,5 @@ SITEMAP_MAX_FILES = 500
 
 # default maximum number of sitemap entries
 # (can be overridden via Sitemap-Max-Entries header)
-SITEMAP_MAX_ENTRIES = 50000
-
-# HTML escape character map
-HTML_ESCAPE_MAP = {
-    "&": "&amp;amp;",
-    '"': "&amp;quot;",
-    "'": "&amp;apos;",
-    ">": "&amp;gt;",
-    "<": "&amp;lt;"
-}</pre>
+SITEMAP_MAX_ENTRIES = 50000</pre>
 

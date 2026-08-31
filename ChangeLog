@@ -3,6 +3,12 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.5.3 (Aug 31 16:55 2026)
+------------------------------------------------------------------------------
+- Optimize escape() function
+- Remove HTML_ESCAPE_MAP constant
+- Add note about tag index to handlers documentation page
+
 VERSION 1.5.2 (Jul 9 17:09 2026)
 ------------------------------------------------------------------------------
 - Change datetime.UTC to datetime.timezone.utc in unit tests (Python 3.9)

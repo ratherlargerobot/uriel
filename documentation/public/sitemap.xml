@@ -42,11 +42,11 @@
     </url>
     <url>
         <loc>http://localhost:8000/handlers/</loc>
-        <lastmod>2026-06-14T18:32:51-04:00</lastmod>
+        <lastmod>2026-07-23T17:16:28-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/handlers/virtual/</loc>
-        <lastmod>2026-06-14T18:32:51-04:00</lastmod>
+        <lastmod>2026-07-23T17:16:28-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/headers/</loc>
@@ -378,67 +378,67 @@
     </url>
     <url>
         <loc>http://localhost:8000/tag/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/banana/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/bar/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/breadcrumbs/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/foo/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/headers/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/parameters/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/robots-txt/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/root-node/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss-headers/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap-headers/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/soju/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/static/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/user-defined-python-code/</loc>
-        <lastmod>2026-07-09T17:07:27-04:00</lastmod>
+        <lastmod>2026-08-31T16:53:49-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tags/</loc>
@@ -454,7 +454,7 @@
     </url>
     <url>
         <loc>http://localhost:8000/uriel/constants/</loc>
-        <lastmod>2026-06-14T18:39:45-04:00</lastmod>
+        <lastmod>2026-08-31T16:51:07-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/uriel/exceptions/</loc>

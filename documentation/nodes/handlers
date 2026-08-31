@@ -121,7 +121,9 @@ Tags: user-defined-python-code
         <td>augment_node_tree</td>
         <td>
             Augments <a href="{{node-url:uriel/node}}">Node</a> object
-            instances with additional values before rendering.
+            instances with additional values before rendering. This includes
+            creating the tag index, and all of the individual tag pages under
+            the <a href="{{node-url:tags}}">tag node</a> (if enabled).
         </td>
     </tr>
     <tr>

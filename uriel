@@ -53,7 +53,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.5.2"
+VERSION = "1.5.3"
 
 # exit codes
 EXIT_OK = 0
@@ -87,15 +87,6 @@ SITEMAP_MAX_FILES = 500
 # default maximum number of sitemap entries
 # (can be overridden via Sitemap-Max-Entries header)
 SITEMAP_MAX_ENTRIES = 50000
-
-# HTML escape character map
-HTML_ESCAPE_MAP = {
-    "&": "&amp;",
-    '"': "&quot;",
-    "'": "&apos;",
-    ">": "&gt;",
-    "<": "&lt;"
-}
 
 # static URL path -> hash URL path
 static_hash_urls: Dict[str, str] = {}
@@ -3362,11 +3353,13 @@ def escape(text: str) -> str:
     if text is None:
         return ""
 
-    chars = []
-    for c in text:
-        chars.append(HTML_ESCAPE_MAP.get(c, c))
-
-    return "".join(chars)
+    return (
+        text.replace("&", "&amp;")
+            .replace('"', "&quot;")
+            .replace("'", "&apos;")
+            .replace(">", "&gt;")
+            .replace("<", "&lt;")
+    )
 
 def escape_xml(text: str) -> str:
     """
