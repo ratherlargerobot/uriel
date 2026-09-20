@@ -1,6 +1,7 @@
 import os
 import sys
 import importlib
+import types
 import unittest
 
 from .util import UrielContainer
@@ -260,6 +261,237 @@ class TestPage(unittest.TestCase):
             self.assertEqual("parameter error:", c.stderr[0])
             self.assertEqual("  nodes/index", c.stderr[1])
             self.assertEqual("    '{{value:foo}}'", c.stderr[2])
+
+    def test_line_error_only_reports_the_first_error(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            page.template_stack.push("a.html", root.get_path(), False)
+
+            # the first error is reported, and raises
+            self.assertRaises(
+                uriel.UrielError,
+                page.line_error,
+                uriel.Token("{{value:foo}}"),
+                "bar",
+                raise_exception=True)
+
+            self.assertEqual(4, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    templates/a.html", c.stderr[2])
+            self.assertEqual("      '{{value:foo}}'", c.stderr[3])
+
+            # a later error at a different token is not reported at all.
+            # the build fails on the first error that was found, so that
+            # the user only ever has one error to look at.
+            try:
+                page.line_error(uriel.Token("{{soju:boom()}}"),
+                                "'kaboom'",
+                                raise_exception=False)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                # the first error is the one that is raised
+                self.assertEqual("bar", str(e))
+
+            self.assertEqual(4, len(c.stderr))
+
+    def test_line_error_no_raise_then_another_error(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # the first error does not raise, so it prints its reason as
+            # part of the error, and rendering is able to carry on
+            page.line_error(uriel.Token("{{soju:one()}}"),
+                            "'first'",
+                            raise_exception=False)
+
+            self.assertEqual(4, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{soju:one()}}'", c.stderr[2])
+            self.assertEqual("      'first'", c.stderr[3])
+
+            # if rendering reaches a second error anyway, because
+            # user-defined code caught the first one, the build still
+            # fails on the first error
+            try:
+                page.line_error(uriel.Token("{{soju:two()}}"),
+                                "'second'",
+                                raise_exception=False)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual("'first'", str(e))
+
+            self.assertEqual(4, len(c.stderr))
+
+    def test_line_error_inside_soju_code(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            page.template_stack.push("a.html", root.get_path(), False)
+
+            # user-defined soju code can call back into this class, so an
+            # error can be raised for a parameter that is not written in
+            # any node or template file. the {{soju:*}} parameter that
+            # called into the soju code is shown, so that the user knows
+            # which of their soju functions to go and look at.
+            page.soju_tokens.append(uriel.Token("{{soju:outer(page)}}"))
+
+            page.line_error(uriel.Token("{{value:foo}}"),
+                            "bar",
+                            raise_exception=False)
+
+            self.assertEqual(6, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    templates/a.html", c.stderr[2])
+            self.assertEqual("      '{{soju:outer(page)}}'", c.stderr[3])
+            self.assertEqual("        '{{value:foo}}'", c.stderr[4])
+            self.assertEqual("          bar", c.stderr[5])
+
+    def test_line_error_inside_nested_soju_code(self):
+        # TODO: IS THIS ACTUALLY A REALISTIC TEST?
+        #       CAN ANYTHING GET A MULTI-LINE SOJU ERROR NATURALLY?
+        #       WHAT IF soju_tokens WAS JUST A SINGLE VALUE, NOT A LIST?
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # soju code that calls back into a parameter that calls into
+            # soju code again gets a line for each level
+            page.soju_tokens.append(uriel.Token("{{soju:outer(page)}}"))
+            page.soju_tokens.append(uriel.Token("{{soju:inner(page)}}"))
+            page.soju_tokens.append(uriel.Token("{{soju:deeper(page)}}"))
+
+            page.line_error(uriel.Token("{{value:foo}}"),
+                            "bar",
+                            raise_exception=False)
+
+            # nested soju calls are all listed at the same level, the
+            # same way that included templates are, so that the indenting
+            # does not keep growing
+            self.assertEqual(7, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{soju:outer(page)}}'", c.stderr[2])
+            self.assertEqual("    '{{soju:inner(page)}}'", c.stderr[3])
+            self.assertEqual("    '{{soju:deeper(page)}}'", c.stderr[4])
+            self.assertEqual("      '{{value:foo}}'", c.stderr[5])
+            self.assertEqual("        bar", c.stderr[6])
+
+    def test_merge_token_soju_error_is_not_blamed_on_soju_file(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # stand in for the user-defined lib/soju.py module
+        soju = types.ModuleType("soju")
+
+        def boom():
+            raise uriel.SojuError("kaboom")
+
+        soju.boom = boom
+        uriel.soju = soju
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # an error raised by the soju code itself belongs to the
+            # {{soju:*}} parameter, and did not come from a parameter
+            # inside the soju code, so no soju frame is added to it
+            self.assertRaises(
+                uriel.SojuError,
+                page.merge_token_soju,
+                uriel.Token("{{soju:boom()}}"))
+
+            self.assertEqual(4, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{soju:boom()}}'", c.stderr[2])
+            self.assertEqual("      'kaboom'", c.stderr[3])
+
+            # the soju token stack is left empty afterwards
+            self.assertEqual([], page.soju_tokens)
+
+    def test_merge_token_soju_swallowed_error_still_fails(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # stand in for user-defined soju code that calls back into the
+        # Page class, and catches the error that uriel raised for it
+        soju = types.ModuleType("soju")
+
+        def swallow(page):
+            try:
+                page.merge_line("{{value:nosuchheader}}")
+            except Exception:
+                pass
+            return "recovered"
+
+        soju.swallow = swallow
+        uriel.soju = soju
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # the soju function returns a string, but an error was
+            # reported while it was running, so the build still fails on
+            # that error
+            try:
+                page.merge_token_soju(
+                    uriel.Token("{{soju:swallow(page)}}"))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "header 'nosuchheader' not set on this node", str(e))
+
+            # and the error points at the soju code that caused it
+            self.assertEqual(4, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{soju:swallow(page)}}'", c.stderr[2])
+            self.assertEqual("      '{{value:nosuchheader}}'", c.stderr[3])
+
+    def test_line_error_same_token_called_twice_no_raise(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            page.line_error(uriel.Token("{{value:foo}}"),
+                            "bar",
+                            raise_exception=False)
+
+            self.assertEqual(4, len(c.stderr))
+
+            # the same error again is not printed a second time either
+            self.assertRaises(
+                uriel.UrielError,
+                page.line_error,
+                uriel.Token("{{value:foo}}"),
+                "bar",
+                raise_exception=False)
+
+            self.assertEqual(4, len(c.stderr))
 
     def test_line_error_with_template_raise_exception_called_twice(self):
         c = UrielContainer()
@@ -1132,6 +1364,7 @@ class TestPage(unittest.TestCase):
             self.assertEqual(
                 "value of node list HTML",
                 page.get_maybe_canonical_html_fragment(
+                    uriel.Token("{{node-list:*}}"),
                     root, "__node-list-html"))
 
     def test_get_maybe_canonical_html_fragment_canonical(self):
@@ -1148,6 +1381,7 @@ class TestPage(unittest.TestCase):
             self.assertEqual(
                 "value of node list HTML canonical",
                 page.get_maybe_canonical_html_fragment(
+                    uriel.Token("{{node-list:*}}"),
                     root, "__node-list-html"))
 
     def test_merge_token_literal_empty_string(self):
@@ -1254,6 +1488,145 @@ class TestPage(unittest.TestCase):
                 uriel.UrielError,
                 page.merge_token_include,
                 uriel.Token("{{include:a.html}}"))
+
+    def test_merge_token_include_directory_traversal(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            outside_file = os.path.join(project_root, "outside.html")
+
+            os.mkdir(templates_root)
+
+            with open(outside_file, "w") as f:
+                f.write("outside\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # a template name can not climb out of the templates
+            # directory, even though the file it points at exists
+            try:
+                page.merge_token_include(
+                    uriel.Token("{{include:../outside.html}}"))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "directory traversal not allowed in template name: " + \
+                    "'../outside.html'",
+                    str(e))
+
+            # the error points at the include parameter, not at a
+            # Template header the user never wrote
+            self.assertEqual(3, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{include:../outside.html}}'",
+                             c.stderr[2])
+
+    def test_merge_token_include_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            outside_file = os.path.join(project_root, "outside.html")
+
+            os.mkdir(templates_root)
+
+            with open(outside_file, "w") as f:
+                f.write("outside\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # os.path.join() throws away everything before an absolute
+            # path, so a leading / would escape the templates directory
+            # without any ../ being involved
+            try:
+                page.merge_token_include(
+                    uriel.Token("{{include:%s}}" % (outside_file)))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "template name can not start with a '/': '%s'" %
+                    (outside_file),
+                    str(e))
+
+    def test_merge_template_directory_traversal(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            outside_file = os.path.join(project_root, "outside.html")
+
+            os.mkdir(templates_root)
+
+            with open(outside_file, "w") as f:
+                f.write("outside\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "../outside.html")
+            page = uriel.Page(project_root, root)
+
+            # the same check applies to a Template header
+            self.assertRaises(uriel.UrielError, page.render)
+
+            self.assertEqual(3, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    'Template: ../outside.html'", c.stderr[2])
+
+    def test_merge_template_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            outside_file = os.path.join(project_root, "outside.html")
+
+            os.mkdir(templates_root)
+
+            with open(outside_file, "w") as f:
+                f.write("outside\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", outside_file)
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(uriel.UrielError, page.render)
+
+    def test_merge_template_subdirectory_is_allowed(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            sub_dir = os.path.join(templates_root, "sub")
+            template_file = os.path.join(sub_dir, "part.html")
+
+            os.mkdir(templates_root)
+            os.mkdir(sub_dir)
+
+            with open(template_file, "w") as f:
+                f.write("PART")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            # a template in a subdirectory of the templates directory is
+            # not directory traversal, and still works
+            self.assertEqual(
+                "PART",
+                page.merge_token_include(
+                    uriel.Token("{{include:sub/part.html}}")))
 
     def test_merge_token_include_null_template_file_exists(self):
         c = UrielContainer()
@@ -1637,6 +2010,119 @@ class TestPage(unittest.TestCase):
                 uriel.Token("{{static-hash-url:../public/css/main.css}}")
             )
 
+    def test_merge_token_static_hash_url_same_file_different_urls(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            css_dir = os.path.join(public_dir, "css")
+            css_file = os.path.join(css_dir, "main.css")
+            hashed_css_file = os.path.join(
+                css_dir, "d41d8cd98f00b204e9800998ecf8427e.css")
+
+            os.mkdir(public_dir)
+            os.mkdir(css_dir)
+
+            with open(css_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            child = uriel.VirtualNode(project_root, "child", root)
+            root.add_child(child)
+
+            # the root node refers to the file with a node relative URL
+            root_page = uriel.Page(project_root, root)
+            self.assertEqual(
+                "css/d41d8cd98f00b204e9800998ecf8427e.css",
+                root_page.merge_token_static_hash_url(
+                    uriel.Token("{{static-hash-url:css/main.css}}")))
+
+            self.assertTrue(os.path.isfile(hashed_css_file))
+
+            # a different node refers to the same file with a site
+            # absolute URL, and has to get a site absolute URL back, not
+            # the node relative one that was worked out above
+            child_page = uriel.Page(project_root, child)
+            self.assertEqual(
+                "/css/d41d8cd98f00b204e9800998ecf8427e.css",
+                child_page.merge_token_static_hash_url(
+                    uriel.Token("{{static-hash-url:/css/main.css}}")))
+
+            # the file is only hashed and copied once
+            hashed_files = []
+            for dirent in os.listdir(css_dir):
+                hashed_files.append(dirent)
+
+            self.assertEqual(2, len(hashed_files))
+            self.assertTrue("main.css" in hashed_files)
+            self.assertTrue(
+                "d41d8cd98f00b204e9800998ecf8427e.css" in hashed_files)
+
+    def test_merge_token_static_hash_url_canonical(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            css_dir = os.path.join(public_dir, "css")
+            css_file = os.path.join(css_dir, "main.css")
+
+            os.mkdir(public_dir)
+            os.mkdir(css_dir)
+
+            with open(css_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+
+            # when canonical URLs are in use, as they are when the RSS
+            # feed is written, a hashed static URL is made canonical in
+            # the same way that a {{static-url:*}} parameter is
+            page = uriel.Page(project_root, root, use_canonical_url=True)
+
+            self.assertEqual(
+                "https://example.com/css/main.css",
+                page.merge_token_static_url(
+                    uriel.Token("{{static-url:/css/main.css}}")))
+
+            self.assertEqual(
+                "https://example.com/css/" + \
+                "d41d8cd98f00b204e9800998ecf8427e.css",
+                page.merge_token_static_hash_url(
+                    uriel.Token("{{static-hash-url:/css/main.css}}")))
+
+    def test_merge_token_static_hash_url_canonical_node_relative(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            child_dir = os.path.join(public_dir, "child")
+            css_file = os.path.join(child_dir, "main.css")
+
+            os.mkdir(public_dir)
+            os.mkdir(child_dir)
+
+            with open(css_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            child = uriel.VirtualNode(project_root, "child", root)
+            root.add_child(child)
+
+            # a node relative URL is canonical against the node it was
+            # written on
+            page = uriel.Page(project_root, child, use_canonical_url=True)
+
+            self.assertEqual(
+                "https://example.com/child/" + \
+                "d41d8cd98f00b204e9800998ecf8427e.css",
+                page.merge_token_static_hash_url(
+                    uriel.Token("{{static-hash-url:main.css}}")))
+
     def test_merge_token_rss_invalid_rvalue(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -1754,6 +2240,53 @@ class TestPage(unittest.TestCase):
             self.assertEqual(
                 "line 1<br>\nline 2<br>\nbar<br>\nline 4",
                 page.merge_token_node_body(uriel.Token("{{node:body}}")))
+
+    def test_merge_token_node_body_text_is_repeatable(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "text")
+            root.set_body("line 1\nline 2")
+
+            expected = "line 1<br>\nline 2"
+
+            # a node can be rendered more than once (e.g. once for its own
+            # page, and again for the RSS feed). converting the body to
+            # HTML must not accumulate <br> tags, and must not modify the
+            # node body itself.
+            page = uriel.Page(project_root, root)
+            self.assertEqual(
+                expected,
+                page.merge_token_node_body(uriel.Token("{{node:body}}")))
+            self.assertEqual(
+                expected,
+                page.merge_token_node_body(uriel.Token("{{node:body}}")))
+
+            rss_page = uriel.Page(project_root, root, use_canonical_url=True)
+            self.assertEqual(
+                expected,
+                rss_page.merge_token_node_body(uriel.Token("{{node:body}}")))
+
+            # the node body is left untouched
+            self.assertEqual("line 1\nline 2", root.get_body())
+
+    def test_merge_token_node_body_invalid_format(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "bogus")
+            root.set_body("words")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(
+                uriel.UrielError,
+                page.merge_token_node_body,
+                uriel.Token("{{node:body}}"))
 
     def test_merge_token_node_body_semaphore_eq_1(self):
         c = UrielContainer()
@@ -2008,10 +2541,65 @@ class TestPage(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             page = uriel.Page(project_root, root)
 
-            self.assertRaises(
-                KeyError,
-                page.merge_token_node_list,
-                uriel.Token("{{node-list:*}}"))
+            # a node that was not part of the node tree when the tree was
+            # created has no node list to show, which is reported as a
+            # normal parameter error, and not as a bare KeyError for an
+            # internal header name
+            try:
+                page.merge_token_node_list(uriel.Token("{{node-list:*}}"))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "node 'index' was not part of the node tree when it " + \
+                    "was created",
+                    str(e))
+
+            self.assertEqual(3, len(c.stderr))
+            self.assertEqual("parameter error:", c.stderr[0])
+            self.assertEqual("  nodes/index", c.stderr[1])
+            self.assertEqual("    '{{node-list:*}}'", c.stderr[2])
+
+    def test_merge_token_node_dash_list_no_canonical_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("__node-list-html", "value of node list HTML")
+
+            # the canonical fragments are only created when Canonical-URL
+            # is set on the root node at the time the node tree is
+            # augmented. a handler that writes an RSS feed for a node
+            # further down the tree can get here without them.
+            page = uriel.Page(project_root, root, use_canonical_url=True)
+
+            try:
+                page.merge_token_node_list(uriel.Token("{{node-list:*}}"))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "Canonical-URL header not set on node 'index' when " + \
+                    "node tree was created",
+                    str(e))
+
+    def test_merge_token_tag_dash_list_no_canonical_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("__tag-list-html", "value of tag list HTML")
+
+            page = uriel.Page(project_root, root, use_canonical_url=True)
+
+            try:
+                page.merge_token_tag_list(uriel.Token("{{tag-list:*}}"))
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "Canonical-URL header not set on node 'index' when " + \
+                    "node tree was created",
+                    str(e))
 
     def test_merge_token_node_dash_list_not_canonical(self):
         c = UrielContainer()
@@ -2720,7 +3308,49 @@ class TestPage(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             page = uriel.Page(project_root, root)
 
-            self.assertIsNone(page.merge_line(None))
+            try:
+                page.merge_line(None)
+                self.assertTrue(False)
+            except Exception as e:
+                self.assertEqual("line can not be null", str(e))
+
+    def test_merge_line_unterminated_parameter(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("foo", "bar")
+            page = uriel.Page(project_root, root)
+
+            try:
+                page.merge_line("{{value:foo}")
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "parameter is missing a closing '}}': " + \
+                    "'{{value:foo}'",
+                    str(e))
+
+            try:
+                page.merge_line("abc{{value:foo}def")
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "parameter is missing a closing '}}': " + \
+                    "'{{value:foo}'",
+                    str(e))
+
+    def test_merge_line_closing_tags_without_opening_tags(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("}}", page.merge_line("}}"))
+            self.assertEqual("abc}}def", page.merge_line("abc}}def"))
 
     def test_merge_line_blank(self):
         c = UrielContainer()
@@ -2763,10 +3393,7 @@ class TestPage(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             page = uriel.Page(project_root, root)
 
-            self.assertRaises(
-                Exception,
-                page.merge_lines,
-                None)
+            self.assertRaises(Exception, page.merge_lines, None)
 
     def test_merge_lines_no_lines(self):
         c = UrielContainer()
@@ -2850,6 +3477,89 @@ class TestPage(unittest.TestCase):
             self.assertEqual(
                 "<p>\nbar\n</p>",
                 page.merge_multiline("<p>\n{{value:foo}}\n</p>"))
+
+    def test_merge_template_is_only_read_once(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_root = os.path.join(project_root, "templates")
+            template_file = os.path.join(templates_root, "default.html")
+
+            os.mkdir(templates_root)
+
+            with open(template_file, "w") as f:
+                f.write("<p>{{node:title}}</p>\n")
+                f.write("<p>plain text</p>\n")
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("title", "First")
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("<p>First</p>\n<p>plain text</p>",
+                             page.merge_template("default.html"))
+
+            # the template was cached successfully
+            self.assertTrue(template_file in uriel.template_tokens)
+
+            tokenized = uriel.template_tokens[template_file]
+            self.assertEqual(2, len(tokenized))
+
+            # the line with a substitution parameter in it has tokens,
+            # the line without a substitution parameter doesn't have tokens
+            self.assertIsNotNone(tokenized[0][1])
+            self.assertIsNone(tokenized[1][1])
+            self.assertEqual("<p>plain text</p>", tokenized[1][0])
+
+            # another node merges with the same template without reading
+            # the template file again, and substitution parameters are
+            # still replaced correctly
+            other = uriel.VirtualNode(project_root, "other")
+            other.set_header("title", "Second")
+            other_page = uriel.Page(project_root, other)
+
+            self.assertEqual("<p>Second</p>\n<p>plain text</p>",
+                             other_page.merge_template("default.html"))
+
+            # remove the template file, to prove we're reading the cache
+            os.unlink(template_file)
+
+            third = uriel.VirtualNode(project_root, "third")
+            third.set_header("title", "Third")
+            third_page = uriel.Page(project_root, third)
+
+            self.assertEqual("<p>Third</p>\n<p>plain text</p>",
+                             third_page.merge_template("default.html"))
+
+    def test_merge_tokenized_lines(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("title", "My Title")
+            root.set_header("foo", "bar")
+            page = uriel.Page(project_root, root)
+
+            tokenized = [
+                ("<p>plain</p>", None),
+                ("{{value:foo}}", page.tokenize("{{value:foo}}")),
+                ("a {{node:title}} b", page.tokenize("a {{node:title}} b")),
+            ]
+
+            self.assertEqual("<p>plain</p>\nbar\na My Title b",
+                             page.merge_tokenized_lines(tokenized))
+
+    def test_merge_tokenized_lines_empty(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("", page.merge_tokenized_lines([]))
 
     def test_merge_template_null(self):
         c = UrielContainer()
@@ -3023,6 +3733,60 @@ class TestPage(unittest.TestCase):
             page = uriel.Page(project_root, root)
 
             self.assertRaises(uriel.UrielError, page.render)
+
+    def test_render_invalid_format(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("format", "bogus")
+            root.set_body("FAIL")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertRaises(uriel.UrielError, page.render)
+
+    def test_render_invalid_format_without_node_body(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            templates_dir = os.path.join(project_root, "templates")
+            template_file = os.path.join(templates_dir, "default.html")
+
+            os.mkdir(templates_dir)
+
+            with open(template_file, "w") as f:
+                pass
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "bogus")
+
+            page = uriel.Page(project_root, root)
+
+            try:
+                page.render()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid Format header value in node 'index': 'bogus'",
+                    str(e))
+
+    def test_render_valid_format_text(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("template", "null")
+            root.set_header("format", "text")
+            root.set_body("line 1\nline 2")
+
+            page = uriel.Page(project_root, root)
+
+            self.assertEqual("line 1<br>\nline 2\n", page.render())
 
     def test_render_require_tags_false_tags_set(self):
         c = UrielContainer()

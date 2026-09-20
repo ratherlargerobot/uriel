@@ -2,13 +2,13 @@ Title: Template
 Template: default.html
 
 <p>
-    Sets the <a href="{{node-url:directories/templates">template</a> that the
-    <a href="{{node-url:directories/nodes">node</a> will use.
+    Sets the <a href="{{node-url:directories/templates}}">template</a> that the
+    <a href="{{node-url:directories/nodes}}">node</a> will use.
 </p>
 
 <p>
     The template file name given is relative to the
-    <a href="{{node-url:directories/templates">templates directory</a>.
+    <a href="{{node-url:directories/templates}}">templates directory</a>.
 </p>
 
 <p>

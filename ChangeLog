@@ -3,6 +3,41 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.6.0 (TODO)
+------------------------------------------------------------------------------
+- Add various performance optimizations
+- Improve RSS-Image-URL validation
+- Improve validation to prevent empty tags (extra commas) in Tags: header
+- Improve RSS/sitemap time zone handling
+- Improve error message if a soju function hides a UrielError from a Page call
+- Improve error handling when Canonical-URL header is set late by a handler
+- Improve FileWriter/GzipFileWriter errors related to dangling symlinks
+- Improve {{include:*}} and Template header path validation
+- Make Node sorting deterministic in time zone mismatch corner cases
+- Explicitly specify UTF-8 encoding when reading and writing all text files
+- Explicitly disallow symlinks when copying static/ to public/
+- Load lib/ modules at the end of the Python import path, not the beginning
+- Page merge_line() now raises Exception if passed None as an argument
+- Improve Canonical-URL validation (trailing / explicitly not allowed)
+- Improve validation of incomplete substitution parameters (e.g. {{, {{ } )
+- Add validation to prevent # ? % characters in tag values
+- Fix issue where Created/Modified could be inherited if parent node had Title
+- Fix off-by-one error in Sitemap-Max-Files handling
+- Fix double <br> in RSS when Format: text header is set
+- Fix bug with -Foo: * deletion header ordering
+- Fix static-hash-url path caching URL inconsistency
+- Add Token has_unterminated_parameter() method
+- Add TemplateStack get_templates() method
+- Add Node _process_minus_headers() method
+- Add Node get_canonical_url_base() method
+- Add Node get_format() method
+- Add Node invalidate_url_cache() method
+- Add Page merge_tokenized_lines() method
+- Add Page validate_template_name() method
+- Add is_directory_traversal_attempt() function
+- Remove get_utc_offset() function
+- Updated documentation site
+
 VERSION 1.5.3 (Aug 31 16:55 2026)
 ------------------------------------------------------------------------------
 - Optimize escape() function

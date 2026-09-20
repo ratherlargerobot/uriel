@@ -8,6 +8,46 @@ class TestTemplateStack(unittest.TestCase):
 
     """
 
+    def test_get_templates_empty(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        stack = uriel.TemplateStack()
+
+        self.assertEqual([], stack.get_templates())
+
+    def test_get_templates(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        stack = uriel.TemplateStack()
+        stack.push("a.html", "index", False)
+        stack.push("b.html", "index", False)
+        stack.push("c.html", "index", False)
+
+        # the templates come back in the order they were included
+        self.assertEqual(["a.html", "b.html", "c.html"],
+                         stack.get_templates())
+
+        # and reading them does not remove them from the stack
+        self.assertEqual(["a.html", "b.html", "c.html"],
+                         stack.get_templates())
+        self.assertTrue(stack.has_more_elements())
+        self.assertEqual("c.html", stack.pop())
+
+    def test_get_templates_returns_a_copy(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        stack = uriel.TemplateStack()
+        stack.push("a.html", "index", False)
+
+        templates = stack.get_templates()
+        templates.append("b.html")
+
+        # changing the returned list does not change the stack
+        self.assertEqual(["a.html"], stack.get_templates())
+
     def test_simple(self):
         c = UrielContainer()
         uriel = c.uriel

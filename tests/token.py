@@ -68,6 +68,49 @@ class TestToken(unittest.TestCase):
         self.assertEqual(s, token.value)
         self.assertTrue(token.has_unidentified_parameter())
 
+    def test_unterminated_parameter(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        s = "{{value:foo"
+        token = uriel.Token(s)
+
+        self.assertEqual(s, token.original_string)
+        self.assertEqual("literal", token.type)
+        self.assertEqual(s, token.value)
+        self.assertFalse(token.has_unidentified_parameter())
+        self.assertTrue(token.has_unterminated_parameter())
+
+    def test_unterminated_parameter_one_closing_brace(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        s = "{{value:foo}"
+        token = uriel.Token(s)
+
+        self.assertEqual("literal", token.type)
+        self.assertTrue(token.has_unterminated_parameter())
+
+    def test_unterminated_parameter_opening_braces_only(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        s = "{{"
+        token = uriel.Token(s)
+
+        self.assertEqual("literal", token.type)
+        self.assertTrue(token.has_unterminated_parameter())
+
+    def test_closing_tags_without_opening_tags(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        s = "foo}}bar"
+        token = uriel.Token(s)
+
+        self.assertEqual("literal", token.type)
+        self.assertFalse(token.has_unterminated_parameter())
+
     def test_literal_if_tags_not_at_leading_edge(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -91,6 +134,8 @@ class TestToken(unittest.TestCase):
         self.assertEqual("literal", token.type)
         self.assertEqual(s, token.value)
         self.assertFalse(token.has_unidentified_parameter())
+
+        self.assertFalse(token.has_unterminated_parameter())
 
     def test_literal_if_tags_not_at_edges(self):
         c = UrielContainer()

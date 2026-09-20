@@ -17,7 +17,9 @@ Tags: headers, rss, rss-headers, sitemap, sitemap-headers, root-node
 
 <p>
     Uriel will prepend the canonical URL to the node URL path when a
-    canonical link needs to be constructed.
+    canonical link needs to be constructed. Since node URL paths all start
+    with slashes, the <b>Canonical-URL</b> header must not end with a trailing
+    slash.
 </p>
 
 <p>

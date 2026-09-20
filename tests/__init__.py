@@ -8,6 +8,7 @@ import importlib
 
 # import test utility classes and functions
 from .util import TempDir
+from .util import TimeZone
 from .util import UrielContainer
 from .util import get_datetime_from_date_str
 

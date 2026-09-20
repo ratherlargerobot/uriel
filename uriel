@@ -29,15 +29,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # imports
 import ast
-import calendar
 import datetime
 import hashlib
 import os
 import re
 import shutil
 import sys
-import time
 import gzip
+import heapq
 import traceback
 
 # type hinting imports
@@ -53,7 +52,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.5.3"
+VERSION = "1.6.0"
 
 # exit codes
 EXIT_OK = 0
@@ -88,8 +87,12 @@ SITEMAP_MAX_FILES = 500
 # (can be overridden via Sitemap-Max-Entries header)
 SITEMAP_MAX_ENTRIES = 50000
 
-# static URL path -> hash URL path
-static_hash_urls: Dict[str, str] = {}
+# static file path -> hashed filename
+static_hash_filenames: Dict[str, str] = {}
+
+# template file path -> list of (template line, tokens parsed from that line)
+# the tokens in the tuple are optional, many lines don't have parameters
+template_tokens: Dict[str, List[Tuple[str, Optional[List["Token"]]]]] = {}
 
 class UrielError(Exception):
     """
@@ -121,7 +124,7 @@ class HandlerError(Exception):
     pass
 
 
-class ImpossibleError(Exception):
+class _ImpossibleError(Exception):
     """
     An exception that should never actually be thrown in practice.
 
@@ -214,6 +217,10 @@ class Token:
         # but we don't understand it?
         self.unidentified_parameter = False
 
+        # does it look like this was supposed to be a parameter, but
+        # the closing "}}" is missing?
+        self.unterminated_parameter = False
+
         # parameter
         if s.startswith("{{") and s.endswith("}}"):
             # strip off the {{ and }}
@@ -242,6 +249,12 @@ class Token:
 
             self.value = value
 
+        # a parameter that was opened, but never closed
+        elif s.startswith("{{") and ("}}" not in s):
+            self.unterminated_parameter = True
+            self.type = Token.LITERAL
+            self.value = s
+
         # literal
         else:
             self.type = Token.LITERAL
@@ -255,6 +268,15 @@ class Token:
         """
 
         return self.unidentified_parameter
+
+    def has_unterminated_parameter(self) -> bool:
+        """
+        Does this token start something that looks like a substitution
+        parameter, without ever closing it?
+
+        """
+
+        return self.unterminated_parameter
 
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Token):
@@ -388,6 +410,17 @@ class TemplateStack:
 
         return template
 
+    def get_templates(self) -> List[str]:
+        """
+        Get the templates on this stack, in the order they were included.
+
+        Returns a copy of the list, so that the caller can read the stack
+        without removing anything from it.
+
+        """
+
+        return list(self.templates)
+
     def has_more_elements(self) -> bool:
         """
         Does this stack still have more templates that can be removed?
@@ -485,7 +518,7 @@ class Node:
             if dupe is not None:
                 err = "can not create node, another node already exists " + \
                       "with this path: '%s'"
-                raise Exception(err % (path))
+                raise UrielError(err % (path))
 
         # import headers from parent node
         if self.parent_node:
@@ -493,11 +526,26 @@ class Node:
             for (key, value) in self.parent_node.get_header_key_values():
                 self.set_header(key, value)
 
-            # N.B. the +/- keys are sorted and reversed, so that it is possible
-            #      to push inheritance out multiple levels. this works because
-            #      when sorted and reversed, ++foo sorts after +foo, and so on,
-            #      which prevents ++foo from overwriting +foo before it gets
-            #      a chance to be set.
+            # N.B. the order of header processing in this block is important,
+            #      to make sure the literal headers, + and - variants all
+            #      operate correctly
+
+            # disable inheritance on fields that should be unique
+
+            # Title
+            if self.has_header("title"):
+                self.delete_header("title")
+
+            # Created
+            if self.has_header("created"):
+                self.delete_header("created")
+
+            # Modified
+            if self.has_header("modified"):
+                self.delete_header("modified")
+
+            # N.B. we reverse the header keys because ++foo sorts after +foo,
+            #      which prevents ++foo from overwriting +foo before being set
 
             # +
             for key in reversed(self.get_header_keys()):
@@ -509,32 +557,57 @@ class Node:
                     self.delete_header(plus_key)
 
             # -
-            for key in reversed(self.get_header_keys()):
-                if key.startswith("-"):
-                    minus_key = key
-                    stripped_key = key[1:]
-                    value = self.get_header(minus_key)
-                    if "*" != value:
-                        err = "key '%s' can not have value '%s' " + \
-                              "in node '%s' (value must be '*')"
-                        raise UrielError(err % (key, value, self.get_path()))
-                    if self.has_header(stripped_key):
-                        self.delete_header(stripped_key)
-                    self.delete_header(minus_key)
+            self._process_minus_headers()
 
-        # disable inheritance on fields that should be unique
+    def _process_minus_headers(self) -> None:
+        """
+        Process the "-" headers that are currently set on this Node.
 
-        # Title
-        if self.has_header("title"):
-            self.delete_header("title")
+        A header with a leading "-" and a value of "*" is an instruction to
+        remove the header with the same name, but without the leading "-",
+        from this Node (e.g. "-Foo: *" removes the "Foo" header).
 
-        # Created
-        elif self.has_header("created"):
-            self.delete_header("created")
+        The "-" header itself is also removed, once it has been acted on.
 
-        # Modified
-        elif self.has_header("modified"):
-            self.delete_header("modified")
+        Raises a UrielError if a "-" header has a value other than "*".
+
+        This method is only intended to be called from inside of the
+        Node class family of constructors.
+
+        """
+
+        # go through each key, in reverse sorted order
+        #
+        # N.B. --foo naturally sorts before -foo, but when reversed,
+        #      --foo will be processed after -foo.
+        #      this is important, because -foo removes foo,
+        #      --foo removes -foo, etc.
+        for key in reversed(self.get_header_keys()):
+            # if a header starts with a "-", and has a value of "*",
+            # it's an instruction to remove that header from this Node
+            # (e.g. -Foo: *)
+            if key.startswith("-"):
+                # -Foo
+                minus_key = key
+
+                # Foo
+                remove_key = key[1:]
+
+                # value of -Foo (ideally *)
+                value = self.get_header(minus_key)
+
+                if "*" != value:
+                    err = "invalid header in node '%s': '%s': '%s' " + \
+                          "(value must be '*')"
+                    raise UrielError(
+                        err % (self.get_path(), minus_key, value))
+
+                # remove the header this key refers to
+                if self.has_header(remove_key):
+                    self.delete_header(remove_key)
+
+                # remove the "-" key itself, now that it has been acted on
+                self.delete_header(minus_key)
 
     def get_parent_node(self) -> Optional["Node"]:
         """
@@ -666,6 +739,31 @@ class Node:
 
         return self.url_cache
 
+    def get_canonical_url_base(self) -> str:
+        """
+        Get the base URL of the web site, as set by the Canonical-URL
+        header (e.g. "https://example.com").
+
+        Raises a UrielError if the Canonical-URL header is not set, or
+        if it is set to a value that ends with a "/".
+
+        """
+
+        if not self.has_header("canonical-url"):
+            raise UrielError(
+                "Canonical-URL not set, but required by node '%s'" %
+                (self.get_path()))
+
+        canonical_url_base = self.get_header("canonical-url")
+
+        # make sure the canonical URL doesn't end with a (redundant) slash
+        if canonical_url_base.endswith("/"):
+            err = "invalid Canonical-URL header value in node " + \
+                  "'%s': '%s' (can not end with a '/')"
+            raise UrielError(err % (self.get_path(), canonical_url_base))
+
+        return canonical_url_base
+
     def get_canonical_url(self) -> str:
         """
         Get the canonical URL for this Node.
@@ -675,20 +773,15 @@ class Node:
 
         """
 
-        if not self.has_header("canonical-url"):
-            raise UrielError(
-                "Canonical-URL not set, but required by node '%s'" %
-                (self.get_path()))
-
-        return self.get_header("canonical-url") + self.get_url()
+        return self.get_canonical_url_base() + self.get_url()
 
     def get_name(self) -> str:
         """
         Get the name of this Node (e.g. "index", "bar").
 
-        This is generally the most specific dirent from the URL path. For example, a
-        node with a node path of "foo/index" and a URL path of "/foo/" will have a
-        node name of "foo".
+        This is generally the most specific dirent from the URL path.
+        For example, a node with a node path of "foo/index" and a URL
+        path of "/foo/" will have a node name of "foo".
 
         As a special case, the name of the top-level index node is "index".
 
@@ -867,28 +960,40 @@ class Node:
         if self.has_header("tags"):
             tag_list = self.get_header("tags").split(",")
             for tag in tag_list:
-                if "" != tag:
-                    tag = tag.strip()
+                # strip whitespace from the tag
+                tag = tag.strip()
 
-                    # make sure tag isn't a directory separator
-                    if ("/" in tag) or ("." == tag) or (".." == tag):
-                        errstr = "invalid tag '%s' in node '%s', " + \
-                                 "can not create as file"
-                        raise UrielError(errstr % (tag, self.get_path()))
+                # empty tag
+                if "" == tag:
+                    errstr = "invalid Tags header value in node '%s': '%s'"
+                    header_value = self.get_header("tags")
+                    raise UrielError(errstr % (self.get_path(), header_value))
 
-                    # make sure tag isn't a parent directory reference
-                    if ("." == tag) or (".." == tag):
-                        errstr = "invalid tag '%s' in node '%s', " + \
-                                 "can not create as file"
-                        raise UrielError(errstr % (tag, self.get_path()))
+                # make sure the tag can be used as a directory name
+                if "/" in tag:
+                    errstr = "invalid tag '%s' in node '%s', " + \
+                             "can not contain '/'"
+                    raise UrielError(errstr % (tag, self.get_path()))
 
-                    # make sure tags don't contain whitespace
-                    if re.match(r"^.*?\s+.*?$", tag):
-                        errstr = "invalid tag '%s' in node '%s', " + \
-                                 "can not contain whitespace"
-                        raise UrielError(errstr % (tag, self.get_path()))
+                # make sure the tag isn't a relative directory reference
+                if ("." == tag) or (".." == tag):
+                    errstr = "invalid tag '%s' in node '%s', " + \
+                             "can not be '.' or '..'"
+                    raise UrielError(errstr % (tag, self.get_path()))
 
-                    tag_set.add(tag)
+                # make sure tags don't contain whitespace
+                if re.match(r"^.*?\s+.*?$", tag):
+                    errstr = "invalid tag '%s' in node '%s', " + \
+                             "can not contain whitespace"
+                    raise UrielError(errstr % (tag, self.get_path()))
+
+                # make sure special URL characters aren't used in tags
+                if ("#" in tag) or ("?" in tag) or ("%" in tag):
+                    errstr = "invalid tag '%s' in node '%s', " + \
+                             "can not contain '#', '?' or '%%'"
+                    raise UrielError(errstr % (tag, self.get_path()))
+
+                tag_set.add(tag)
 
         self.sorted_tags_cache = sorted(tag_set)
 
@@ -950,6 +1055,34 @@ class Node:
                 raise UrielError(err % (header, self.get_path(), value))
 
         return default
+
+    def get_format(self) -> str:
+        """
+        Get the node body format for this node.
+
+        Returns "html" or "text".
+
+        If the Format header is not set, then "html" is used as the default
+        value.
+
+        Raises a UrielError if the Format header is set to an invalid value.
+
+        """
+
+        # if we don't have a format header, return the default value
+        if not self.has_header("format"):
+            return "html"
+
+        # get the value of the format header
+        node_format = self.get_header("format")
+
+        # if the value is invalid, raise an error
+        if ("html" != node_format) and ("text" != node_format):
+            err = "invalid Format header value in node '%s': '%s'"
+            raise UrielError(err % (self.get_path(), node_format))
+
+        # return the format value
+        return node_format
 
     def get_breadcrumb_separator(self) -> str:
         """
@@ -1209,12 +1342,53 @@ class Node:
         # headers affecting title_cache field
         if "title" == header:
             self.title_cache = None
+            return
         if "escape-title" == header:
             self.title_cache = None
+            return
+
+        # headers affecting sorted_tags_cache field
+        if "tags" == header:
+            self.sorted_tags_cache = None
+            return
+
+        # headers affecting tag_node_cache and tag_vnode_cache fields
+        if "tag-node" == header:
+            self.tag_node_cache = None
+
+            # N.B. the tag vnode cache only lives on the root node
+            if self.root_node_cache.tag_vnode_cache is not None:
+                self.root_node_cache.tag_vnode_cache = {}
+
+            return
 
         # headers affecting url_cache field
         if "flat-url" == header:
-            self.url_cache = None
+            self.invalidate_url_cache()
+            return
+
+    def invalidate_url_cache(self) -> None:
+        """
+        Invalidate the cached URL of this Node, and of every Node
+        underneath it in the tree.
+
+        """
+
+        # invalidate the URL cache for this node
+        self.url_cache = None
+
+        # invalidate the URL cache for our child nodes recursively
+        #
+        # child nodes of this node have URLs that are based on this node,
+        # so we have to invalidate all child nodes of this node to be safe.
+        #
+        # we iterate through the child nodes directly here, because we are
+        # invalidating cache elements, and get_children() sorts the child
+        # nodes (and caches the results). this would be fine, except that
+        # sorting the nodes calls Node __lt__(), which calls other methods,
+        # that repopulate the cache we're trying to clear before we're ready
+        for child in self.children:
+            child.invalidate_url_cache()
 
     def has_header(self, header: str) -> bool:
         """
@@ -1306,16 +1480,17 @@ class Node:
             # turn the date string into a datetime instance
             dt = datetime.datetime.fromisoformat(date_str)
 
-            # if the datetime instance doesn't have a time zone,
-            # create a new datetime with the date/time we read from
-            # the date string, augmented with the local time zone
+            # if the datetime instance doesn't have a time zone, assume
+            # that it is in the local time zone
+            #
+            # N.B. astimezone() attaches the UTC offset that was in effect
+            #      locally at that date and time, rather than the offset
+            #      that happens to be in effect right now. this keeps the
+            #      date/time that was written in the header intact when the
+            #      site is built at another time of year, on the other side
+            #      of a daylight saving time change.
             if dt.tzinfo is None:
-                tmp_dt = datetime.datetime.fromtimestamp(
-                    dt.timestamp(),
-                    datetime.datetime.now(datetime.timezone.utc)
-                                     .astimezone().tzinfo)
-
-                dt = tmp_dt
+                dt = dt.astimezone()
 
             # return the datetime with time zone
             return dt
@@ -1352,14 +1527,22 @@ class Node:
                 return self_date > other_date
 
             # fall back to comparing dates without time zones
+            #
+            # N.B. a datetime without a time zone can not be compared
+            #      against one that has a time zone, so both of them are
+            #      turned into seconds since the epoch instead.
+            #      timestamp() reads a datetime without a time zone as
+            #      local time, and uses the UTC offset associated with a
+            #      datetime that has a time zone.
             else:
-                self_date_epoch_sec = int(self_date.strftime("%s"))
-                other_date_epoch_sec = int(other_date.strftime("%s"))
-                return self_date_epoch_sec > other_date_epoch_sec
+                return self_date.timestamp() > other_date.timestamp()
 
         # then by title
-        if self.get_title() != other.get_title():
-            return self.get_title() < other.get_title()
+        self_title = self.get_title()
+        other_title = other.get_title()
+
+        if self_title != other_title:
+            return self_title < other_title
 
         # and finally by URL (which is unique)
         return self.get_url() < other.get_url()
@@ -1404,14 +1587,16 @@ class FileNode(Node):
             # set the default date based on the node modified time
             node_modified = os.path.getmtime(node_path)
             self.modified = \
-                datetime.datetime.fromtimestamp(node_modified,
-                    datetime.datetime.now(datetime.timezone.utc)
-                                     .astimezone().tzinfo)
+                datetime.datetime.fromtimestamp(
+                    node_modified,
+                    datetime.timezone.utc).astimezone()
 
             # read dynamic node file, and parse out headers and body
             body_lines = []
 
-            with open(os.path.join(self.nodes_root, path)) as f:
+            with open(os.path.join(self.nodes_root, path),
+                      encoding="UTF-8") as f:
+
                 parsing_headers = True
 
                 # read each line in the node file
@@ -1422,7 +1607,7 @@ class FileNode(Node):
                     if parsing_headers:
                         # if we find a line without a ":", stop parsing headers
                         # this lets us have a body-only template
-                        if -1 == line.find(":"):
+                        if ":" not in line:
                             parsing_headers = False
 
                         # if we hit a blank line, it could either be the blank
@@ -1461,23 +1646,8 @@ class FileNode(Node):
             err = "could not read node file '%s': '%s'"
             raise UrielError(err % (node_path, str(e)))
 
-        # process "-" headers
-        for key in self.get_header_keys():
-            # if a header starts with a "-", and has a value of "*",
-            # it's an instruction to remove that header from this Node
-            # (e.g. -Foo: *)
-            if key.startswith("-"):
-                if "*" == value:
-                    # strip leading "-"
-                    remove_key = key[1:]
-
-                    # remove header
-                    if self.has_header(remove_key):
-                        self.delete_header(remove_key)
-                else:
-                    raise UrielError(
-                        "invalid header in node '%s': '%s': '%s'" %
-                        (self.get_path(), key, value))
+        # process "-" headers that were set in this node file
+        self._process_minus_headers()
 
         # process other special headers
         for key in self.get_header_keys():
@@ -1488,7 +1658,7 @@ class FileNode(Node):
                 try:
                     self.created = self.get_datetime_from_date_str(value)
                 except UrielError as e:
-                    err = "invalid 'Created' date header value in node " + \
+                    err = "invalid Created date header value in node " + \
                           "'%s': '%s'"
                     raise UrielError(err % (self.get_path(), value))
 
@@ -1497,9 +1667,17 @@ class FileNode(Node):
                 try:
                     self.modified = self.get_datetime_from_date_str(value)
                 except UrielError as e:
-                    err = "invalid 'Modified' date header value in node " + \
+                    err = "invalid Modified date header value in node " + \
                           "'%s': '%s'"
                     raise UrielError(err % (self.get_path(), value))
+
+            # Format
+            elif "format" == key:
+                self.get_format()
+
+            # Canonical-URL
+            elif "canonical-url" == key:
+                self.get_canonical_url_base()
 
         # remember the body as a string
         self.body = "\n".join(body_lines)
@@ -1544,10 +1722,7 @@ class VirtualNode(Node):
             self.modified = parent_node.modified
         else:
             # use the current date/time/timezone
-            now = datetime.datetime.fromtimestamp(
-                    datetime.datetime.now().timestamp(),
-                    datetime.datetime.now(datetime.timezone.utc)
-                                     .astimezone().tzinfo)
+            now = datetime.datetime.now(datetime.timezone.utc).astimezone()
 
             self.created = now
             self.modified = now
@@ -1582,7 +1757,7 @@ class Page:
         # it is possible for line_error() to be called more than once
         # during the exception handling process. however, we only
         # want to print the first error message
-        self.line_error_exception_raised = False
+        self.line_error_reason: Optional[str] = None
 
         # use the template from the node header, or default if not set
         if node.has_header("template"):
@@ -1598,6 +1773,9 @@ class Page:
         # make sure we don't get into a {{node:body}} inclusion loop
         self.node_body_semaphore = 0
 
+        # the {{soju:*}} parameters for user-defined code currently executing
+        self.soju_tokens: List[Token] = []
+
         # remember whether we want to include the canonical URL in links
         self.use_canonical_url = use_canonical_url
 
@@ -1612,68 +1790,109 @@ class Page:
         Accepts a Token, the reason for the error, and whether or not
         this method should raise an exception (by default it does).
 
+        We only show an error message for the first error that was
+        encountered, which may or may not be the error that was triggered by
+        this method call. It's possible that something else called this
+        method earlier, and we haven't had a chance to report that error yet.
+        If an earlier error got here first, this method will raise a
+        UrielError for the first error that we encountered.
+
         """
 
-        # if this is the first time this method has raised an exception,
+        # if an error has already been reported for this page, then that
+        # is the error the build fails on. don't print a second error, and
+        # don't let rendering carry on past the first one, even if
+        # user-defined code caught the earlier exception.
+        if self.line_error_reason is not None:
+            raise UrielError(self.line_error_reason)
+
+        # if this is the first error, remember the error reason, so that
+        # we can report it later if necessary
+        self.line_error_reason = reason
+
         # print out debugging information to highlight the precise
         # location where the user can troubleshoot the error
-        if not self.line_error_exception_raised:
-            # are we using a template? (or is the template "null")
-            has_template = self.template_stack.has_more_elements()
 
-            # indent errors as we work our way down
-            # from the node, through the templates, to wherever the problem is
-            indent = 1
+        # indent errors as we work our way down
+        # from the node, through the templates, to wherever the problem is
+        indent = 1
 
-            log("parameter error:")
+        # are we using a template? (or is the template "null"?)
+        has_template = self.template_stack.has_more_elements()
 
-            # node
+        log("parameter error:")
+
+        # node
+        log("%s%s/%s" %
+            (indent_spaces(indent),
+             NODES_ROOT,
+             self.node.get_path()))
+
+        # templates
+        if has_template:
+            indent += 1
+            for template in self.template_stack.get_templates():
+                log("%s%s/%s" %
+                    (indent_spaces(indent),
+                     TEMPLATES_ROOT,
+                     template))
+
+        # {{node:body}}
+        #
+        # if we ran into an error while we were processing the contents
+        # of the node itself (e.g. {{node:body}}), list the node again,
+        # since it is the file the user should go look at to find the
+        # error. however, we only want to print the node twice if we
+        # are using a template, otherwise it's just redundant.
+        if has_template and (self.node_body_semaphore > 0):
+            indent += 1
             log("%s%s/%s" %
                 (indent_spaces(indent),
                  NODES_ROOT,
                  self.node.get_path()))
 
-            # templates
-            if has_template:
-                indent += 1
-                while self.template_stack.has_more_elements():
-                    template = self.template_stack.shift()
-                    log("%s%s/%s" %
-                        (indent_spaces(indent),
-                         TEMPLATES_ROOT,
-                         template))
-
-            # {{node:body}}
-            #
-            # if we ran into an error while we were processing the contents
-            # of the node itself (e.g. {{node:body}}), list the node again,
-            # since it is the file the user should go look at to find the
-            # error. however, we only want to print the node twice if we
-            # are using a template, otherwise it's just redundant.
-            if has_template and (self.node_body_semaphore > 0):
-                indent += 1
-                log("%s%s/%s" %
-                    (indent_spaces(indent),
-                     NODES_ROOT,
-                     self.node.get_path()))
-
-            # token
+        # user-defined soju code (pathological cases only)
+        #
+        # most projects will never hit this stanza at all
+        #
+        # if we got here, it was from a complex web of ill-advised calls from
+        # soju to other parts of the uriel API and back, and we might need to
+        # show the best form of a soju call stack that we can piece together.
+        # this does not cover simple cases, like soju function foo() raising
+        # an exception, or soju function a() calling soju function b(). it
+        # only really comes into play in more unusual circumstances, like soju
+        # manipulating elements of the uriel API directly (especially the Page
+        # class), running into errors, ignoring the exceptions, and going on
+        # to do other things like directly include templates using Page
+        # merge_line(), etc.
+        #
+        # really, if you hit this, you might have been asking for trouble
+        #
+        # this is added here in the hopes that it will be helpful to navigate
+        # really bizarre situations.
+        #
+        # for your normal, garden variety soju function errors, the regular
+        # token stanza below will deal with those cases, and this won't log
+        # anything at all for the vast majority of soju function errors.
+        if len(self.soju_tokens) > 0:
             indent += 1
-            log("%s'%s'" % (indent_spaces(indent), token.original_string))
+            for soju_token in self.soju_tokens:
+                log("%s'%s'" %
+                    (indent_spaces(indent), soju_token.original_string))
+
+        # token
+        # (including 99.999% of soju errors)
+        indent += 1
+        log("%s'%s'" % (indent_spaces(indent), token.original_string))
+
+        # if we are not raising an exception, log the reason for the error
+        if not raise_exception:
+            indent += 1
+            log("%s%s" % (indent_spaces(indent), reason))
 
         # if we were asked to raise an exception, raise it now
         if raise_exception:
-            # remember that line_error() raised an exception
-            # in case we end up here again before we exit
-            self.line_error_exception_raised = True
-
-            # raise the exception
             raise UrielError(reason)
-
-        # otherwise, print out the error as a log message
-        else:
-            indent += 1
-            log("%s%s" % (indent_spaces(indent), reason))
 
     def node_body_loop_error(self, token: Token) -> None:
         """
@@ -1698,7 +1917,7 @@ class Page:
         # it's only a loop if the node itself eventually includes the node
         # body again, but without adding a lot more tracking information
         # just for error reporting on this one case, this is the best we can
-        # can reasonably do with the information available here
+        # reasonably do with the information available here.
 
         log("node body include loop error:")
 
@@ -1751,23 +1970,29 @@ class Page:
         # split the tokens
         index = 0
         while True:
-            open_index = line[index:].find("{{")
+            # N.B. find() is given a starting index, rather than being
+            #      called on a slice of the line, so that a copy of the
+            #      rest of the line is not made on every pass
+            open_index = line.find("{{", index)
 
             # there's a parameter coming up, but we're not there yet
-            if open_index > 0:
-                tokens.append(Token(line[index:index+open_index]))
-                index += open_index
+            if open_index > index:
+                # add this section, up to right before the next parameter
+                tokens.append(Token(line[index:open_index]))
+                index = open_index
 
             # we're at the parameter now
-            elif open_index == 0:
-                close_index = line[index:].find("}}")
+            elif open_index == index:
+                close_index = line.find("}}", index)
+
                 # we have an opening {{, but no }}
                 if -1 == close_index:
+                    # add the rest of the line as a token
                     tokens.append(Token(line[index:]))
                     break
 
                 # scoop up the "{{ ... }}" part and make it into a token
-                next_index = index + close_index + 2
+                next_index = close_index + 2
                 tokens.append(Token(line[index:next_index]))
                 index = next_index
 
@@ -1814,7 +2039,7 @@ class Page:
         node = root.find_node_by_path(path, raise_exceptions=False)
         if node is None:
             self.line_error(token, "node not found: '%s'" % (path))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
         return node
 
@@ -1957,6 +2182,7 @@ class Page:
         return url
 
     def get_maybe_canonical_html_fragment(self,
+                                          token: Token,
                                           node: Node,
                                           header_basename: str) -> str:
 
@@ -1964,10 +2190,13 @@ class Page:
         Get the canonical or non-canonical HTML fragment associated with the
         given header basename.
 
-        Accepts Node, and header basename (e.g. __node-list-html)
+        Accepts a Token, a Node, and a header basename (e.g. __node-list-html)
 
         Returns the value from the given header, or the version of the
         header that has canonical URLs.
+
+        Raises a UrielError if the fragment was never created for this
+        node.
 
         """
 
@@ -1979,6 +2208,24 @@ class Page:
         else:
             header = header_basename
 
+        # in normal operation, the headers being returned from this method
+        # (with double underscores) are created earlier, when the node
+        # tree is augmented. if for some reason the program is requesting
+        # an augmented header that is not available (possibly due to
+        # user-defined handler interference), show a suitable error message.
+        if not node.has_header(header):
+            if self.use_canonical_url:
+                self.line_error(
+                    token,
+                    "Canonical-URL header not set on node 'index'" +
+                    " when node tree was created")
+            else:
+                errstr = "node '%s' was not part of the node tree " + \
+                         "when it was created"
+                self.line_error(token, errstr % (node.get_path()))
+
+            raise _ImpossibleError()
+
         return node.get_header(header)
 
     def merge_token_literal(self, token: Token) -> str:
@@ -1987,10 +2234,23 @@ class Page:
 
         """
 
+        # a token literal is sort of the last resort, as far as parsing goes.
+        # anything that doesn't match some other known pattern ends up here.
+
+        # was this actually supposed to be a parameter,
+        # but it's an invalid parameter?
         if token.has_unidentified_parameter():
             self.line_error(token,
                             "unidentified parameter: '%s'" % (token.value))
 
+        # was this a half-baked attempt at starting a parameter,
+        # but it never got closed out? (e.g. "{{foo:bar" or "{{foo:bar}")
+        if token.has_unterminated_parameter():
+            self.line_error(token,
+                            "parameter is missing a closing '}}': '%s'" %
+                            (token.value))
+
+        # return the literal string value from this token
         return token.value
 
     def merge_token_value(self, token: Token) -> str:
@@ -1999,15 +2259,11 @@ class Page:
 
         """
 
-        try:
-            unescaped_value = self.node.get_header(token.value)
-            escaped_value = escape(unescaped_value)
-            return escaped_value
-        except KeyError:
-            self.line_error(token,
-                            "header '%s' not set on this node" %
-                            (token.value))
-            raise ImpossibleError()
+        # defer to merge_token_value_unescaped() to get the unescaped value
+        unescaped_value = self.merge_token_value_unescaped(token)
+
+        # return the escaped results
+        return escape(unescaped_value)
 
     def merge_token_value_unescaped(self, token: Token) -> str:
         """
@@ -2021,7 +2277,7 @@ class Page:
             self.line_error(token,
                             "header '%s' not set on this node" %
                             (token.value))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
     def merge_token_include(self, token: Token) -> str:
         """
@@ -2034,17 +2290,22 @@ class Page:
                 token,
                 "can not include 'null' template: reserved word")
 
+        # prevent directory traversal attempts
+        self.validate_template_name(token, token.value)
+
         # get the path to the template file
         template_file = os.path.join(self.project_root,
                                      TEMPLATES_ROOT,
                                      token.value)
 
+        # make sure the template exists
         if not os.path.exists(template_file):
             self.line_error(
                 token,
                 "include file not found: '%s'" %
                 (os.path.join(TEMPLATES_ROOT, token.value)))
 
+        # return the merged template contents
         return self.merge_template(token.value)
 
     def merge_token_created(self, token: Token) -> str:
@@ -2055,7 +2316,7 @@ class Page:
 
         if self.node.created is None:
             self.line_error(token, "'Created' header not set")
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
         try:
             formatted_date = self.node.created.strftime(token.value)
@@ -2064,7 +2325,7 @@ class Page:
             self.line_error(token,
                             "invalid date format string: '%s'" %
                             (token.value))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
     def merge_token_modified(self, token: Token) -> str:
         """
@@ -2074,7 +2335,7 @@ class Page:
 
         if self.node.modified is None:
             self.line_error(token, "'Modified' header not set")
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
         try:
             formatted_date = self.node.modified.strftime(token.value)
@@ -2083,7 +2344,7 @@ class Page:
             self.line_error(token,
                             "invalid date format string: '%s'" %
                             (token.value))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
     # helper method for oldest/latest
     # recursively traverse this and all child nodes,
@@ -2126,11 +2387,11 @@ class Page:
                 self.line_error(token,
                                 "invalid date format string: '%s'" %
                                 (token.value))
-                raise ImpossibleError()
+                raise _ImpossibleError()
 
         # we couldn't find even a single date in any of the nodes
         self.line_error(token, "'Created' and 'Modified' headers not set")
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def merge_token_latest(self, token: Token) -> str:
         """
@@ -2155,11 +2416,11 @@ class Page:
                 self.line_error(token,
                                 "invalid date format string: '%s'" %
                                 (token.value))
-                raise ImpossibleError()
+                raise _ImpossibleError()
 
         # we couldn't find even a single date in any of the nodes
         self.line_error(token, "'Created' and 'Modified' headers not set")
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def merge_token_breadcrumbs(self, token: Token) -> str:
         """
@@ -2174,7 +2435,7 @@ class Page:
             token,
             "invalid value for breadcrumbs parameter: '%s'" %
             (token.value))
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def merge_token_breadcrumbs_root(self, token: Token) -> str:
         """
@@ -2189,7 +2450,7 @@ class Page:
             token,
             "invalid value for breadcrumbs parameter: '%s'" %
             (token.value))
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def get_static_url_abspath(self, token: Token, url: str) -> str:
         """
@@ -2197,8 +2458,8 @@ class Page:
 
         """
 
-        # disallow ../ links for static URLs
-        if -1 != url.find("../"):
+        # prevent directory traversal links for static URLs
+        if is_directory_traversal_attempt(url):
             self.line_error(
                 token,
                 "directory traversal not allowed in static URL: '%s'" %
@@ -2247,64 +2508,71 @@ class Page:
 
         url = token.value
 
-        # get the full path on disk to the URL path
+        # get the full filesystem path to the file referenced by the URL
         static_url_abspath = self.get_static_url_abspath(token, url)
 
-        # if we already generated this file, return the cached reference
-        if static_url_abspath in static_hash_urls:
-            return static_hash_urls[static_url_abspath]
+        # if the original file has already been hashed,
+        # pull the hashed filename out of the cache
+        if static_url_abspath in static_hash_filenames:
+            hash_filename = static_hash_filenames[static_url_abspath]
 
-        # make sure the file exists
-        if not os.path.exists(static_url_abspath):
-            self.line_error(token,
-                            "file not found: '%s'" %
-                            (os.path.join(STATIC_ROOT, url)))
+        # this is the first time this file has been referenced as a
+        # {{static-hash-url:*}}, so we need to hash it now
+        else:
+            # make sure the file exists
+            if not os.path.exists(static_url_abspath):
+                self.line_error(token,
+                                "file not found: '%s'" %
+                                (os.path.join(STATIC_ROOT, url)))
 
-        # make sure the path is actually a file
-        if not os.path.isfile(static_url_abspath):
-            self.line_error(token,
-                            "path exists, but is not a file: '%s'" %
-                            (os.path.join(STATIC_ROOT, url)))
+            # make sure the path is actually a file
+            if not os.path.isfile(static_url_abspath):
+                self.line_error(token,
+                                "path exists, but is not a file: '%s'" %
+                                (os.path.join(STATIC_ROOT, url)))
 
-        # get the destination directory we want to write the hash file into
-        dest_dir = os.path.dirname(static_url_abspath)
+            # get the source filename by itself
+            src_base_filename = os.path.basename(static_url_abspath)
 
-        # get the destination for the relative URL directory
-        dest_url_relative_dir = os.path.dirname(url)
+            # split the source filename into a base name and a file
+            # extension
+            (basename, file_ext) = os.path.splitext(src_base_filename)
 
-        # get the source filename by itself
-        src_base_filename = os.path.basename(static_url_abspath)
+            # hash the file contents
+            md5_hash = hashlib.md5()
+            try:
+                with open(static_url_abspath, "rb") as f:
+                    contents = f.read()
+                    md5_hash.update(contents)
+            except Exception as e:
+                self.line_error(token,
+                                "could not read file: '%s'" %
+                                (static_url_abspath))
 
-        # split the source filename into a base name and a file extension
-        (basename, file_ext) = os.path.splitext(src_base_filename)
+            # construct the base hash filename
+            hash_filename = md5_hash.hexdigest() + file_ext
 
-        # hash the file contents
-        md5_hash = hashlib.md5()
-        try:
-            with open(static_url_abspath, "rb") as f:
-                contents = f.read()
-                md5_hash.update(contents)
-        except Exception as e:
-            self.line_error(token,
-                            "could not read file: '%s'" %
-                            (static_url_abspath))
+            # get the destination directory we want to write the hash
+            # file into
+            dest_dir = os.path.dirname(static_url_abspath)
 
-        # construct the base hash filename
-        hash_filename = md5_hash.hexdigest() + file_ext
+            # construct the absolute path to the hashed file
+            dest_hash_abspath = os.path.join(dest_dir, hash_filename)
 
-        # construct the relative destination URL to the hashed file
-        dest_hash_url = os.path.join(dest_url_relative_dir, hash_filename)
+            # copy source file to dest hash file
+            copy_file(static_url_abspath, dest_hash_abspath)
 
-        # construct the absolute path to the hashed file
-        dest_hash_abspath = os.path.join(dest_dir, hash_filename)
+            # cache the hashed filename
+            static_hash_filenames[static_url_abspath] = hash_filename
 
-        # copy source file to dest hash file
-        copy_file(static_url_abspath, dest_hash_abspath)
+        # create the hashed URL, which can either be a local or
+        # absolute URL path (e.g. <hash>.css, /path/to/<hash>.css),
+        # depending on how it was referenced from the node and parameter
+        dest_hash_url = os.path.join(os.path.dirname(url), hash_filename)
 
-        # cache the results
-        static_hash_urls[static_url_abspath] = dest_hash_url
-
-        return dest_hash_url
+        # return the URL in relation to the node, in the same way that a
+        # {{static-url:*}} parameter would
+        return self.get_static_url(self.node, dest_hash_url)
 
     def merge_token_rss(self, token: Token) -> str:
         """
@@ -2320,9 +2588,9 @@ class Page:
 
         # make sure required headers are present
         if not self.node.has_header("rss-url"):
-            self.line_error(token, "'RSS-URL' header not set")
+            self.line_error(token, "RSS-URL header not set")
         if not self.node.has_header("canonical-url"):
-            self.line_error(token, "'Canonical-URL' header not set")
+            self.line_error(token, "Canonical-URL header not set")
 
         # get relative RSS URL
         rss_url = self.node.get_header("rss-url")
@@ -2348,29 +2616,18 @@ class Page:
         # entering {{node:body}} merge
         self.node_body_semaphore += 1
 
-        # if the format is set to text, add HTML line breaks
-        if self.node.has_header("format"):
-            node_format = self.node.get_header("format")
-            if "text" == node_format:
-                _body = self.node.get_body()
-                if _body is not None:
-                    self.node.set_body(self.text_to_html(_body))
-            elif "html" == node_format:
-                # default
-                pass
-            else:
-                self.line_error(
-                    Token("Format: %s" % (node_format)),
-                    "unknown 'Format' header value: '%s'" % (node_format))
-
         # get node body
         body = self.node.get_body()
+        if body is None:
+            raise UrielError("node body can not be null in node '%s'" % \
+                             (self.node.get_path()))
+
+        # if the format is set to text, add HTML line breaks
+        if "text" == self.node.get_format():
+            body = self.text_to_html(body)
 
         # merge node body contents
-        if body is not None:
-            merged_body = self.merge_multiline(body)
-        else:
-            raise ImpossibleError("body can not be null")
+        merged_body = self.merge_multiline(body)
 
         # leaving {{node:body}} merge
         self.node_body_semaphore -= 1
@@ -2402,7 +2659,7 @@ class Page:
             self.line_error(token,
                             "invalid value for node parameter: '%s'" %
                             (token.value))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
     def merge_token_node_url(self, token: Token) -> str:
         """
@@ -2464,12 +2721,12 @@ class Page:
 
         if "*" == token.value:
             return self.get_maybe_canonical_html_fragment(
-                self.node, "__node-list-html")
+                token, self.node, "__node-list-html")
 
         self.line_error(token,
                         "invalid value for node-list parameter: '%s'" %
                         (token.value))
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def merge_token_tag_list(self, token: Token) -> str:
         """
@@ -2480,17 +2737,17 @@ class Page:
         if "*" == token.value:
             if self.node.has_header("__tag-list-html"):
                 return self.get_maybe_canonical_html_fragment(
-                    self.node, "__tag-list-html")
+                    token, self.node, "__tag-list-html")
             else:
                 # __tag-list-html is an internal header, that is set
                 # elsewhere on nodes with tags defined. show a useful
                 # error here instead of something obtuse.
-                self.line_error(token, "'Tags' header not set on this node")
+                self.line_error(token, "Tags header not set on this node")
 
         self.line_error(token,
                         "invalid value for tag-list parameter: '%s'" %
                         (token.value))
-        raise ImpossibleError()
+        raise _ImpossibleError()
 
     def merge_token_soju(self, token: Token) -> str:
         """
@@ -2500,7 +2757,17 @@ class Page:
 
         # try to run the user-defined soju code, and return the value
         try:
-            return self.get_soju_result(token.value)
+            # remember the token for the soju code we are running.
+            # this is only necessary for pathological cases, like if
+            # the soju function is calling Page merge_line() directly
+            # to include other templates, or something similarly misguided
+            self.soju_tokens.append(token)
+
+            # execute the user-defined soju function, and get the result
+            try:
+                result = self.get_soju_result(token.value)
+            finally:
+                self.soju_tokens.pop()
 
         # if we get a SojuError, log it, and raise a new SojuError
         # that summarizes where the user should look to start debugging
@@ -2550,6 +2817,15 @@ class Page:
 
             # raise a new chained exception with summary error message
             raise SojuError(summary_error) from e
+
+        # if the user-defined soju code encountered another error inside of
+        # the Page class for some reason, but ignored the exception, check
+        # to see if we should raise the exception their code ignored now,
+        if self.line_error_reason is not None:
+            raise UrielError(self.line_error_reason)
+
+        # return the output of the soju function call
+        return result
 
     def merge_token(self, token: Token) -> str:
         """
@@ -2647,7 +2923,7 @@ class Page:
                 token,
                 "invalid parameter or value: '%s'" %
                 (token.original_string))
-            raise ImpossibleError()
+            raise _ImpossibleError()
 
     def merge_line(self, line: str) -> str:
         """
@@ -2659,14 +2935,17 @@ class Page:
 
         Returns the (possibly multiline) string of rendered text.
 
+        Raises a UrielError if the line is null.
+
         """
 
+        # make sure we actually have a line to work with
         if line is None:
-            return line
+            raise UrielError("line can not be null")
 
-        # if the line doesn't have at least one set of {{ and }}
-        # just return it as a literal
-        if (-1 == line.find("{{")) or (-1 == line.find("}}")):
+        # if the line doesn't have anything that could be the start of a
+        # substitution parameter, just return it as a literal
+        if "{{" not in line:
             return line
 
         # tokenize the line
@@ -2693,14 +2972,70 @@ class Page:
 
         Returns a multi-line string with the merged contents.
 
+        N.B. this is the same as merge_tokenized_lines(), for lines that
+             have not already been split into tokens.
+
         """
 
+        # rendered lines to return
         merged_lines = []
+
+        # go through each input line
         for line in lines:
+            # strip trailing newlines
             line = line.rstrip()
+
+            # render the line
             merged_line = self.merge_line(line)
+
+            # add the rendered line to the list
             merged_lines.append(merged_line)
 
+        # return all of the merged lines as a string
+        return "\n".join(merged_lines)
+
+    def merge_tokenized_lines(
+            self,
+            tokenized: List[Tuple[str, Optional[List[Token]]]]) -> str:
+
+        """
+        Accepts a list of (line, tokens) pairs, as they are cached for a
+        template.
+
+        Merges the tokens for each line with the Node values.
+
+        Returns a multi-line string with the merged contents.
+
+        N.B. this is the same as merge_lines(), for lines that have
+             already been split into tokens.
+
+        """
+
+        # rendered lines to return
+        merged_lines = []
+
+        # go through each (line, tokens) tuple
+        for (line, tokens) in tokenized:
+            # this line doesn't have any substitution parameters
+            if tokens is None:
+                # add the literal line
+                merged_lines.append(line)
+
+            # this line has tokenized substitution parameters
+            else:
+                # go through each token and render them
+                merged_tokens = []
+                for token in tokens:
+                    merged_token = self.merge_token(token)
+                    merged_tokens.append(merged_token)
+
+                # join the merged tokens into a line
+                merged_line = "".join(merged_tokens)
+
+                # add the rendered line
+                merged_lines.append(merged_line)
+
+        # return all of the merged lines as a string
         return "\n".join(merged_lines)
 
     def merge_multiline(self, multiline: str) -> str:
@@ -2715,6 +3050,31 @@ class Page:
 
         return self.merge_lines(lines)
 
+    def validate_template_name(self, token: Token, template: str) -> None:
+        """
+        Make sure the given template name doesn't contain a directory
+        traversal attempt.
+
+        Accepts a Token, and a template name.
+
+        Raises a UrielError if the template name is invalid.
+
+        """
+
+        # prevent directory traversal
+        if is_directory_traversal_attempt(template):
+            self.line_error(
+                token,
+                "directory traversal not allowed in template name: '%s'" %
+                (template))
+
+        # prevent absolute filesystem paths
+        if template.startswith("/"):
+            self.line_error(
+                token,
+                "template name can not start with a '/': '%s'" %
+                (template))
+
     def merge_template(self, template: str) -> str:
         """
         Accepts a template as input.
@@ -2723,6 +3083,9 @@ class Page:
         rendered output.
 
         """
+
+        # prevent directory traversal attempts
+        self.validate_template_name(Token("Template: " + template), template)
 
         # get the path to the template file
         template_file = os.path.join(self.project_root,
@@ -2738,34 +3101,57 @@ class Page:
                 # contents, but allows for parameter substitution
                 return self.merge_lines(["{{node:body}}"])
 
+        # get the tokens for this template, if it has been used before
+        tokenized = template_tokens.get(template_file)
+
+        # if it hasn't already been cached,
         # read all of the lines from the template
-        lines = []
-        try:
-            with open(template_file) as f:
-                for line in f:
-                    lines.append(line)
+        if tokenized is None:
+            # keep track of the lines we read from the template file
+            lines = []
 
-        except FileNotFoundError:
-            # the code that validates {{include:*}} parameters from other
-            # templates should have already verified that the file exists.
-            # if it fails now, we probably didn't ever have a template at all
-            token = Token("Template: " + template)
-            self.line_error(token,
-                            "template not found: '" + template_file + "'")
+            # open the template file
+            try:
+                with open(template_file, encoding="UTF-8") as f:
+                    for line in f:
+                        lines.append(line)
 
-        except Exception as e:
-            token = Token("Template: " + template)
-            self.line_error(token,
-                            "could not read template file: '" +
-                            template_file + "'")
+            except FileNotFoundError:
+                token = Token("Template: " + template)
+                self.line_error(token,
+                                "template not found: '" + template_file + "'")
+
+            except Exception as e:
+                token = Token("Template: " + template)
+                self.line_error(token,
+                                "could not read template file: '" +
+                                template_file + "'")
+
+            # split the lines from the template into tokens
+            tokenized = []
+            for line in lines:
+                # strip trailing newlines
+                line = line.rstrip()
+
+                # if this line doesn't have any substitution parameters,
+                # just cache the line without any tokens
+                if "{{" not in line:
+                    tokenized.append((line, None))
+
+                # otherwise, cache the line along with the parsed tokens
+                else:
+                    tokenized.append((line, self.tokenize(line)))
+
+            # cache the results of the template parsing for next time
+            template_tokens[template_file] = tokenized
 
         # add the template to the stack
         self.template_stack.push(template,
                                  self.node.get_path(),
                                  self.node_body_semaphore)
 
-        # get the result as a string with the template and node merged together
-        result = self.merge_lines(lines)
+        # merge the template
+        result = self.merge_tokenized_lines(tokenized)
 
         # remove the current template from the stack
         self.template_stack.pop()
@@ -2782,9 +3168,12 @@ class Page:
         # validate Require-Tags / Tags header combination
         if self.node.get_boolean_header_value("require-tags", False):
             if not self.node.has_header("tags"):
-                err = "'Require-Tags: true' but 'Tags' header not set " + \
-                    "in node '%s'" % (self.node.get_path())
+                err = "Require-Tags: true, but Tags header not set " + \
+                      "in node '%s'" % (self.node.get_path())
                 raise UrielError(err)
+
+        # validate Format header value (if defined)
+        self.node.get_format()
 
         # render the page, starting with the template defined in the node
         rendered = self.merge_template(self.template)
@@ -2816,15 +3205,27 @@ class FileWriter:
         self.mode = mode
 
         try:
-            self.f = open(path, mode)
+            # open in binary mode
+            if "b" in mode:
+                self.f = open(path, mode)
+
+            # open in text mode
+            else:
+                self.f = open(path, mode, encoding="UTF-8")
 
         except FileNotFoundError as e:
+            # get the base directory
             base_dir = os.path.split(path)[0]
 
+            # base directory doesn't exist
             if not os.path.exists(base_dir):
                 err = "could not create file '%s', " + \
                       "because directory '%s' does not exist"
                 raise UrielError(err % (path, base_dir))
+
+            # some other reason
+            err = "could not create file '%s': '%s'"
+            raise UrielError(err % (path, str(e)))
 
         except Exception as e:
             err = "could not create file '%s': '%s'"
@@ -2870,17 +3271,30 @@ class GzipFileWriter:
 
         self.path = path
         self.mode = mode
+        self.f: Any = None
 
         try:
-            self.f: Any = gzip.open(path, mode)
+            # open in binary mode
+            if "b" in mode:
+                self.f = gzip.open(path, mode)
+
+            # open in text mode
+            else:
+                self.f = gzip.open(path, mode, encoding="UTF-8")
 
         except FileNotFoundError as e:
+            # get the base directory
             base_dir = os.path.split(path)[0]
 
+            # base directory doesn't exist
             if not os.path.exists(base_dir):
                 err = "could not create file '%s', " + \
                       "because directory '%s' does not exist"
                 raise UrielError(err % (path, base_dir))
+
+            # some other reason
+            err = "could not create file '%s': '%s'"
+            raise UrielError(err % (path, str(e)))
 
         except Exception as e:
             err = "could not create file '%s': '%s'"
@@ -3085,20 +3499,26 @@ def copy_file(src: str, dest: str) -> None:
     """
 
     try:
-        # if either the source or dest file is a symlink,
-        # delete the destination file first
-        if os.path.islink(src) or os.path.islink(dest):
+        # a symlink is never copied into the public directory
+        if os.path.islink(src):
+            raise UrielError(
+                "error copying '%s' to '%s': source path is a symlink" %
+                (src, dest))
+
+        # if the destination file is a symlink, delete it first, so that
+        # the copy is not written through it
+        if os.path.islink(dest):
             os.unlink(dest)
 
         # if the destination path is a directory, we don't want
         # to copy the source file into a directory with the same name
         if os.path.isdir(dest):
-            raise UrielError(
-                "error copying '%s' to '%s': destination path is a directory" %
-                (src, dest))
+            errstr = "error copying '%s' to '%s': destination path " + \
+                     "is a directory"
+            raise UrielError(errstr % (src, dest))
 
-        # copy the file (or create a symlink)
-        shutil.copy2(src, dest, follow_symlinks=False)
+        # copy the file
+        shutil.copy2(src, dest)
 
     except UrielError as e:
         raise
@@ -3196,6 +3616,10 @@ def copy_files_recursive(src: str, dest: str) -> None:
     """
 
     try:
+        # don't follow symlinks
+        if os.path.islink(src):
+            raise UrielError("symlink not allowed: '%s'" % (src))
+
         # if the source path is a directory
         if os.path.isdir(src):
             # if the destination path exists
@@ -3222,6 +3646,11 @@ def copy_files_recursive(src: str, dest: str) -> None:
                 src_path = os.path.join(src, dirent)
                 dest_path = os.path.join(dest, dirent)
 
+                # don't copy or follow symlinks
+                if os.path.islink(src_path):
+                    raise UrielError("symlink not allowed: '%s'" %
+                                     (src_path))
+
                 # if this is a directory, recurse
                 if os.path.isdir(src_path):
                     copy_files_recursive(src_path, dest_path)
@@ -3235,6 +3664,12 @@ def copy_files_recursive(src: str, dest: str) -> None:
         else:
             copy_file_if_different(src, dest)
 
+    # if a UrielError bubbled up from somewhere in the try block,
+    # let it bubble up from this function
+    except UrielError as e:
+        raise
+
+    # something else went wrong
     except Exception as e:
         raise UrielError("error copying '%s' to '%s': '%s'" %
                          (src, dest, get_exception_reason(e)))
@@ -3250,6 +3685,11 @@ def copy_files_recursive_overwrite(src: str, dest: str) -> None:
     """
 
     try:
+        # a uriel project is self contained, so the source path itself is
+        # not allowed to be a symlink either
+        if os.path.islink(src):
+            raise UrielError("symlink not allowed: '%s'" % (src))
+
         # if the source path is a directory
         if os.path.isdir(src):
             # if the destination path exists
@@ -3290,6 +3730,11 @@ def copy_files_recursive_overwrite(src: str, dest: str) -> None:
                 src_path = os.path.join(src, dirent)
                 dest_path = os.path.join(dest, dirent)
 
+                # symlinks are not copied into the public directory
+                if os.path.islink(src_path):
+                    raise UrielError("symlink not allowed: '%s'" %
+                                     (src_path))
+
                 # if this is a directory, recurse
                 if os.path.isdir(src_path):
                     copy_files_recursive_overwrite(src_path, dest_path)
@@ -3321,6 +3766,12 @@ def copy_files_recursive_overwrite(src: str, dest: str) -> None:
         else:
             copy_file_if_different(src, dest)
 
+    # N.B. a UrielError already says what went wrong, and which paths
+    #      were involved. it is re-raised as it is, so that it does not
+    #      get wrapped again by every level of the recursion.
+    except UrielError as e:
+        raise
+
     except Exception as e:
         raise UrielError("error copying '%s' to '%s': '%s'" %
                          (src, dest, get_exception_reason(e)))
@@ -3340,6 +3791,64 @@ def delete_directory_recursive(path: str) -> None:
             "could not delete directory '%s': '%s'" %
             (path, get_exception_reason(e)))
 
+def is_directory_traversal_attempt(path: str) -> bool:
+    """
+    Checks the given path for directory traversal attempts.
+
+    Looks for patterns related to . and .., but does NOT validate
+    absoulte paths starting with /, since these are frequently used
+    as URL paths relative to the root of the site.
+
+    In general, this is useful for validating that a file or directory
+    path doesn't contain any relative path components that could turn
+    a file into a directory, or that could traverse up the directory
+    tree.
+
+    Multi-directory paths (e.g. foo/bar, /foo/bar/) are allowed.
+    Paths like ., .., foo/../bar, foo/bar/.., are not.
+
+    Returns True if a directory traversal attempt was detected,
+    or False otherwise.
+
+    Raises UrielError if the path is null.
+
+    """
+
+    # make sure path is not null
+    if path is None:
+        raise UrielError("path can not be null")
+
+    # current directory
+    if "." == path:
+        return True
+
+    # parent directory
+    if ".." == path:
+        return True
+
+    # parent directory
+    if "/../" in path:
+        return True
+
+    # current directory
+    if "/./" in path:
+        return True
+
+    # parent directory
+    if path.startswith("../"):
+        return True
+
+    # current directory
+    if path.endswith("/."):
+        return True
+
+    # parent directory
+    if path.endswith("/.."):
+        return True
+
+    # no directory traversal detected
+    return False
+
 def escape(text: str) -> str:
     """
     Escape HTML.
@@ -3353,13 +3862,21 @@ def escape(text: str) -> str:
     if text is None:
         return ""
 
-    return (
-        text.replace("&", "&amp;")
-            .replace('"', "&quot;")
-            .replace("'", "&apos;")
-            .replace(">", "&gt;")
-            .replace("<", "&lt;")
-    )
+    # if the text doesn't need to be escaped, it's cheaper to detect
+    # that up front if it lets us avoid the escape transformations altogether
+    if ("&" not in text) and \
+       ('"' not in text) and \
+       ("'" not in text) and \
+       (">" not in text) and \
+       ("<" not in text):
+
+        return text
+
+    return text.replace("&", "&amp;") \
+               .replace('"', "&quot;") \
+               .replace("'", "&apos;") \
+               .replace(">", "&gt;") \
+               .replace("<", "&lt;")
 
 def escape_xml(text: str) -> str:
     """
@@ -3627,7 +4144,11 @@ def create_tag_links(node: Node, use_canonical_url: bool) -> str:
         # get the vnode for this tag
         tag_vnode = node.get_vnode_for_tag(tag)
         if tag_vnode is None:
-            raise ImpossibleError("tag vnode can not be null")
+            # this is not expected to happen in normal operation,
+            # but we provide a detailed error message and traceback
+            # in case user-defined code triggers it somehow
+            errstr = "tag vnode can not be null for tag '%s' on node '%s'"
+            raise Exception(errstr % (tag, node.get_path()))
 
         if use_canonical_url:
             url = tag_vnode.get_canonical_url()
@@ -3724,10 +4245,8 @@ def augment_node_tree(project_root: str, root_node: Node) -> None:
         # default to now, because tags are dynamically generated anyway
         if not tag_node.has_header("created"):
             if not tag_node.has_header("modified"):
-                now = datetime.datetime.fromtimestamp(
-                        datetime.datetime.now().timestamp(),
-                        datetime.datetime.now(datetime.timezone.utc)
-                                         .astimezone().tzinfo)
+                now = \
+                    datetime.datetime.now(datetime.timezone.utc).astimezone()
 
                 tag_node.created = now
                 tag_node.modified = now
@@ -3859,9 +4378,8 @@ def write_nodes(project_root: str,
     directory = node.get_dest_dir()
     file = node.get_dest_file()
 
-    # if the directory doesn't exist already, create it
-    if not os.path.exists(directory):
-        os.makedirs(directory)
+    # create the directory, if it doesn't exist already
+    os.makedirs(directory, exist_ok=True)
 
     # log this node being written
     #
@@ -3883,7 +4401,8 @@ def write_nodes(project_root: str,
     fw = FileWriter(file)
     body = node.get_rendered_body()
     if body is None:
-        raise ImpossibleError("node body can not be null")
+        raise UrielError("node body can not be null in node '%s'" % \
+                         (node.get_path()))
     fw.write(body)
     fw.close()
 
@@ -3934,91 +4453,45 @@ def get_eligible_nodes(node: Node,
     for child in node.get_children():
         get_eligible_nodes(child, boolean_header, default, node_set)
 
-def get_utc_offset() -> Tuple[str, str, str]:
-    """
-    Get the time zone offset as a three-element tuple of strings:
-
-        (sign, hours, minutes)
-
-    For example, if the local time is set to EST, this function will return:
-
-        ("-", "05", "00")
-
-    """
-
-    # get the local time, then convert it to UTC and get the offset in seconds
-    t = time.localtime()
-    utc_offset_sec = calendar.timegm(t) - \
-                     calendar.timegm(time.gmtime(time.mktime(t)))
-
-    # we need to calculate a four digit UTC offset in hours and minutes,
-    # with a + or - sign in front.
-    if utc_offset_sec >= 0:
-        sign = "+"
-    else:
-        sign = "-"
-
-    # temporary variables
-    hours = 0
-    minutes = 0
-    seconds = utc_offset_sec
-
-    # if we have a positive offset, calculate the amount
-    if seconds >= 0:
-        while seconds >= (60 * 60):
-            seconds -= (60 * 60)
-            hours += 1
-        while seconds >= 60:
-            seconds -= 60
-            minutes += 1
-
-    # if we have a negative offset, calculate the amount
-    else:
-        while seconds <= (-1 * 60 * 60):
-            seconds += (60 * 60)
-            hours += 1
-        while seconds <= (-1 * 60):
-            seconds += 60
-            minutes += 1
-
-    hh = "%.2d" % (hours)
-    mm = "%.2d" % (minutes)
-
-    return (sign, hh, mm)
-
 def get_rfc_2822_date(dt: datetime.datetime) -> str:
     """
     Gets a date string in RFC 2822 format.
 
-    Accepts a datetime.datetime instance, without a timezone.
+    Accepts a datetime.datetime instance.
 
-    Assumes that the datetime instance uses the local timezone.
+    If the datetime instance has a UTC offset, it will be used in the
+    string conversion. If it does not have a time zone, then the local
+    time zone will be used by default.
 
     Returns a date string.
 
     """
 
-    # get the UTC offset, and format it as a string for RFC 2822 format
-    (sign, hh, mm) = get_utc_offset()
+    # default to the local time zone if not specified
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
 
-    return dt.strftime("%a, %d %b %Y %H:%M:%S ") + sign + hh + mm
+    return dt.strftime("%a, %d %b %Y %H:%M:%S %z")
 
 def get_w3c_datetime(dt: datetime.datetime) -> str:
     """
     Gets a date string in W3C Datetime format.
 
-    Accepts a datetime.datetime instance, without a timezone.
+    Accepts a datetime.datetime instance.
 
-    Assumes that the datetime instance uses the local timezone.
+    If the datetime instance has a UTC offset, it will be used in the
+    string conversion. If it does not have a time zone, then the local
+    time zone will be used by default.
 
     Returns a date string.
 
     """
 
-    # get the UTC offset, and format it as a string for W3C Datetime format
-    (sign, hh, mm) = get_utc_offset()
+    # default to the local time zone if not specified
+    if dt.tzinfo is None:
+        dt = dt.astimezone()
 
-    return dt.strftime("%Y-%m-%dT%H:%M:%S") + sign + hh + ":" + mm
+    return dt.isoformat(timespec="seconds")
 
 def get_rss_url(root_node: Node) -> Optional[str]:
     """
@@ -4034,8 +4507,15 @@ def get_rss_url(root_node: Node) -> Optional[str]:
 
     # get the full path to the RSS file we're going to write on disk
     rss_url = root_node.get_header("rss-url")
-    if -1 != rss_url.find("../"):
-        raise UrielError("RSS-URL can not contain ../")
+
+    # prevent directory traversal attempts
+    if is_directory_traversal_attempt(rss_url):
+        errstr = "invalid RSS-URL header value in node '%s' " + \
+                 "(directory traversal): '%s'"
+        raise UrielError(errstr % (root_node.get_path(), rss_url))
+
+    # if the RSS URL starts with a leading slash,
+    # normalize it to the root of the site
     if rss_url.startswith("/"):
         rss_url = rss_url[1:]
 
@@ -4102,7 +4582,7 @@ def write_rss(project_root: str, root_node: Node) -> None:
 
     # RSS-Description
     if root_node.has_header("rss-description"):
-        description = root_node.get_header("rss-description")
+        channel_description = root_node.get_header("rss-description")
     else:
         err = "RSS-Description must be set on node '%s' to write RSS feed"
         raise UrielError(err % (root_node.get_path()))
@@ -4115,9 +4595,47 @@ def write_rss(project_root: str, root_node: Node) -> None:
             rss_max_entries = int(value)
             if rss_max_entries < 0:
                 raise UrielError()
-        except:
-            err = "RSS-Max-Entries must be a valid unsigned integer on node '%s'"
+
+        except Exception:
+            err = "RSS-Max-Entries must be a valid unsigned integer " + \
+                  "on node '%s'"
             raise UrielError(err % (root_node.get_path()))
+
+    # RSS-Image-URL
+    canonical_rss_image_url: Optional[str] = None
+    if root_node.has_header("rss-image-url"):
+        rss_image_url = root_node.get_header("rss-image-url")
+
+        # remote RSS image URL
+        if rss_image_url.startswith(("http://", "https://")):
+            canonical_rss_image_url = rss_image_url
+
+        # local RSS image static file reference
+        else:
+            # leading slash implies the root of the web site
+            if rss_image_url.startswith("/"):
+                rss_image_url = rss_image_url[1:]
+
+            # prevent directory traversal
+            if is_directory_traversal_attempt(rss_image_url):
+                errstr = "invalid RSS-Image-URL header value in " + \
+                         "node '%s' (directory traversal): '%s'"
+                raise UrielError(
+                    errstr % (root_node.get_path(), rss_image_url))
+
+            # get the path to the RSS image on the filesystem
+            rss_image_file = os.path.join(root_node.get_dest_dir(),
+                                          rss_image_url)
+
+            # if this is a local static file reference, make sure it exists
+            if not os.path.exists(rss_image_file):
+                errstr = "RSS-Image-URL on node '%s' file not found: '%s'"
+                raise UrielError(
+                    errstr % (root_node.get_path(), rss_image_url))
+
+            # create canonical RSS image URL
+            canonical_rss_image_url = \
+                root_node.get_canonical_url() + rss_image_url
 
     # get all of the RSS-eligible nodes
     eligible_node_set: Set[Node] = set()
@@ -4127,12 +4645,7 @@ def write_rss(project_root: str, root_node: Node) -> None:
     nodes_to_write = []
 
     # pick out the most recent eligible nodes for inclusion
-    item_count = 0
-    for node in sorted(eligible_node_set):
-        item_count += 1
-        if item_count > rss_max_entries:
-            break
-
+    for node in heapq.nsmallest(rss_max_entries, eligible_node_set):
         nodes_to_write.append(node)
 
     # write the RSS file
@@ -4152,7 +4665,8 @@ def write_rss(project_root: str, root_node: Node) -> None:
               "</link>\n")
 
     # description
-    fw.write("    <description>" + escape(description) + "</description>\n")
+    fw.write("    <description>" + escape(channel_description) + \
+        "</description>\n")
 
     # lastBuildDate
     fw.write("    <lastBuildDate>" + \
@@ -4160,29 +4674,7 @@ def write_rss(project_root: str, root_node: Node) -> None:
         "</lastBuildDate>\n")
 
     # image
-    if root_node.has_header("rss-image-url"):
-        rss_image_url = root_node.get_header("rss-image-url")
-
-        # if this isn't a remote RSS image URL, validate the local path
-        if not rss_image_url.startswith("http"):
-            if rss_image_url.startswith("/"):
-                rss_image_url = rss_image_url[1:]
-
-            # get the path to the RSS image on the filesystem
-            rss_image_file = os.path.join(root_node.get_dest_dir(),
-                                          rss_image_url)
-
-            # if this is a local static file reference, make sure it exists
-            if not os.path.exists(rss_image_file):
-                raise UrielError(
-                    "RSS image file not found: '%s' at path '%s'" %
-                    (rss_image_url, rss_image_file))
-
-            # create canonical RSS image URL
-            canonical_rss_image_url = root_node.get_canonical_url() + \
-                rss_image_url
-
-        # image
+    if canonical_rss_image_url is not None:
         fw.write("    <image>\n")
 
         # url
@@ -4231,15 +4723,17 @@ def write_rss(project_root: str, root_node: Node) -> None:
         # get node body
         rendered_node_body = page.render().rstrip()
         if add_node_title_header:
-            description = \
+            item_description = \
                 "<h1>" + escape(node.get_title()) + "</h1>\n\n" + \
                 rendered_node_body
         else:
-            description = rendered_node_body
+            item_description = rendered_node_body
 
-        # set template back to its previous value, if any
+        # set template back to its previous value (or lack thereof)
         if template is not None:
             node.set_header("template", template)
+        else:
+            node.delete_header("template")
 
         # item
         fw.write("    <item>\n")
@@ -4255,7 +4749,7 @@ def write_rss(project_root: str, root_node: Node) -> None:
 
         # description
         fw.write("        <description>")
-        fw.write("<![CDATA[" + escape_xml(description) + "]]>")
+        fw.write("<![CDATA[" + escape_xml(item_description) + "]]>")
         fw.write("</description>\n")
 
         # category
@@ -4268,7 +4762,12 @@ def write_rss(project_root: str, root_node: Node) -> None:
         if node.created:
             node_date = node.created
         if node_date is None:
-            raise ImpossibleError("node date can not be null")
+            # this is not expected to happen in normal operation,
+            # but we provide a detailed error message and traceback
+            # in case user-defined code triggers it somehow
+            raise Exception(
+                "node '%s' has no created or modified time" %
+                (node.get_path()))
         fw.write("        <pubDate>" + \
             escape(get_rfc_2822_date(node_date)) + \
             "</pubDate>\n")
@@ -4294,9 +4793,13 @@ def get_sitemap_url(root_node: Node) -> Optional[str]:
 
     # get the full path to the sitemap file we're going to write on disk
     sitemap_url = root_node.get_header("sitemap-url")
-    if -1 != sitemap_url.find("../"):
-        raise UrielError("Sitemap-URL can not contain ../")
+    if is_directory_traversal_attempt(sitemap_url):
+        errstr = "invalid Sitemap-URL header value in node '%s' " + \
+                 "(directory traversal): '%s'"
+        raise UrielError(errstr % (root_node.get_path(), sitemap_url))
 
+    # if the sitemap URL starts with a slash,
+    # normalize it to the root of the site
     if sitemap_url.startswith("/"):
         sitemap_url = sitemap_url[1:]
 
@@ -4408,7 +4911,7 @@ def write_sitemap_index_and_sitemap_files(project_root: str,
     if not root_node.has_header("canonical-url"):
         err = "Canonical-URL must be set on node '%s' to write sitemap"
         raise UrielError(err % (root_node.get_path()))
-    canonical_url = root_node.get_header("canonical-url")
+    canonical_url = root_node.get_canonical_url_base()
 
     # Sitemap-Max-Files
     sitemap_max_files = SITEMAP_MAX_FILES
@@ -4418,7 +4921,8 @@ def write_sitemap_index_and_sitemap_files(project_root: str,
             sitemap_max_files = int(value)
             if sitemap_max_files < 0:
                 raise UrielError()
-        except:
+
+        except Exception:
             err = "Sitemap-Max-Files must be a valid unsigned integer " + \
                   "on node '%s'"
             raise UrielError(err % (root_node.get_path()))
@@ -4431,7 +4935,8 @@ def write_sitemap_index_and_sitemap_files(project_root: str,
             sitemap_max_entries = int(value)
             if sitemap_max_entries < 0:
                 raise UrielError()
-        except:
+
+        except Exception:
             err = "Sitemap-Max-Entries must be a valid unsigned integer " + \
                   "on node '%s'"
             raise UrielError(err % (root_node.get_path()))
@@ -4483,11 +4988,6 @@ def write_sitemap_index_and_sitemap_files(project_root: str,
             if cur_sitemap_records >= sitemap_max_entries:
                 cur_sitemap += 1
                 cur_sitemap_records = 0
-
-            # if have reached the maximum number of sitemap files,
-            # stop adding more nodes
-            if cur_sitemap >= sitemap_max_files:
-                break
 
             # if this is a new sitemap, and it isn't in our maps
             if cur_sitemap not in sitemap_number_to_nodes_map:
@@ -4614,7 +5114,11 @@ def write_sitemap_file(sitemap_file: str, nodes_to_write: List[Node]) -> None:
 
         # lastmod
         if node.modified is None:
-            raise ImpossibleError("node modified date can not be null")
+            # this is not expected to happen in normal operation,
+            # but we provide a detailed error message and traceback
+            # in case user-defined code triggers it somehow
+            errstr = "node '%s' modified date can not be null"
+            raise Exception(errstr % (node.get_path()))
         fw.write("        <lastmod>" + \
             escape(get_w3c_datetime(node.modified)) + \
             "</lastmod>\n")
@@ -4665,7 +5169,8 @@ def write_sitemap(project_root: str, root_node: Node) -> None:
             sitemap_max_entries = int(value)
             if sitemap_max_entries < 0:
                 raise UrielError()
-        except:
+
+        except Exception:
             err = "Sitemap-Max-Entries must be a valid unsigned integer " + \
                   "on node '%s'"
             raise UrielError(err % (root_node.get_path()))
@@ -5060,7 +5565,7 @@ def init_modules(project_root: str) -> None:
         return
 
     # add the project lib dir to our module import path
-    sys.path.insert(0, lib_dir)
+    sys.path.append(lib_dir)
 
     # initialize soju module
     lib_soju_file = os.path.join(lib_dir, "soju.py")
@@ -5317,7 +5822,7 @@ def handle_project(project_root: str) -> None:
     except UrielError as e:
         die(get_exception_reason(e))
 
-    except ImpossibleError as e:
+    except _ImpossibleError as e:
         print_impossible_error()
         raise
 

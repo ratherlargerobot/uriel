@@ -4,6 +4,7 @@ import unittest
 
 from .util import UrielContainer
 from .util import TempDir
+from .util import TimeZone
 from .util import get_datetime_from_date_str
 
 class TestNode(unittest.TestCase):
@@ -42,6 +43,39 @@ class TestNode(unittest.TestCase):
             self.assertEqual("index", root.get_name())
             self.assertEqual("index", root.get_path())
             self.assertEqual("/", root.get_url())
+
+    def test_constructor_duplicate_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            foo = uriel.VirtualNode(project_root, "foo", root)
+            root.add_child(foo)
+
+            try:
+                uriel.VirtualNode(project_root, "foo", root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "can not create node, another node already exists " + \
+                    "with this path: 'foo'",
+                    str(e))
+
+    def test_constructor_duplicate_path_in_subdirectory(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            articles = uriel.VirtualNode(project_root, "articles/index", root)
+            root.add_child(articles)
+            dog = uriel.VirtualNode(project_root, "articles/dog", articles)
+            articles.add_child(dog)
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.VirtualNode,
+                              project_root, "articles/dog", root)
 
     def test_constructor_plus_header_no_inheritance(self):
         c = UrielContainer()
@@ -98,14 +132,29 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("foo", "bar")
 
-            # minus headers can only have a value of "*"
             root.set_header("-foo", "blah")
 
-            # -foo: blah
-            # minus header value other than "*" detected in Node constructor
             self.assertRaises(uriel.UrielError,
                               uriel.VirtualNode,
                               project_root, "child", root)
+
+    def test_constructor_minus_header_invalid_value_message(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("foo", "bar")
+            root.set_header("-foo", "bogus")
+
+            try:
+                uriel.VirtualNode(project_root, "child", root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid header in node 'child': " + \
+                    "'-foo': 'bogus' (value must be '*')",
+                    str(e))
 
     def test_constructor_minus_header(self):
         c = UrielContainer()
@@ -170,13 +219,6 @@ class TestNode(unittest.TestCase):
         uriel = c.uriel
 
         with TempDir() as project_root:
-            # ++-foo header in root translates into removing foo header
-            # not in the child node articles, but in its child node,
-            # article_dog
-            #
-            # foo is present in root and articles, because of inheritance
-            # of the foo header set in root
-
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("foo", "bar")
             root.set_header("++-foo", "*")
@@ -199,16 +241,6 @@ class TestNode(unittest.TestCase):
         uriel = c.uriel
 
         with TempDir() as project_root:
-            # a -+header just doesn't work the way you might think it would.
-            # basically, it just removes the +foo header in the child node,
-            # shortly after +foo changed the value of foo, which is then
-            # inherited by all of its child nodes. but the +foo header was
-            # already turned into a foo header and removed by this point.
-            # so the whole thing is a no-op.
-            #
-            # you could accomplish the exact same thing with a +foo header
-            # alone.
-
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("foo", "bar")
             root.set_header("+foo", "quux")
@@ -252,8 +284,6 @@ class TestNode(unittest.TestCase):
             root.set_header("title", "Root Node")
             child = uriel.VirtualNode(project_root, "child", root)
 
-            # "title" header was removed from inheritance,
-            # title is the default based on the node name
             self.assertFalse(child.has_header("title"))
             self.assertEqual("Child", child.get_title())
 
@@ -266,7 +296,6 @@ class TestNode(unittest.TestCase):
             root.set_header("created", "2025-08-24T17:08:37-04:00")
             child = uriel.VirtualNode(project_root, "child", root)
 
-            # "created" header was removed from inheritance
             self.assertFalse(child.has_header("created"))
 
     def test_constructor_header_inheritance_removes_modified(self):
@@ -278,8 +307,131 @@ class TestNode(unittest.TestCase):
             root.set_header("modified", "2025-08-24T17:08:37-04:00")
             child = uriel.VirtualNode(project_root, "child", root)
 
-            # "modified" header was removed from inheritance
+            self.assertFalse(child.has_header("modified"))
+
+    def test_constructor_header_inheritance_removes_title_created_modified(
+            self):
+
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("title", "Root Node")
+            root.set_header("created", "2025-08-24T17:08:37-04:00")
+            root.set_header("modified", "2025-08-25T09:14:02-04:00")
+            root.set_header("foo", "bar")
+            child = uriel.VirtualNode(project_root, "child", root)
+
+            self.assertFalse(child.has_header("title"))
             self.assertFalse(child.has_header("created"))
+            self.assertFalse(child.has_header("modified"))
+
+            self.assertTrue(child.has_header("foo"))
+            self.assertEqual("bar", child.get_header("foo"))
+
+    def test_constructor_header_inheritance_removes_created_and_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("created", "2025-08-24T17:08:37-04:00")
+            root.set_header("modified", "2025-08-25T09:14:02-04:00")
+            child = uriel.VirtualNode(project_root, "child", root)
+
+            self.assertFalse(child.has_header("created"))
+            self.assertFalse(child.has_header("modified"))
+
+    def test_constructor_plus_title_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("title", "Root Node")
+            root.set_header("+title", "Pushed Title")
+            child = uriel.VirtualNode(project_root, "child", root)
+
+            self.assertEqual("Root Node", root.get_header("title"))
+
+            self.assertFalse(child.has_header("+title"))
+            self.assertTrue(child.has_header("title"))
+            self.assertEqual("Pushed Title", child.get_header("title"))
+            self.assertEqual("Pushed Title", child.get_title())
+
+    def test_constructor_plus_created_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("created", "2025-08-24T17:08:37-04:00")
+            root.set_header("+created", "2026-01-02T03:04:05-05:00")
+            child = uriel.VirtualNode(project_root, "child", root)
+
+            self.assertEqual("2025-08-24T17:08:37-04:00",
+                             root.get_header("created"))
+
+            self.assertFalse(child.has_header("+created"))
+            self.assertTrue(child.has_header("created"))
+            self.assertEqual("2026-01-02T03:04:05-05:00",
+                             child.get_header("created"))
+
+    def test_constructor_plus_modified_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("modified", "2025-08-24T17:08:37-04:00")
+            root.set_header("+modified", "2026-01-02T03:04:05-05:00")
+            child = uriel.VirtualNode(project_root, "child", root)
+
+            self.assertEqual("2025-08-24T17:08:37-04:00",
+                             root.get_header("modified"))
+
+            self.assertFalse(child.has_header("+modified"))
+            self.assertTrue(child.has_header("modified"))
+            self.assertEqual("2026-01-02T03:04:05-05:00",
+                             child.get_header("modified"))
+
+    def test_constructor_plus_title_header_no_further_inheritance(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("+title", "Pushed Title")
+            articles = uriel.VirtualNode(project_root, "articles/index", root)
+            article_dog = uriel.VirtualNode(project_root,
+                                            "articles/dog",
+                                            articles)
+
+            self.assertEqual("Pushed Title", articles.get_header("title"))
+
+            self.assertFalse(article_dog.has_header("title"))
+            self.assertEqual("Dog", article_dog.get_title())
+
+    def test_constructor_plus_plus_title_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("++title", "Pushed Title")
+            articles = uriel.VirtualNode(project_root, "articles/index", root)
+            article_dog = uriel.VirtualNode(project_root,
+                                            "articles/dog",
+                                            articles)
+
+            self.assertFalse(articles.has_header("++title"))
+            self.assertTrue(articles.has_header("+title"))
+            self.assertFalse(articles.has_header("title"))
+
+            self.assertFalse(article_dog.has_header("+title"))
+            self.assertTrue(article_dog.has_header("title"))
+            self.assertEqual("Pushed Title", article_dog.get_header("title"))
 
     def test_get_parent_node(self):
         c = UrielContainer()
@@ -321,7 +473,6 @@ class TestNode(unittest.TestCase):
             root.add_child(contact)
             root.add_child(articles)
 
-            # get_children() returns nodes in sorted order
             children = root.get_children()
 
             self.assertEqual(3, len(children))
@@ -417,6 +568,55 @@ class TestNode(unittest.TestCase):
 
             self.assertRaises(uriel.UrielError, root.get_canonical_url)
 
+    def test_get_canonical_url_base(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+
+            self.assertEqual("https://example.com",
+                             root.get_canonical_url_base())
+
+    def test_get_canonical_url_base_header_not_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            self.assertRaises(uriel.UrielError, root.get_canonical_url_base)
+
+    def test_get_canonical_url_trailing_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com/")
+
+            try:
+                root.get_canonical_url()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid Canonical-URL header value in node " + \
+                    "'index': 'https://example.com/' " + \
+                    "(can not end with a '/')",
+                    str(e))
+
+    def test_get_canonical_url_deeper_path_is_allowed(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com/blog")
+
+            self.assertEqual("https://example.com/blog/",
+                             root.get_canonical_url())
+
     def test_get_canonical_url(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -489,8 +689,6 @@ class TestNode(unittest.TestCase):
         uriel = c.uriel
 
         with TempDir() as project_root:
-            # with no title headers, nodes fall back to get_display_name()
-
             root = uriel.VirtualNode(project_root, "index")
             articles = uriel.VirtualNode(project_root, "articles/index", root)
             article_dog = uriel.VirtualNode(project_root, "articles/the-best-dog", articles)
@@ -516,7 +714,7 @@ class TestNode(unittest.TestCase):
             self.assertEqual("A List of Articles", articles.get_title())
             self.assertEqual("I Got to Pet the Perfect Dog", article_dog.get_title())
 
-    def test_get_escaped_title_no_headers(self):
+    def test_get_escaped_title_no_title_headers(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -937,6 +1135,46 @@ class TestNode(unittest.TestCase):
             self.assertTrue("baz" in tags)
             self.assertTrue("quux" in tags)
 
+    def test_get_tags_empty_element(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "foo,,bar")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_whitespace_only_element(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "foo, , bar")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_trailing_separator(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "foo, bar, ")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_only_separators(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", " , , ")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
     def test_get_tags_valid_capital(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -958,6 +1196,69 @@ class TestNode(unittest.TestCase):
 
             self.assertRaises(uriel.UrielError, root.get_tags)
 
+    def test_get_tags_invalid_hash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "c#")
+
+            try:
+                root.get_tags()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid tag 'c#' in node 'index', " + \
+                    "can not contain '#', '?' or '%'",
+                    str(e))
+
+    def test_get_tags_invalid_question_mark(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "what?")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_invalid_percent(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "100%pure")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_invalid_url_character_among_valid_tags(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "foo, c#, bar")
+
+            self.assertRaises(uriel.UrielError, root.get_tags)
+
+    def test_get_tags_valid_url_safe_punctuation(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "c++, a_b, 42, Aardvark, baz-quux")
+
+            tags = root.get_tags()
+            self.assertEqual(5, len(tags))
+            self.assertTrue("c++" in tags)
+            self.assertTrue("a_b" in tags)
+            self.assertTrue("42" in tags)
+            self.assertTrue("Aardvark" in tags)
+            self.assertTrue("baz-quux" in tags)
+
     def test_get_tags_valid_underscore(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -977,7 +1278,15 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "foo/bar")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            # a tag is used as a directory name
+            try:
+                root.get_tags()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid tag 'foo/bar' in node 'index', " + \
+                    "can not contain '/'",
+                    str(e))
 
     def test_get_tags_invalid_dot(self):
         c = UrielContainer()
@@ -987,7 +1296,14 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", ".")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            try:
+                root.get_tags()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid tag '.' in node 'index', " + \
+                    "can not be '.' or '..'",
+                    str(e))
 
     def test_get_tags_invalid_double_dot(self):
         c = UrielContainer()
@@ -997,7 +1313,27 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "..")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            try:
+                root.get_tags()
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid tag '..' in node 'index', " + \
+                    "can not be '.' or '..'",
+                    str(e))
+
+    def test_get_tags_valid_triple_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "..., .hidden")
+
+            tags = root.get_tags()
+            self.assertEqual(2, len(tags))
+            self.assertTrue("..." in tags)
+            self.assertTrue(".hidden" in tags)
 
     def test_get_dest_dir_no_flat_url(self):
         c = UrielContainer()
@@ -1150,6 +1486,60 @@ class TestNode(unittest.TestCase):
             self.assertRaises(uriel.UrielError,
                               root.get_boolean_header_value,
                               "foo", False)
+
+    def test_get_format_not_set(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            # html is the default when the Format header is not set
+            self.assertEqual("html", root.get_format())
+
+    def test_get_format_html(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "html")
+
+            self.assertEqual("html", root.get_format())
+
+    def test_get_format_text(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "text")
+
+            self.assertEqual("text", root.get_format())
+
+    def test_get_format_invalid(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "bogus")
+
+            self.assertRaises(uriel.UrielError, root.get_format)
+
+    def test_get_format_inherited_invalid(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("format", "text")
+            child = uriel.VirtualNode(project_root, "child", root)
+            child.set_header("format", "bogus")
+
+            # the parent is still valid, the child is not
+            self.assertEqual("text", root.get_format())
+            self.assertRaises(uriel.UrielError, child.get_format)
 
     def test_get_breadcrumb_separator_no_separator_no_spaces(self):
         c = UrielContainer()
@@ -1546,6 +1936,94 @@ class TestNode(unittest.TestCase):
             self.assertEqual("Cached Title", root.title_cache)
             self.assertIsNone(root.url_cache)
 
+    def test_invalidate_cache_by_header_tags(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tags", "alpha")
+
+            self.assertEqual(["alpha"], root.get_tags())
+
+            root.set_header("tags", "beta, gamma")
+            self.assertEqual(["beta", "gamma"], root.get_tags())
+
+            root.delete_header("tags")
+            self.assertEqual([], root.get_tags())
+
+    def test_invalidate_cache_by_header_tag_node(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            one = uriel.VirtualNode(project_root, "one", root)
+            root.add_child(one)
+            two = uriel.VirtualNode(project_root, "two", root)
+            root.add_child(two)
+
+            root.set_header("tag-node", "one")
+            self.assertEqual("one", root.get_tag_node().get_path())
+
+            root.set_header("tag-node", "two")
+            self.assertEqual("two", root.get_tag_node().get_path())
+
+    def test_invalidate_cache_by_header_tag_node_clears_vnode_cache(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            root.tag_vnode_cache["stale"] = root
+
+            root.set_header("tag-node", "tag")
+
+            self.assertEqual({}, root.tag_vnode_cache)
+
+    def test_invalidate_cache_by_header_flat_url_child_nodes(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            a = uriel.VirtualNode(project_root, "a/index", root)
+            root.add_child(a)
+            b = uriel.VirtualNode(project_root, "a/b/index", a)
+            a.add_child(b)
+            leaf = uriel.VirtualNode(project_root, "a/b/leaf", b)
+            b.add_child(leaf)
+
+            self.assertEqual("/a/b/", b.get_url())
+            self.assertEqual("/a/b/leaf/", leaf.get_url())
+
+            b.set_header("flat-url", "true")
+
+            self.assertEqual("/b/", b.get_url())
+            self.assertEqual("/b/leaf/", leaf.get_url())
+
+    def test_invalidate_cache_by_header_flat_url_keeps_name(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            a = uriel.VirtualNode(project_root, "a/index", root)
+            root.add_child(a)
+            b = uriel.VirtualNode(project_root, "a/b/index", a)
+            a.add_child(b)
+
+            self.assertEqual("/a/b/", b.get_url())
+            self.assertEqual("b", b.get_name())
+            self.assertEqual("B", b.get_title())
+
+            b.set_header("flat-url", "true")
+
+            self.assertEqual("/b/", b.get_url())
+            self.assertEqual("b", b.get_name())
+            self.assertEqual("B", b.get_title())
+
     def test_set_header_basic(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -1656,12 +2134,6 @@ class TestNode(unittest.TestCase):
             root.set_header("title", "Home Page")
             root.set_header("flat-url", "true")
 
-            # the usual way to use get_header_key_values() is to run
-            # through its return values in a for loop, e.g.:
-            #
-            # for (key, value) in root.get_header_key_values()
-            #
-            # the usage in this test is strained, but equivalent
             header_key_values = root.get_header_key_values()
 
             self.assertEqual(3, len(header_key_values))
@@ -1726,19 +2198,58 @@ class TestNode(unittest.TestCase):
             self.assertEqual(2025, dt.year)
             self.assertEqual(8, dt.month)
             self.assertEqual(24, dt.day)
-
-            # this is a hack, but so is daylight savings time
-            if (dt.hour != 17) and (dt.hour != 16):
-                raise Exception("hour expected to be 17 or 16, " +
-                                "depending on daylight savings time")
-
+            self.assertEqual(17, dt.hour)
             self.assertEqual(8, dt.minute)
             self.assertEqual(37, dt.second)
 
-            # some unknown local time zone on the computer running this test
+            # whatever the local time zone is here
             self.assertEqual(type(dt.tzinfo), datetime.timezone)
 
-    def test_node_sorting_created_with_timezones(self):
+    def test_get_datetime_from_date_str_without_timezone_dst(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            # a date without a time zone gets the UTC offset that was in
+            # effect locally on that date, not the one in effect today.
+            # a winter date and a summer date in the same time zone
+            # therefore get different offsets.
+            with TimeZone("America/Los_Angeles"):
+                winter = root.get_datetime_from_date_str("2020-01-15T23:30:00")
+                summer = root.get_datetime_from_date_str("2020-07-04T10:00:00")
+
+            # the date/time written in the header is never shifted
+            self.assertEqual(23, winter.hour)
+            self.assertEqual(30, winter.minute)
+            self.assertEqual(15, winter.day)
+
+            self.assertEqual(10, summer.hour)
+            self.assertEqual(0, summer.minute)
+            self.assertEqual(4, summer.day)
+
+            # PST in January, PDT in July
+            self.assertEqual("-0800", winter.strftime("%z"))
+            self.assertEqual("-0700", summer.strftime("%z"))
+
+    def test_get_datetime_from_date_str_with_timezone_is_preserved(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+
+            # an explicit UTC offset is kept exactly as written, and does
+            # not depend on the local time zone at all
+            with TimeZone("Asia/Tokyo"):
+                dt = root.get_datetime_from_date_str(
+                    "2020-07-04T10:00:00-04:00")
+
+            self.assertEqual(10, dt.hour)
+            self.assertEqual("-0400", dt.strftime("%z"))
+
+    def test_node_sorting_created_with_the_same_time_zone(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -1752,11 +2263,13 @@ class TestNode(unittest.TestCase):
             self.assertTrue(a < b)
             self.assertFalse(a > b)
 
-    def test_node_sorting_created_without_timezones(self):
+    def test_node_sorting_created_with_the_local_time_zone(self):
         c = UrielContainer()
         uriel = c.uriel
 
         with TempDir() as project_root:
+            # a date written without a UTC offset gets the local one
+            # attached to it, so both of these end up with a time zone
             a = uriel.VirtualNode(project_root, "index")
             a.created = get_datetime_from_date_str("1970-01-02T00:00:00")
 
@@ -1766,17 +2279,18 @@ class TestNode(unittest.TestCase):
             self.assertTrue(a < b)
             self.assertFalse(a > b)
 
-    def test_node_sorting_created_mismatched_time_zones(self):
+    def test_node_sorting_created_with_different_time_zones(self):
         c = UrielContainer()
         uriel = c.uriel
 
         with TempDir() as project_root:
-            # when we have a date/time without a time zone, uriel will compare
-            # both date/times without any time zones
-            # it will also default to whatever the local user time zone is,
-            # which can vary depending on which machine this runs on
-            # therefore, this test places the two dates more than 24 hours
-            # apart, to overcome any potential time zone slop
+            # a date written without a UTC offset gets the local one
+            # attached to it, so both of these end up with a time zone,
+            # but with different offsets
+            #
+            # the local offset varies with the machine running the test,
+            # so the two dates are placed more than 24 hours apart, to
+            # overcome any potential time zone slop
             a = uriel.VirtualNode(project_root, "index")
             a.created = get_datetime_from_date_str("1970-01-03T00:00:00")
 
@@ -1785,6 +2299,65 @@ class TestNode(unittest.TestCase):
 
             self.assertTrue(a < b)
             self.assertFalse(a > b)
+
+    def test_node_sorting_created_one_without_a_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                # a date without a time zone can not be compared against
+                # one that has a time zone, so both are converted to
+                # seconds since the epoch. the one with a time zone has
+                # to keep its own UTC offset while that happens.
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime.fromisoformat(
+                    "2020-01-01T00:00:00+09:00")
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2019, 12, 31, 20, 0, 0)
+
+                # a is 2019-12-31T15:00Z, b is 2019-12-31T20:00Z, so b is
+                # the more recent of the two, and sorts first
+                self.assertTrue(b < a)
+                self.assertFalse(a < b)
+
+                self.assertEqual(["b", "a"],
+                                 [n.get_path() for n in sorted([a, b])])
+
+    def test_node_sorting_created_neither_with_a_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime(2019, 12, 31, 15, 0, 0)
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2019, 12, 31, 20, 0, 0)
+
+                self.assertEqual(["b", "a"],
+                                 [n.get_path() for n in sorted([a, b])])
+
+    def test_node_sorting_created_without_a_time_zone_sub_second(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                # node modified times come from file mtimes, which carry
+                # microseconds, so dates within the same second are
+                # compared at full precision rather than being treated
+                # as equal
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime(2020, 1, 1, 0, 0, 0, 0)
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2020, 1, 1, 0, 0, 0, 1)
+
+                self.assertEqual(["b", "a"],
+                                 [n.get_path() for n in sorted([a, b])])
 
     def test_node_sorting_title(self):
         c = UrielContainer()
@@ -1881,13 +2454,10 @@ class TestFileNode(unittest.TestCase):
 
             root = uriel.FileNode(project_root, "index")
 
-            # a root node created from an empty file doesn't have any headers
             self.assertEqual(0, len(root.headers))
 
-            # Created is not set implicitly
             self.assertIsNone(root.created)
 
-            # Modified is taken from the file mtime if not explicitly set
             node_file_mtime = os.path.getmtime(node_index_file)
             node_modified = \
                 datetime.datetime.fromtimestamp(
@@ -1898,10 +2468,8 @@ class TestFileNode(unittest.TestCase):
                 )
             self.assertEqual(root.modified, node_modified)
 
-            # body is an empty string
             self.assertEqual("", root.body)
 
-            # a few Node methods
             self.assertEqual("Index", root.get_title())
             self.assertEqual("index", root.get_path())
             self.assertEqual("/", root.get_url())
@@ -2106,6 +2674,164 @@ class TestFileNode(unittest.TestCase):
             self.assertEqual("article.html", foo.get_header("template"))
             self.assertEqual("article.html", bar.get_header("template"))
 
+    def test_header_inheritance_title_created_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            # the root node sets all three of the non-inherited headers,
+            # alongside an ordinary header that is inherited normally
+            with open(node_index, "w") as f:
+                f.write("Title: Root Node\n")
+                f.write("Created: 2020-10-24T23:19:38-05:00\n")
+                f.write("Modified: 2021-07-08T02:26:08-04:00\n")
+                f.write("Foo: bar\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            # none of Title, Created or Modified are inherited, even though
+            # the root node sets all three of them at the same time
+            self.assertFalse(child.has_header("title"))
+            self.assertFalse(child.has_header("created"))
+            self.assertFalse(child.has_header("modified"))
+
+            # ordinary headers are still inherited
+            self.assertEqual("bar", child.get_header("foo"))
+
+            # the child title falls back to the node name
+            self.assertEqual("Child", child.get_title())
+
+            # the child has no created time at all
+            self.assertIsNone(child.created)
+
+            # the child modified time comes from its own file mtime,
+            # not from the root node
+            node_child_mtime = os.path.getmtime(node_child)
+            child_modified = \
+                datetime.datetime.fromtimestamp(
+                    node_child_mtime,
+                    datetime.datetime.now(
+                        datetime.timezone.utc
+                    ).astimezone().tzinfo
+                )
+            self.assertEqual(child_modified, child.modified)
+
+    def test_header_inheritance_plus_created_and_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Title: Root Node\n")
+                f.write("Created: 2020-10-24T23:19:38-05:00\n")
+                f.write("+Created: 2022-02-02T02:02:02-05:00\n")
+                f.write("Modified: 2021-07-08T02:26:08-04:00\n")
+                f.write("+Modified: 2023-03-03T03:03:03-05:00\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            root_created = \
+                get_datetime_from_date_str("2020-10-24T23:19:38-05:00")
+            root_modified = \
+                get_datetime_from_date_str("2021-07-08T02:26:08-04:00")
+            self.assertEqual(root_created, root.created)
+            self.assertEqual(root_modified, root.modified)
+
+            self.assertFalse(child.has_header("+created"))
+            self.assertFalse(child.has_header("+modified"))
+
+            child_created = \
+                get_datetime_from_date_str("2022-02-02T02:02:02-05:00")
+            child_modified = \
+                get_datetime_from_date_str("2023-03-03T03:03:03-05:00")
+            self.assertEqual(child_created, child.created)
+            self.assertEqual(child_modified, child.modified)
+
+    def test_invalid_format_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Format: bogus\n")
+                f.write("\n")
+                f.write("<p>Words</p>\n")
+                f.close()
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.FileNode,
+                              project_root, "index")
+
+    def test_invalid_canonical_url_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Canonical-URL: https://example.com/\n")
+                f.close()
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.FileNode,
+                              project_root, "index")
+
+    def test_valid_format_headers(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Format: html\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("Format: text\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            self.assertEqual("html", root.get_format())
+            self.assertEqual("text", child.get_format())
+
     def test_header_inheritance_minus_invalid_value(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -2128,7 +2854,6 @@ class TestFileNode(unittest.TestCase):
 
             root = uriel.FileNode(project_root, "index")
 
-            # fails because -Foo: has a value that isn't '*'
             self.assertRaises(uriel.UrielError,
                               uriel.FileNode,
                               project_root, "child", root)
@@ -2161,6 +2886,179 @@ class TestFileNode(unittest.TestCase):
 
             self.assertFalse(child.has_header("foo"))
             self.assertEqual("quux", child.get_header("baz"))
+
+
+    def test_header_inheritance_minus_not_last_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Foo: bar\n")
+                f.write("Baz: quux\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("-Foo: *\n")
+                f.write("Title: Child\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            self.assertFalse(child.has_header("foo"))
+            self.assertEqual("quux", child.get_header("baz"))
+            self.assertEqual("Child", child.get_header("title"))
+
+    def test_header_inheritance_minus_invalid_value_not_last_header(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Foo: bar\n")
+                f.write("Baz: quux\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("-Foo: fail\n")
+                f.write("-Zzz: *\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.FileNode,
+                              project_root, "child", root)
+
+    def test_header_inheritance_minus_invalid_value_message(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Foo: bar\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("-Foo: bogus\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+
+            try:
+                uriel.FileNode(project_root, "child", root)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "invalid header in node 'child': " + \
+                    "'-foo': 'bogus' (value must be '*')",
+                    str(e))
+
+    def test_header_inheritance_minus_key_is_removed(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Foo: bar\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("-Foo: *\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            self.assertFalse(child.has_header("foo"))
+            self.assertFalse(child.has_header("-foo"))
+
+    def test_header_inheritance_minus_does_not_block_plus_plus_push(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            sub_dir = os.path.join(nodes_root, "sub")
+            deep_dir = os.path.join(sub_dir, "deep")
+            node_index = os.path.join(nodes_root, "index")
+            node_sub = os.path.join(sub_dir, "index")
+            node_deep = os.path.join(deep_dir, "index")
+
+            os.mkdir(nodes_root)
+            os.mkdir(sub_dir)
+            os.mkdir(deep_dir)
+
+            with open(node_index, "w") as f:
+                f.write("++Foo: pushed\n")
+                f.close()
+
+            with open(node_sub, "w") as f:
+                f.write("-Foo: *\n")
+                f.close()
+
+            with open(node_deep, "w") as f:
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            sub = uriel.FileNode(project_root, "sub/index", root)
+            deep = uriel.FileNode(project_root, "sub/deep/index", sub)
+
+            self.assertFalse(root.has_header("foo"))
+            self.assertFalse(sub.has_header("foo"))
+            self.assertEqual("pushed", deep.get_header("foo"))
+
+    def test_header_inheritance_minus_minus(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            nodes_root = os.path.join(project_root, "nodes")
+            node_index = os.path.join(nodes_root, "index")
+            node_child = os.path.join(nodes_root, "child")
+
+            os.mkdir(nodes_root)
+
+            with open(node_index, "w") as f:
+                f.write("Foo: bar\n")
+                f.close()
+
+            with open(node_child, "w") as f:
+                f.write("--Foo: *\n")
+                f.write("-Foo: *\n")
+                f.close()
+
+            root = uriel.FileNode(project_root, "index")
+            child = uriel.FileNode(project_root, "child", root)
+
+            self.assertFalse(child.has_header("foo"))
+            self.assertFalse(child.has_header("-foo"))
+            self.assertFalse(child.has_header("--foo"))
 
 
 class TestVirtualNode(unittest.TestCase):

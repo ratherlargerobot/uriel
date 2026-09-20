@@ -2,7 +2,7 @@
 
 PREFIX=/usr/local
 
-VERSION=1.5.3
+VERSION=1.6.0
 
 default:
 	@echo "uriel is a single, executable Python script: nothing to build"

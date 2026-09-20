@@ -31,9 +31,14 @@ Tags: headers, rss, rss-headers, root-node
 </p>
 
 <p>
-    If this header is set, a file at the specified URL path must actually
-    exist. If Uriel can not verify that a file exists at the specified path,
-    it will result in an error.
+    If this header is set to reference a local file, a file at the specified
+    URL path must actually exist. If Uriel can not verify that a file exists
+    at the specified path, it will result in an error.
+</p>
+
+<p>
+    This header can also reference a remote URL. In this case, no additional
+    validation will be performed.
 </p>
 
 <p>

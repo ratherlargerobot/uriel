@@ -7,8 +7,10 @@ import unittest
 
 from .util import UrielContainer
 from .util import TempDir
+from .util import TimeZone
+from .util import get_datetime_from_date_str
 
-# N.B. we are intentionally skipping tests for the following functions,
+# N.B. we intentionally do not have tests for the following functions,
 #      because they are very simple, and primarly rely on OS interactions:
 #
 #    sys_exit()
@@ -476,9 +478,14 @@ class TestFunctionCopyFile(unittest.TestCase):
 
             os.symlink(src_file, src_file)
 
-            self.assertRaises(uriel.UrielError,
-                              uriel.copy_file,
-                              src_file, dest_file)
+            try:
+                uriel.copy_file(src_file, dest_file)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "error copying '%s' to '%s': source path is a symlink" %
+                    (src_file, dest_file),
+                    str(e))
 
     def test_src_file_dest_symlink(self):
         c = UrielContainer()
@@ -515,10 +522,11 @@ class TestFunctionCopyFile(unittest.TestCase):
             os.symlink(src_file, src_file)
             os.symlink(dest_file, dest_file)
 
-            uriel.copy_file(src_file, dest_file)
+            self.assertRaises(uriel.UrielError,
+                              uriel.copy_file,
+                              src_file, dest_file)
 
             self.assertTrue(os.path.islink(dest_file))
-            self.assertEqual(src_file, os.readlink(dest_file))
 
     def test_src_file_dest_dir(self):
         c = UrielContainer()
@@ -741,10 +749,9 @@ class TestFunctionCopyFileIfDifferent(unittest.TestCase):
             os.symlink(symlink_target, src_symlink)
             os.symlink(dest_symlink, dest_symlink)
 
-            uriel.copy_file_if_different(src_symlink, dest_symlink)
-
-            self.assertTrue(os.path.islink(dest_symlink))
-            self.assertEqual(symlink_target, os.readlink(dest_symlink))
+            self.assertRaises(uriel.UrielError,
+                              uriel.copy_file_if_different,
+                              src_symlink, dest_symlink)
 
     def test_src_file_dest_dir(self):
         c = UrielContainer()
@@ -1212,6 +1219,91 @@ class TestFunctionCopyFilesRecursive(unittest.TestCase):
                 self.assertEqual("extra", data)
 
 
+    def test_src_contains_a_file_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            real_file = os.path.join(src_dir, "real.txt")
+            link_file = os.path.join(src_dir, "link.txt")
+
+            os.mkdir(src_dir)
+
+            with open(real_file, "w") as f:
+                f.write("foo")
+                f.close()
+
+            os.symlink("real.txt", link_file)
+
+            try:
+                uriel.copy_files_recursive(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (link_file), str(e))
+
+    def test_src_contains_a_directory_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            real_dir = os.path.join(src_dir, "realdir")
+            link_dir = os.path.join(src_dir, "linkdir")
+
+            os.mkdir(src_dir)
+            os.mkdir(real_dir)
+            os.symlink("realdir", link_dir)
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.copy_files_recursive,
+                              src_dir, dest_dir)
+
+    def test_src_contains_a_symlink_loop(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            sub_dir = os.path.join(src_dir, "sub")
+            loop_link = os.path.join(sub_dir, "loop")
+
+            os.mkdir(src_dir)
+            os.mkdir(sub_dir)
+
+            os.symlink("..", loop_link)
+
+            try:
+                uriel.copy_files_recursive(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (loop_link), str(e))
+
+    def test_src_is_a_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            real_dir = os.path.join(tmp_dir, "realdir")
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+
+            os.mkdir(real_dir)
+            os.symlink("realdir", src_dir)
+
+            try:
+                uriel.copy_files_recursive(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (src_dir), str(e))
+
+
 class TestFunctionCopyFilesRecursiveOverwrite(unittest.TestCase):
     """
     Tests the copy_files_recursive_overwrite() function.
@@ -1535,6 +1627,91 @@ class TestFunctionCopyFilesRecursiveOverwrite(unittest.TestCase):
                 self.assertEqual("foo", data)
 
 
+    def test_src_contains_a_file_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            real_file = os.path.join(src_dir, "real.txt")
+            link_file = os.path.join(src_dir, "link.txt")
+
+            os.mkdir(src_dir)
+
+            with open(real_file, "w") as f:
+                f.write("foo")
+                f.close()
+
+            os.symlink("real.txt", link_file)
+
+            try:
+                uriel.copy_files_recursive_overwrite(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (link_file), str(e))
+
+    def test_src_contains_a_directory_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            real_dir = os.path.join(src_dir, "realdir")
+            link_dir = os.path.join(src_dir, "linkdir")
+
+            os.mkdir(src_dir)
+            os.mkdir(real_dir)
+            os.symlink("realdir", link_dir)
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.copy_files_recursive_overwrite,
+                              src_dir, dest_dir)
+
+    def test_src_contains_a_symlink_loop(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+            sub_dir = os.path.join(src_dir, "sub")
+            loop_link = os.path.join(sub_dir, "loop")
+
+            os.mkdir(src_dir)
+            os.mkdir(sub_dir)
+
+            os.symlink("..", loop_link)
+
+            try:
+                uriel.copy_files_recursive_overwrite(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (loop_link), str(e))
+
+    def test_src_is_a_symlink(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as tmp_dir:
+            real_dir = os.path.join(tmp_dir, "realdir")
+            src_dir = os.path.join(tmp_dir, "src")
+            dest_dir = os.path.join(tmp_dir, "dest")
+
+            os.mkdir(real_dir)
+            os.symlink("realdir", src_dir)
+
+            try:
+                uriel.copy_files_recursive_overwrite(src_dir, dest_dir)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "symlink not allowed: '%s'" % (src_dir), str(e))
+
+
 class TestFunctionDeleteDirectoryRecursive(unittest.TestCase):
     """
     Tests the delete_directory_recursive() function.
@@ -1617,9 +1794,210 @@ class TestFunctionDeleteDirectoryRecursive(unittest.TestCase):
             self.assertFalse(os.path.exists(s_symlink))
 
 
+class TestIsDirectoryTraversalAttempt(unittest.TestCase):
+    """
+    Tests the is_directory_traversal_attempt() function.
+
+    """
+
+    def test_none(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertRaises(uriel.UrielError,
+                          uriel.is_directory_traversal_attempt,
+                          None)
+
+    def test_blank(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt(""))
+
+    def test_root_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("/"))
+
+    def test_single_path_element(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo"))
+
+    def test_single_path_element_trailing_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo/"))
+
+    def test_parent_child_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo/bar"))
+
+    def test_parent_child_path_trailing_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo/bar/"))
+
+    def test_absolute_single_path_element(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("/foo"))
+
+    def test_absolute_single_path_element_trailing_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("/foo/"))
+
+    def test_absolute_parent_child_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("/foo/bar"))
+
+    def test_absolute_parent_child_path_trailing_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("/foo/bar/"))
+
+    def test_single_path_with_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo.bar"))
+
+    def test_parent_child_path_with_embedded_slash_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo/.bar"))
+
+    def test_parent_child_path_with_embedded_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo./bar"))
+
+    def test_parent_child_path_with_embedded_slash_dot_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo/..bar"))
+
+    def test_parent_child_path_with_embedded_dot_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo../bar"))
+
+    def test_single_path_triple_leading_dots(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("...foo"))
+
+    def test_single_path_triple_trailing_dots(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo..."))
+
+    def test_parent_child_path_triple_dots(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("foo.../bar"))
+
+    def test_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("."))
+
+    def test_dot_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt(".."))
+
+    def test_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("./"))
+
+    def test_dot_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("../"))
+
+    def test_slash_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("/."))
+
+    def test_slash_dot_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("/.."))
+
+    def test_leading_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertFalse(uriel.is_directory_traversal_attempt("./foo"))
+
+    def test_trailing_slash_dot(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("foo/."))
+
+    def test_trailing_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("foo/./"))
+
+    def test_leading_slash_dot_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("/../foo"))
+
+    def test_trailing_slash_dot_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("foo/../"))
+
+    def test_embedded_slash_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("foo/./bar"))
+
+    def test_embedded_slash_dot_dot_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertTrue(uriel.is_directory_traversal_attempt("foo/../bar"))
+
+
 class TestFunctionEscape(unittest.TestCase):
     """
-    Tests the foo() function.
+    Tests the escape() function.
 
     """
 
@@ -1981,6 +2359,37 @@ class TestFunctionCreateTagNodeTree(unittest.TestCase):
                 tag_d.get_header("__tag-list-html-canonical"))
 
 
+    def test_create_tag_node_tree_tag_collides_with_a_real_node(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tag-node", "tags/index")
+
+            tags = uriel.VirtualNode(project_root, "tags/index", root)
+            root.add_child(tags)
+
+            # a real node that lives under the tag root, with the same
+            # name as a tag that is about to get a virtual node
+            foo = uriel.VirtualNode(project_root, "tags/foo", tags)
+            tags.add_child(foo)
+
+            # this creates a foo tag, which will try to create another tags/foo node
+            post = uriel.VirtualNode(project_root, "post", root)
+            post.set_header("tags", "foo")
+            root.add_child(post)
+
+            try:
+                uriel.create_tag_node_tree(project_root, root, False)
+                self.assertTrue(False)
+            except uriel.UrielError as e:
+                self.assertEqual(
+                    "can not create node, another node already exists " + \
+                    "with this path: 'tags/foo'",
+                    str(e))
+
+
 class TestFunctionCreateTagLinks(unittest.TestCase):
     """
     Tests the create_tag_links() function.
@@ -2083,6 +2492,28 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
                 "<a href=\"/tag/c/\">c</a>, " + \
                 "<a href=\"/tag/d/\">d</a>",
                 quux.get_header("__tag-list-html"))
+
+    def test_create_tag_links_recursive_empty_tag_elements(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("tag-node", "tag")
+            foo = uriel.VirtualNode(project_root, "foo", root)
+            tag = uriel.VirtualNode(project_root, "tag", root)
+
+            root.add_child(foo)
+            root.add_child(tag)
+
+            foo.set_header("tags", "a, , b,,c")
+
+            self.assertRaises(
+                uriel.UrielError,
+                uriel.create_tag_node_tree,
+                project_root,
+                root,
+                False)
 
     def test_create_tag_links_recursive_with_canonical_url(self):
         c = UrielContainer()
@@ -2650,44 +3081,53 @@ class TestFunctionGetEligibleNodes(unittest.TestCase):
             self.assertTrue(quux in eligible_nodes)
 
 
-class TestFunctionGetUtcOffset(unittest.TestCase):
-    """
-    Tests the get_utc_offset() function.
-
-    """
-
-    def test_get_utc_offset(self):
-        os.environ["TZ"] = "America/Los_Angeles"
-        is_dst = time.localtime().tm_isdst
-
-        c = UrielContainer()
-        uriel = c.uriel
-
-        if is_dst:
-            self.assertEqual(("-", "07", "00"), uriel.get_utc_offset())
-        else:
-            self.assertEqual(("-", "08", "00"), uriel.get_utc_offset())
-
-
 class TestFunctionGetRfc2822Date(unittest.TestCase):
     """
     Tests the get_rfc_2822_date() function.
 
     """
 
-    def test_get_rfc_2822_date(self):
-        os.environ["TZ"] = "America/Los_Angeles"
-        is_dst = time.localtime().tm_isdst
-
+    def test_get_rfc_2822_date_with_timezone(self):
         c = UrielContainer()
         uriel = c.uriel
 
-        dt = datetime.datetime.now()
+        dt = datetime.datetime.fromisoformat("2020-07-04T10:00:00-04:00")
 
-        (sign, hh, mm) = uriel.get_utc_offset()
-        expected = dt.strftime("%a, %d %b %Y %H:%M:%S ") + sign + hh + mm
+        with TimeZone("America/Los_Angeles"):
+            self.assertEqual("Sat, 04 Jul 2020 10:00:00 -0400",
+                             uriel.get_rfc_2822_date(dt))
 
-        self.assertEqual(expected, uriel.get_rfc_2822_date(dt))
+        with TimeZone("Asia/Tokyo"):
+            self.assertEqual("Sat, 04 Jul 2020 10:00:00 -0400",
+                             uriel.get_rfc_2822_date(dt))
+
+        with TimeZone("UTC"):
+            self.assertEqual("Sat, 04 Jul 2020 10:00:00 -0400",
+                             uriel.get_rfc_2822_date(dt))
+
+    def test_get_rfc_2822_date_utc(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        dt = datetime.datetime.fromisoformat("2020-07-04T14:00:00+00:00")
+
+        with TimeZone("America/Los_Angeles"):
+            self.assertEqual("Sat, 04 Jul 2020 14:00:00 +0000",
+                             uriel.get_rfc_2822_date(dt))
+
+    def test_get_rfc_2822_date_without_timezone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        dt = datetime.datetime.fromisoformat("2020-01-15T23:30:00")
+
+        with TimeZone("America/Los_Angeles"):
+            self.assertEqual("Wed, 15 Jan 2020 23:30:00 -0800",
+                             uriel.get_rfc_2822_date(dt))
+
+        with TimeZone("Europe/Berlin"):
+            self.assertEqual("Wed, 15 Jan 2020 23:30:00 +0100",
+                             uriel.get_rfc_2822_date(dt))
 
 
 class TestFunctionGetW3cDatetime(unittest.TestCase):
@@ -2696,19 +3136,53 @@ class TestFunctionGetW3cDatetime(unittest.TestCase):
 
     """
 
-    def test_get_w3c_datetime(self):
-        os.environ["TZ"] = "America/Los_Angeles"
-        is_dst = time.localtime().tm_isdst
-
+    def test_get_w3c_datetime_with_timezone(self):
         c = UrielContainer()
         uriel = c.uriel
 
-        dt = datetime.datetime.now()
+        dt = datetime.datetime.fromisoformat("2020-07-04T10:00:00-04:00")
 
-        (sign, hh, mm) = uriel.get_utc_offset()
-        expected = dt.strftime("%Y-%m-%dT%H:%M:%S") + sign + hh + ":" + mm
+        with TimeZone("America/Los_Angeles"):
+            self.assertEqual("2020-07-04T10:00:00-04:00",
+                             uriel.get_w3c_datetime(dt))
 
-        self.assertEqual(expected, uriel.get_w3c_datetime(dt))
+        with TimeZone("Asia/Tokyo"):
+            self.assertEqual("2020-07-04T10:00:00-04:00",
+                             uriel.get_w3c_datetime(dt))
+
+    def test_get_w3c_datetime_utc(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        dt = datetime.datetime.fromisoformat("2020-07-04T14:00:00+00:00")
+
+        with TimeZone("Asia/Tokyo"):
+            self.assertEqual("2020-07-04T14:00:00+00:00",
+                             uriel.get_w3c_datetime(dt))
+
+    def test_get_w3c_datetime_without_timezone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        dt = datetime.datetime.fromisoformat("2020-01-15T23:30:00")
+
+        with TimeZone("America/Los_Angeles"):
+            self.assertEqual("2020-01-15T23:30:00-08:00",
+                             uriel.get_w3c_datetime(dt))
+
+        with TimeZone("Europe/Berlin"):
+            self.assertEqual("2020-01-15T23:30:00+01:00",
+                             uriel.get_w3c_datetime(dt))
+
+    def test_get_w3c_datetime_drops_microseconds(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        dt = datetime.datetime.fromisoformat(
+            "2020-07-04T10:00:00.123456-04:00")
+
+        self.assertEqual("2020-07-04T10:00:00-04:00",
+                         uriel.get_w3c_datetime(dt))
 
 
 class TestFunctionGetRssUrl(unittest.TestCase):
@@ -2947,6 +3421,274 @@ class TestFunctionWriteRss(unittest.TestCase):
                 self.assertEqual(
                     "",
                     lines[23])
+
+    def test_write_rss_image_url_remote_https(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-image-url",
+                            "https://cdn.example.com/rss-icon.png")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(15, len(lines))
+                self.assertEqual(
+                    "    <image>",
+                    lines[7])
+
+                # a remote RSS image URL is used exactly as it was given,
+                # without a canonical URL prefix
+                self.assertEqual(
+                    "        <url>https://cdn.example.com/rss-icon.png</url>",
+                    lines[8])
+                self.assertEqual(
+                    "        <title>My Website</title>",
+                    lines[9])
+                self.assertEqual(
+                    "        <link>https://example.com/</link>",
+                    lines[10])
+                self.assertEqual(
+                    "    </image>",
+                    lines[11])
+                self.assertEqual(
+                    "</channel>",
+                    lines[12])
+
+    def test_write_rss_image_url_remote_http(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-image-url",
+                            "http://cdn.example.com/rss-icon.png")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(
+                    "        <url>http://cdn.example.com/rss-icon.png</url>",
+                    lines[8])
+
+    def test_write_rss_image_url_local_absolute_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+            rss_image_file = os.path.join(public_dir, "rss-icon.png")
+
+            os.mkdir(public_dir)
+
+            with open(rss_image_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-image-url", "/rss-icon.png")
+            root.set_header("rss-image-width", "32")
+            root.set_header("rss-image-height", "32")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(17, len(lines))
+                self.assertEqual(
+                    "    <image>",
+                    lines[7])
+
+                # a local RSS image URL is made canonical
+                self.assertEqual(
+                    "        <url>https://example.com/rss-icon.png</url>",
+                    lines[8])
+                self.assertEqual(
+                    "        <title>My Website</title>",
+                    lines[9])
+                self.assertEqual(
+                    "        <link>https://example.com/</link>",
+                    lines[10])
+                self.assertEqual(
+                    "        <width>32</width>",
+                    lines[11])
+                self.assertEqual(
+                    "        <height>32</height>",
+                    lines[12])
+                self.assertEqual(
+                    "    </image>",
+                    lines[13])
+
+    def test_write_rss_image_url_local_relative_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+            rss_image_file = os.path.join(public_dir, "rss-icon.png")
+
+            os.mkdir(public_dir)
+
+            with open(rss_image_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-image-url", "rss-icon.png")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(
+                    "        <url>https://example.com/rss-icon.png</url>",
+                    lines[8])
+
+    def test_write_rss_image_url_local_path_starting_with_http(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+            rss_image_file = os.path.join(public_dir, "http-icon.png")
+
+            os.mkdir(public_dir)
+
+            with open(rss_image_file, "w") as f:
+                f.close()
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+
+            # a local file name can start with "http" without being
+            # mistaken for a remote URL
+            root.set_header("rss-image-url", "http-icon.png")
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(
+                    "        <url>https://example.com/http-icon.png</url>",
+                    lines[8])
+
+    def test_write_rss_image_url_local_path_not_found(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+            root.set_header("rss-image-url", "/missing-icon.png")
+
+            self.assertRaises(uriel.UrielError,
+                              uriel.write_rss,
+                              project_root,
+                              root)
+
+            self.assertFalse(
+                os.path.exists(os.path.join(public_dir, "rss.xml")))
+
+    def test_write_rss_pubdate_keeps_node_timezone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+
+            foo = uriel.VirtualNode(project_root, "foo", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+            foo.created = \
+                get_datetime_from_date_str("2020-07-04T10:00:00-04:00")
+            foo.modified = foo.created
+
+            root.add_child(foo)
+
+            with TimeZone("Asia/Tokyo"):
+                uriel.write_rss(project_root, root)
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                self.assertTrue(
+                    "<pubDate>Sat, 04 Jul 2020 10:00:00 -0400</pubDate>"
+                    in contents)
 
     def test_write_rss_invalid_max_entries(self):
         c = UrielContainer()
@@ -3792,6 +4534,163 @@ class TestFunctionWriteSitemapIndexAndSitemapFiles(unittest.TestCase):
                               uriel.write_sitemap_index_and_sitemap_files,
                               project_root,
                               root)
+
+    def test_sitemap_exactly_at_capacity_nodes_2_max_files_2_max_entries_1(
+            self):
+
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_index_file = os.path.join(public_dir, "sitemap.xml")
+            sitemap_file1 = os.path.join(public_dir, "sitemap-001.xml")
+            sitemap_file2 = os.path.join(public_dir, "sitemap-002.xml")
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "http://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-index", "true")
+            root.set_header("sitemap-max-files", "2")
+            root.set_header("sitemap-max-entries", "1")
+
+            child1 = uriel.VirtualNode(project_root, "child1", root)
+            root.add_child(child1)
+
+            os.mkdir(public_dir)
+
+            uriel.write_sitemap_index_and_sitemap_files(project_root, root)
+
+            # two nodes exactly fill the two available sitemap files,
+            # so both of them are written, and neither node is dropped
+            self.assertEqual(3, len(c.stderr))
+
+            self.assertTrue("creating '" in c.stderr[0])
+            self.assertTrue("public/sitemap.xml'" in c.stderr[0])
+
+            self.assertTrue("creating '" in c.stderr[1])
+            self.assertTrue("public/sitemap-001.xml'" in c.stderr[1])
+
+            self.assertTrue("creating '" in c.stderr[2])
+            self.assertTrue("public/sitemap-002.xml'" in c.stderr[2])
+
+            self.assertTrue(os.path.exists(sitemap_index_file))
+            self.assertTrue(os.path.exists(sitemap_file1))
+            self.assertTrue(os.path.exists(sitemap_file2))
+
+            with open(sitemap_index_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(12, len(lines))
+
+                self.assertEqual(
+                    '        <loc>http://example.com/sitemap-001.xml</loc>',
+                    lines[3])
+                self.assertEqual(
+                    '        <loc>http://example.com/sitemap-002.xml</loc>',
+                    lines[7])
+                self.assertEqual(
+                    '</sitemapindex>',
+                    lines[10])
+
+            with open(sitemap_file1, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    '        <loc>http://example.com/</loc>',
+                    lines[3])
+
+            with open(sitemap_file2, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    '        <loc>http://example.com/child1/</loc>',
+                    lines[3])
+
+    def test_sitemap_max_files_one(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_index_file = os.path.join(public_dir, "sitemap.xml")
+            sitemap_file1 = os.path.join(public_dir, "sitemap-001.xml")
+            sitemap_file2 = os.path.join(public_dir, "sitemap-002.xml")
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "http://example.com")
+            root.set_header("sitemap-url", "/sitemap.xml")
+            root.set_header("sitemap-index", "true")
+            root.set_header("sitemap-max-files", "1")
+            root.set_header("sitemap-max-entries", "50")
+
+            child1 = uriel.VirtualNode(project_root, "child1", root)
+            root.add_child(child1)
+
+            child2 = uriel.VirtualNode(project_root, "child2", root)
+            root.add_child(child2)
+
+            os.mkdir(public_dir)
+
+            uriel.write_sitemap_index_and_sitemap_files(project_root, root)
+
+            # a single sitemap file is still usable, and holds every node
+            self.assertEqual(2, len(c.stderr))
+
+            self.assertTrue("creating '" in c.stderr[0])
+            self.assertTrue("public/sitemap.xml'" in c.stderr[0])
+
+            self.assertTrue("creating '" in c.stderr[1])
+            self.assertTrue("public/sitemap-001.xml'" in c.stderr[1])
+
+            self.assertTrue(os.path.exists(sitemap_index_file))
+            self.assertTrue(os.path.exists(sitemap_file1))
+            self.assertFalse(os.path.exists(sitemap_file2))
+
+            with open(sitemap_index_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                # the sitemap index is not empty, it refers to the one
+                # sitemap file that was written
+                self.assertEqual(8, len(lines))
+                self.assertEqual(
+                    '    <sitemap>',
+                    lines[2])
+                self.assertEqual(
+                    '        <loc>http://example.com/sitemap-001.xml</loc>',
+                    lines[3])
+                self.assertEqual(
+                    '    </sitemap>',
+                    lines[5])
+                self.assertEqual(
+                    '</sitemapindex>',
+                    lines[6])
+
+            with open(sitemap_file1, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(16, len(lines))
+                self.assertEqual(
+                    '        <loc>http://example.com/</loc>',
+                    lines[3])
+                self.assertEqual(
+                    '        <loc>http://example.com/child1/</loc>',
+                    lines[7])
+                self.assertEqual(
+                    '        <loc>http://example.com/child2/</loc>',
+                    lines[11])
 
     def test_sitemap_index_entries_sorting(self):
         c = UrielContainer()
@@ -4909,6 +5808,32 @@ class TestFunctionWriteSitemapFile(unittest.TestCase):
 
 
 
+    def test_write_sitemap_file_lastmod_keeps_node_timezone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_file = os.path.join(public_dir, "sitemap.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.modified = \
+                get_datetime_from_date_str("2020-07-04T10:00:00-04:00")
+
+            with TimeZone("Asia/Tokyo"):
+                uriel.write_sitemap_file(sitemap_file, [root])
+
+            with open(sitemap_file, "r") as f:
+                contents = f.read()
+
+                self.assertTrue(
+                    "<lastmod>2020-07-04T10:00:00-04:00</lastmod>"
+                    in contents)
+
+
 class TestFunctionWriteSitemap(unittest.TestCase):
     """
     Tests the write_sitemap() function.
@@ -5794,6 +6719,28 @@ class TestFunctionInitModules(unittest.TestCase):
             self.assertEqual(
                 "skipping module initialization, '" + handlers_py + "' not found",
                 c.stderr[1])
+
+    def test_init_modules_lib_dir_is_appended_to_sys_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            lib_dir = os.path.join(project_root, "lib")
+
+            os.mkdir(lib_dir)
+
+            saved_sys_path = list(sys.path)
+
+            try:
+                sys.modules["uriel"] = uriel
+                uriel.init_modules(project_root)
+
+                self.assertEqual(lib_dir, sys.path[-1])
+                self.assertNotEqual(lib_dir, sys.path[0])
+            finally:
+                sys.path = saved_sys_path
+                if "uriel" in sys.modules:
+                    del(sys.modules["uriel"])
 
     def test_init_modules_soju(self):
         c = UrielContainer()

@@ -1,4 +1,5 @@
 import os
+import time
 import shutil
 import tempfile
 import datetime
@@ -38,6 +39,57 @@ class TempDir:
 
         if os.path.isdir(self.__tmp_dir):
             shutil.rmtree(self.__tmp_dir)
+
+class TimeZone:
+    """
+    Context manager class to temporarily change the local time zone, and
+    then restore whatever was set before.
+
+    Usage:
+
+        with TimeZone("America/Los_Angeles"):
+            # do stuff in that time zone...
+
+    """
+
+    def __init__(self, tz):
+        """
+        Accepts the name of the time zone to switch to.
+
+        """
+
+        self.__tz = tz
+        self.__old_tz = None
+
+    def __enter__(self):
+        """
+        Switch the local time zone, and return its name.
+
+        """
+
+        self.__old_tz = os.environ.get("TZ")
+
+        os.environ["TZ"] = self.__tz
+
+        # N.B. setting the TZ environment variable on its own has no
+        #      effect, tzset() has to be called for it to be picked up
+        time.tzset()
+
+        return self.__tz
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """
+        Restore the time zone that was set before __enter__() was called.
+
+        """
+
+        if self.__old_tz is None:
+            del os.environ["TZ"]
+        else:
+            os.environ["TZ"] = self.__old_tz
+
+        time.tzset()
+
 
 class UrielContainer:
     """
@@ -112,17 +164,9 @@ def get_datetime_from_date_str(date_str):
         dt = datetime.datetime.fromisoformat(date_str)
 
         # if the datetime instance doesn't have a time zone,
-        # create a new datetime with the date/time we read from
-        # the date string, augmented with the local time zone
+        # default to the local time zone
         if dt.tzinfo is None:
-            tmp_dt = datetime.datetime.fromtimestamp(
-                dt.timestamp(),
-                datetime.datetime.now(
-                    datetime.timezone.utc
-                ).astimezone().tzinfo
-            )
-
-            dt = tmp_dt
+            dt = dt.astimezone()
 
         # return the datetime with time zone
         return dt
