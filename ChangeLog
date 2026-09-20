@@ -3,7 +3,7 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
-VERSION 1.6.0 (TODO)
+VERSION 1.6.0 (Sep 19 21:42 2026)
 ------------------------------------------------------------------------------
 - Add various performance optimizations
 - Improve RSS-Image-URL validation
