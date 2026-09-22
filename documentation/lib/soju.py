@@ -103,7 +103,7 @@ def example(page, node, project_root, use_canonical_url):
 
     # go through each child node under the Uriel API documentation index,
     # sorted by (title + node path). Title is not always guaranteed to
-    # be unique, so the unique node path will act as a tie breaker in.
+    # be unique, so the unique node path will act as a tie breaker in
     # case any nodes have the same title.
     for child_node in sorted(uriel_api_doc_index_node.get_children(),
                              key=lambda n: n.get_title() + n.get_path()):
