@@ -2249,6 +2249,214 @@ class TestNode(unittest.TestCase):
             self.assertEqual(10, dt.hour)
             self.assertEqual("-0400", dt.strftime("%z"))
 
+    def test_node_get_sort_key_no_created_no_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            node = uriel.VirtualNode(project_root, "index")
+            node.created = None
+            node.modified = None
+
+            self.assertRaises(Exception, node.get_sort_key)
+
+    def test_node_get_sort_key_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            node = uriel.VirtualNode(project_root, "index")
+            node.created = None
+            node.modified = get_datetime_from_date_str("1970-01-02T00:00:00-04:00")
+
+            self.assertEqual(
+                (-node.modified.timestamp(), node.get_title(), node.get_url()),
+                node.get_sort_key())
+
+    def test_node_get_sort_key_created_modified(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            node = uriel.VirtualNode(project_root, "index")
+            node.created = get_datetime_from_date_str("1970-01-02T00:00:00-04:00")
+            node.modified = get_datetime_from_date_str("2000-01-02T00:00:00-04:00")
+
+            self.assertEqual(
+                (-node.created.timestamp(), node.get_title(), node.get_url()),
+                node.get_sort_key())
+
+    def test_node_get_sort_key_created_with_the_same_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "index")
+            a.created = get_datetime_from_date_str("1970-01-02T00:00:00-04:00")
+
+            b = uriel.VirtualNode(project_root, "index")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00-04:00")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_created_with_the_local_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            # a date written without a UTC offset gets the local one
+            # attached to it, so both of these end up with a time zone
+            a = uriel.VirtualNode(project_root, "index")
+            a.created = get_datetime_from_date_str("1970-01-02T00:00:00")
+
+            b = uriel.VirtualNode(project_root, "index")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_created_with_different_time_zones(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            # a date written without a UTC offset gets the local one
+            # attached to it, so both of these end up with a time zone,
+            # but with different offsets
+            #
+            # the local offset varies with the machine running the test,
+            # so the two dates are placed more than 24 hours apart, to
+            # overcome any potential time zone slop
+            a = uriel.VirtualNode(project_root, "index")
+            a.created = get_datetime_from_date_str("1970-01-03T00:00:00")
+
+            b = uriel.VirtualNode(project_root, "index")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00-04:00")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_created_one_without_a_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                # a date without a time zone can not be compared against
+                # one that has a time zone, so both are converted to
+                # seconds since the epoch. the one with a time zone has
+                # to keep its own UTC offset while that happens.
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime.fromisoformat(
+                    "2020-01-01T00:00:00+09:00")
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2019, 12, 31, 20, 0, 0)
+
+                # a is 2019-12-31T15:00Z, b is 2019-12-31T20:00Z, so b is
+                # the more recent of the two, and sorts first
+                self.assertTrue(b.get_sort_key() < a.get_sort_key())
+                self.assertFalse(a.get_sort_key() < b.get_sort_key())
+
+    def test_node_get_sort_key_created_neither_with_a_time_zone(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime(2019, 12, 31, 15, 0, 0)
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2019, 12, 31, 20, 0, 0)
+
+                self.assertTrue(b.get_sort_key() < a.get_sort_key())
+                self.assertFalse(a.get_sort_key() < b.get_sort_key())
+
+    def test_node_get_sort_key_created_without_a_time_zone_sub_second(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TimeZone("UTC"):
+            with TempDir() as project_root:
+                # node modified times come from file mtimes, which carry
+                # microseconds, so dates within the same second are
+                # compared at full precision rather than being treated
+                # as equal
+                a = uriel.VirtualNode(project_root, "a")
+                a.created = datetime.datetime(2020, 1, 1, 0, 0, 0, 0)
+
+                b = uriel.VirtualNode(project_root, "b")
+                b.created = datetime.datetime(2020, 1, 1, 0, 0, 0, 1)
+
+                self.assertTrue(b.get_sort_key() < a.get_sort_key())
+                self.assertFalse(a.get_sort_key() < b.get_sort_key())
+
+    def test_node_get_sort_key_title(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "index")
+            a.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            a.set_header("title", "a")
+
+            b = uriel.VirtualNode(project_root, "index")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            b.set_header("title", "b")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_url(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "a")
+            a.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            a.set_header("title", "foo")
+
+            b = uriel.VirtualNode(project_root, "b")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            b.set_header("title", "foo")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_created_before_title(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "index")
+            a.created = get_datetime_from_date_str("1970-01-02T00:00:00+00:00")
+            a.set_header("title", "b")
+
+            b = uriel.VirtualNode(project_root, "index")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            b.set_header("title", "a")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
+    def test_node_get_sort_key_title_before_url(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "zzzzz")
+            a.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            a.set_header("title", "a")
+
+            b = uriel.VirtualNode(project_root, "aaaaa")
+            b.created = get_datetime_from_date_str("1970-01-01T00:00:00+00:00")
+            b.set_header("title", "b")
+
+            self.assertTrue(a.get_sort_key() < b.get_sort_key())
+            self.assertFalse(a.get_sort_key() > b.get_sort_key())
+
     def test_node_sorting_created_with_the_same_time_zone(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -2422,6 +2630,34 @@ class TestNode(unittest.TestCase):
 
             self.assertTrue(a < b)
             self.assertFalse(a > b)
+
+    def test_node_sorting_with_non_node_type_lt(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "a")
+            b = 42
+
+            try:
+                a < b
+                self.assertTrue(False)
+            except TypeError as e:
+                self.assertTrue(True)
+
+    def test_node_sorting_with_non_node_type_gt(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            a = uriel.VirtualNode(project_root, "a")
+            b = 42
+
+            try:
+                a > b
+                self.assertTrue(False)
+            except TypeError as e:
+                self.assertTrue(True)
 
 
 class TestFileNode(unittest.TestCase):

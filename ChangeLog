@@ -3,6 +3,20 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.6.1 (Sep 23 20:11 2026)
+------------------------------------------------------------------------------
+- Add Page class Token to method dispatch table as a performance optimization
+- Add Node sort key performance optimization
+- Add caching of Node escaped title and non-canonical links
+- Add caching of static URL absolute filesystem paths
+- Add caching of template names to filesystem paths
+- Add fast path for internal lowercase header lookups
+- Add caching of canonical URL validation as a performance optimization
+- Skip redundant file checks for templates already in the token cache
+- Optimize FileNode constructor by only sorting some headers as necessary
+- Defer imports of some modules as a performance optimization
+- Fix minor typos in Soju documentation
+
 VERSION 1.6.0 (Sep 19 21:42 2026)
 ------------------------------------------------------------------------------
 - Add various performance optimizations

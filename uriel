@@ -28,16 +28,18 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 """
 
 # imports
-import ast
 import datetime
-import hashlib
 import os
 import re
 import shutil
 import sys
-import gzip
 import heapq
-import traceback
+
+# deferred imports
+#import ast
+#import hashlib
+#import gzip
+#import traceback
 
 # type hinting imports
 from types import ModuleType
@@ -52,7 +54,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.6.0"
+VERSION = "1.6.1"
 
 # exit codes
 EXIT_OK = 0
@@ -87,9 +89,19 @@ SITEMAP_MAX_FILES = 500
 # (can be overridden via Sitemap-Max-Entries header)
 SITEMAP_MAX_ENTRIES = 50000
 
+# performance optimization
 # static file path -> hashed filename
 static_hash_filenames: Dict[str, str] = {}
 
+# performance optimization
+# (node destination directory, static url) -> absolute path on disk
+static_url_abspaths: Dict[Tuple[str, str], str] = {}
+
+# performance optimization
+# template name -> template file path
+template_file_paths: Dict[str, str] = {}
+
+# performance optimization
 # template file path -> list of (template line, tokens parsed from that line)
 # the tokens in the tuple are optional, many lines don't have parameters
 template_tokens: Dict[str, List[Tuple[str, Optional[List["Token"]]]]] = {}
@@ -480,10 +492,16 @@ class Node:
         #
         # url
         self.url_cache: Optional[str] = None
-        # title
-        self.title_cache: Optional[str] = None
         # name
         self.name_cache: Optional[str] = None
+        # title
+        self.title_cache: Optional[str] = None
+        # escaped title
+        self.escaped_title_cache: Optional[str] = None
+        # link
+        self.link_cache: Optional[str] = None
+        # canonical URL
+        self.canonical_url_base_cache: Optional[str] = None
         #
         # root node cache (always points to the root node, on every node)
         self.root_node_cache = self
@@ -522,8 +540,10 @@ class Node:
 
         # import headers from parent node
         if self.parent_node:
-            # copy parent headers into this node
-            for (key, value) in self.parent_node.get_header_key_values():
+            # to start, copy all parent headers into this node.
+            # we intentionally bypass sorting here for performance.
+            # the key order doesn't matter during this step.
+            for (key, value) in list(self.parent_node.headers.items()):
                 self.set_header(key, value)
 
             # N.B. the order of header processing in this block is important,
@@ -548,13 +568,21 @@ class Node:
             #      which prevents ++foo from overwriting +foo before being set
 
             # +
-            for key in reversed(self.get_header_keys()):
+            # go through each header, and put the + headers in a separate list
+            plus_keys = []
+            for key in self.headers:
                 if key.startswith("+"):
-                    plus_key = key
-                    stripped_key = key[1:]
-                    value = self.get_header(plus_key)
-                    self.set_header(stripped_key, value)
-                    self.delete_header(plus_key)
+                    plus_keys.append(key)
+
+            # if we have any + headers, go through them in sorted order,
+            # and apply them to this node. this two step pass with partial
+            # sorting is a performance optimization.
+            for key in reversed(sorted(plus_keys)):
+                plus_key = key
+                stripped_key = key[1:]
+                value = self.get_header(plus_key)
+                self.set_header(stripped_key, value)
+                self.delete_header(plus_key)
 
             # -
             self._process_minus_headers()
@@ -576,38 +604,47 @@ class Node:
 
         """
 
-        # go through each key, in reverse sorted order
+        # go through each "-" key, in reverse sorted order
         #
         # N.B. --foo naturally sorts before -foo, but when reversed,
         #      --foo will be processed after -foo.
         #      this is important, because -foo removes foo,
         #      --foo removes -foo, etc.
-        for key in reversed(self.get_header_keys()):
+
+        # pick out only the "-" keys
+        minus_keys = []
+        for key in self.headers:
+            if key.startswith("-"):
+                minus_keys.append(key)
+
+        # go through only the "-" keys in reverse sorted order
+        # this two-step pass and partial sorting is a performance optimization
+        for key in reversed(sorted(minus_keys)):
             # if a header starts with a "-", and has a value of "*",
             # it's an instruction to remove that header from this Node
             # (e.g. -Foo: *)
-            if key.startswith("-"):
-                # -Foo
-                minus_key = key
 
-                # Foo
-                remove_key = key[1:]
+            # -Foo
+            minus_key = key
 
-                # value of -Foo (ideally *)
-                value = self.get_header(minus_key)
+            # Foo
+            remove_key = key[1:]
 
-                if "*" != value:
-                    err = "invalid header in node '%s': '%s': '%s' " + \
-                          "(value must be '*')"
-                    raise UrielError(
-                        err % (self.get_path(), minus_key, value))
+            # value of -Foo (ideally *)
+            value = self.get_header(minus_key)
 
-                # remove the header this key refers to
-                if self.has_header(remove_key):
-                    self.delete_header(remove_key)
+            if "*" != value:
+                err = "invalid header in node '%s': '%s': '%s' " + \
+                      "(value must be '*')"
+                raise UrielError(
+                    err % (self.get_path(), minus_key, value))
 
-                # remove the "-" key itself, now that it has been acted on
-                self.delete_header(minus_key)
+            # remove the header this key refers to
+            if self.has_header(remove_key):
+                self.delete_header(remove_key)
+
+            # remove the "-" key itself, now that it has been acted on
+            self.delete_header(minus_key)
 
     def get_parent_node(self) -> Optional["Node"]:
         """
@@ -660,7 +697,7 @@ class Node:
         # if the child nodes have not already been pre-sorted,
         # sort them now, in place, and remember that we did
         if not self.child_nodes_presorted:
-            self.children = sorted(self.children)
+            self.children = sorted(self.children, key=Node.get_sort_key)
             self.child_nodes_presorted = True
 
         # return the (pre-sorted) child nodes
@@ -749,6 +786,11 @@ class Node:
 
         """
 
+        # return the canonical URL from cache, if possible
+        if self.canonical_url_base_cache is not None:
+            return self.canonical_url_base_cache
+
+        # make sure the Canonical-URL header is set
         if not self.has_header("canonical-url"):
             raise UrielError(
                 "Canonical-URL not set, but required by node '%s'" %
@@ -761,6 +803,9 @@ class Node:
             err = "invalid Canonical-URL header value in node " + \
                   "'%s': '%s' (can not end with a '/')"
             raise UrielError(err % (self.get_path(), canonical_url_base))
+
+        # cache the results for next time
+        self.canonical_url_base_cache = canonical_url_base
 
         return canonical_url_base
 
@@ -864,6 +909,7 @@ class Node:
 
         """
 
+        # if the title is already cached, return it
         if self.title_cache is not None:
             return self.title_cache
 
@@ -887,10 +933,18 @@ class Node:
 
         """
 
-        if self.get_boolean_header_value("escape-title", True):
-            return escape(self.get_title())
+        # if the escaped title is already cached, return it
+        if self.escaped_title_cache is not None:
+            return self.escaped_title_cache
 
-        return self.get_title()
+        # if the Escape-Title header is set, escape the title
+        if self.get_boolean_header_value("escape-title", True):
+            self.escaped_title_cache = escape(self.get_title())
+        else:
+            self.escaped_title_cache = self.get_title()
+
+        # return the cached value
+        return self.escaped_title_cache
 
     def get_link(self) -> str:
         """
@@ -900,8 +954,16 @@ class Node:
 
         """
 
-        return "<a href=\"" + self.get_url() + "\">" + \
+        # if the link is already cached, return it
+        if self.link_cache is not None:
+            return self.link_cache
+
+        # cache the link
+        self.link_cache = "<a href=\"" + self.get_url() + "\">" + \
                self.get_escaped_title() + "</a>"
+
+        # return the cached link
+        return self.link_cache
 
     def get_canonical_link(self) -> str:
         """
@@ -1041,10 +1103,17 @@ class Node:
         """
 
         # canonicalize the header name to lowercase
-        lc_header = header.lower()
+        #
+        # performance optimization: look it up directly first in lowercase,
+        # and only convert to lowercase if we don't find a match
+        lc_header = header
+        value = self.headers.get(lc_header)
+        if value is None:
+            lc_header = header.lower()
+            value = self.headers.get(lc_header)
 
-        if self.has_header(lc_header):
-            value = self.get_header(lc_header)
+        # if we found a value for this header, interpret it
+        if value is not None:
             if "true" == value:
                 return True
             elif "false" == value:
@@ -1054,6 +1123,8 @@ class Node:
                       "header in node '%s': '%s'"
                 raise UrielError(err % (header, self.get_path(), value))
 
+        # if we didn't have a value for this header,
+        # return the requested default value instead
         return default
 
     def get_format(self) -> str:
@@ -1339,12 +1410,21 @@ class Node:
         # canonicalize to lowercase
         header = header.lower()
 
-        # headers affecting title_cache field
+        # headers affecting title-related fields
         if "title" == header:
             self.title_cache = None
+            self.escaped_title_cache = None
+            self.link_cache = None
             return
         if "escape-title" == header:
             self.title_cache = None
+            self.escaped_title_cache = None
+            self.link_cache = None
+            return
+
+        # headers affecting canonical URL
+        if "canonical-url" == header:
+            self.canonical_url_base_cache = None
             return
 
         # headers affecting sorted_tags_cache field
@@ -1377,6 +1457,9 @@ class Node:
         # invalidate the URL cache for this node
         self.url_cache = None
 
+        # invalidate cached link (which contains the URL)
+        self.link_cache = None
+
         # invalidate the URL cache for our child nodes recursively
         #
         # child nodes of this node have URLs that are based on this node,
@@ -1398,13 +1481,13 @@ class Node:
 
         """
 
-        # canonicalize to lowercase
-        header = header.lower()
-
+        # check to see if the header is set first, without lowercasing it
         if header in self.headers:
             return True
 
-        return False
+        # canonicalize to lowercase, and return a boolean value
+        # indicating whether the header is set on this node
+        return header.lower() in self.headers
 
     def get_header(self, header: str) -> str:
         """
@@ -1412,12 +1495,20 @@ class Node:
 
         Inside the program, headers should all be lowercase.
 
+        Returns the value associated with this header, or raises a KeyError
+        if the header is not set.
+
         """
 
-        # canonicalize to lowercase
-        header = header.lower()
+        # check to see if we have the header first, without lowercasing it
+        try:
+            return self.headers[header]
+        except KeyError:
+            pass
 
-        return self.headers[header]
+        # canonicalize to lowercase, and return the value of the header,
+        # or raise a KeyError if the header is not found.
+        return self.headers[header.lower()]
 
     def set_header(self, header: str, value: str) -> None:
         """
@@ -1500,52 +1591,61 @@ class Node:
                   "'%s': '%s'"
             raise UrielError(err % (self.get_path(), date_str))
 
-    def __lt__(self, other):
+    def get_sort_key(self) -> Tuple[float, str, str]:
         """
-        Sort Node instances by:
+        Get a Node sort key.
+
+        Node instances are sorted by (in order):
             date descending (created if available, otherwise modified)
             title ascending
             URL ascending
+
+        N.B. The exact format and type returned by this method is
+             subject to change in the future. The intended use of this
+             method is to use it to compare the relative sort ordering
+             of two different nodes, e.g.:
+
+                if node1.get_sort_key() < node2.get_sort_key():
+                    # do something
+
+             Since Node __lt__() references this method directly, it
+             is usually a better choice to just sort Node, FileNode,
+             and VirtualObjects together, and let __lt__() handle it.
 
         """
 
         # self and other candidate dates
         # created isn't always set, but modified is always available
-
-        self_date = self.modified
+        date = self.modified
         if self.created:
-            self_date = self.created
+            date = self.created
 
-        other_date = other.modified
-        if other.created:
-            other_date = other.created
+        # every Node should always at least have a modified time set
+        if date is None:
+            raise Exception("node '%s' does not have a modified date" % \
+                            (self.get_path()))
 
-        # sort by date
-        if self_date != other_date:
-            # try to use time zones
-            if self_date.tzinfo and other_date.tzinfo:
-                return self_date > other_date
+        # sort by (in order):
+        #
+        # date (descending, newest to oldest)
+        # title (ascending)
+        # URL (ascending, guaranteed to be unique)
+        return (-date.timestamp(), self.get_title(), self.get_url())
 
-            # fall back to comparing dates without time zones
-            #
-            # N.B. a datetime without a time zone can not be compared
-            #      against one that has a time zone, so both of them are
-            #      turned into seconds since the epoch instead.
-            #      timestamp() reads a datetime without a time zone as
-            #      local time, and uses the UTC offset associated with a
-            #      datetime that has a time zone.
-            else:
-                return self_date.timestamp() > other_date.timestamp()
+    def __lt__(self, other):
+        """
+        Sort Node instances, according to get_sort_key().
 
-        # then by title
-        self_title = self.get_title()
-        other_title = other.get_title()
+        """
 
-        if self_title != other_title:
-            return self_title < other_title
+        # Node classes and subclasses can only be compared to each other
+        if not isinstance(other, Node):
+            raise TypeError(
+                "'<' not supported between instances of '%s' and '%s'" %
+                (type(self).__name__, type(other).__name__))
 
-        # and finally by URL (which is unique)
-        return self.get_url() < other.get_url()
+        # ordering is defined by Node sort keys
+        return self.get_sort_key() < other.get_sort_key()
 
     def __str__(self) -> str:
         return self.get_path()
@@ -1649,35 +1749,43 @@ class FileNode(Node):
         # process "-" headers that were set in this node file
         self._process_minus_headers()
 
+        #
         # process other special headers
-        for key in self.get_header_keys():
-            value = self.get_header(key)
+        #
 
-            # Created
-            if "created" == key:
-                try:
-                    self.created = self.get_datetime_from_date_str(value)
-                except UrielError as e:
-                    err = "invalid Created date header value in node " + \
-                          "'%s': '%s'"
-                    raise UrielError(err % (self.get_path(), value))
+        # get our own local reference to the headers data structure for
+        # convenience, since we refer to it extensively in the stanzas below
+        headers = self.headers
 
-            # Modified
-            elif "modified" == key:
-                try:
-                    self.modified = self.get_datetime_from_date_str(value)
-                except UrielError as e:
-                    err = "invalid Modified date header value in node " + \
-                          "'%s': '%s'"
-                    raise UrielError(err % (self.get_path(), value))
+        # Canonical-URL
+        if "canonical-url" in headers:
+            # called for fail-fast validation side effects
+            self.get_canonical_url_base()
 
-            # Format
-            elif "format" == key:
-                self.get_format()
+        # Created
+        if "created" in headers:
+            value = headers["created"]
+            try:
+                self.created = self.get_datetime_from_date_str(value)
+            except UrielError as e:
+                err = "invalid Created date header value in node " + \
+                      "'%s': '%s'"
+                raise UrielError(err % (self.get_path(), value))
 
-            # Canonical-URL
-            elif "canonical-url" == key:
-                self.get_canonical_url_base()
+        # Format
+        if "format" in headers:
+            # called for fail-fast validation side effects
+            self.get_format()
+
+        # Modified
+        if "modified" in headers:
+            value = headers["modified"]
+            try:
+                self.modified = self.get_datetime_from_date_str(value)
+            except UrielError as e:
+                err = "invalid Modified date header value in node " + \
+                      "'%s': '%s'"
+                raise UrielError(err % (self.get_path(), value))
 
         # remember the body as a string
         self.body = "\n".join(body_lines)
@@ -2112,6 +2220,9 @@ class Page:
         # don't export the "self" reference from this method into eval code
         del(self)
 
+        # deferred import
+        import ast
+
         # check whether the syntax of the code inside of the soju token value
         # is syntactically valid python. this does not execute the code yet,
         # and the symbols don't necessarily have to exist. it just checks
@@ -2294,12 +2405,20 @@ class Page:
         self.validate_template_name(token, token.value)
 
         # get the path to the template file
-        template_file = os.path.join(self.project_root,
-                                     TEMPLATES_ROOT,
-                                     token.value)
+        template_file = template_file_paths.get(token.value)
+        if template_file is None:
+            template_file = os.path.join(self.project_root,
+                                         TEMPLATES_ROOT,
+                                         token.value)
+            template_file_paths[token.value] = template_file
 
         # make sure the template exists
-        if not os.path.exists(template_file):
+        #
+        # N.B. we have to check the cache, and the filesystem.
+        #      in that order. if it's in the cache, we don't need to check
+        #      the filesystem again.
+        if (template_file not in template_tokens) and \
+                (not os.path.exists(template_file)):
             self.line_error(
                 token,
                 "include file not found: '%s'" %
@@ -2458,6 +2577,17 @@ class Page:
 
         """
 
+        # create a cache key to look up the cache entry for this path
+        if url.startswith("/"):
+            cache_key = ("", url)
+        else:
+            cache_key = (self.node.get_dest_dir(), url)
+
+        # if this path has already been cached, return it
+        cached_abspath = static_url_abspaths.get(cache_key)
+        if cached_abspath is not None:
+            return cached_abspath
+
         # prevent directory traversal links for static URLs
         if is_directory_traversal_attempt(url):
             self.line_error(
@@ -2479,7 +2609,14 @@ class Page:
         else:
             static_url_dirent = self.node.get_dest_dir() + "/" + url
 
-        return os.path.abspath(static_url_dirent)
+        # figure out the absolute filesystem path to the file
+        abspath = os.path.abspath(static_url_dirent)
+
+        # cache the results
+        static_url_abspaths[cache_key] = abspath
+
+        # return the absolute path
+        return abspath
 
     def merge_token_static_url(self, token: Token) -> str:
         """
@@ -2537,6 +2674,9 @@ class Page:
             # split the source filename into a base name and a file
             # extension
             (basename, file_ext) = os.path.splitext(src_base_filename)
+
+            # deferred import
+            import hashlib
 
             # hash the file contents
             md5_hash = hashlib.md5()
@@ -2832,98 +2972,21 @@ class Page:
         Merge the contents of a single token, and return the results.
 
         """
-
         # literal
         if Token.LITERAL == token.type:
             return self.merge_token_literal(token)
 
-        # {{value:*}}
-        elif Token.VALUE == token.type:
-            return self.merge_token_value(token)
-
-        # {{value-unescaped:*}}
-        elif Token.VALUE_UNESCAPED == token.type:
-            return self.merge_token_value_unescaped(token)
-
-        # {{include:*}}
-        elif Token.INCLUDE == token.type:
-            return self.merge_token_include(token)
-
-        # {{created:*}}
-        elif Token.CREATED == token.type:
-            return self.merge_token_created(token)
-
-        # {{modified:*}}
-        elif Token.MODIFIED == token.type:
-            return self.merge_token_modified(token)
-
-        # {{oldest:*}}
-        elif Token.OLDEST == token.type:
-            return self.merge_token_oldest(token)
-
-        # {{latest:*}}
-        elif Token.LATEST == token.type:
-            return self.merge_token_latest(token)
-
-        # {{breadcrumbs:*}}
-        elif Token.BREADCRUMBS == token.type:
-            return self.merge_token_breadcrumbs(token)
-
-        # {{breadcrumbs-root:*}}
-        elif Token.BREADCRUMBS_ROOT == token.type:
-            return self.merge_token_breadcrumbs_root(token)
-
-        # {{static-url:*}}
-        elif Token.STATIC_URL == token.type:
-            return self.merge_token_static_url(token)
-
-        # {{static-hash-url:*}}
-        elif Token.STATIC_HASH_URL == token.type:
-            return self.merge_token_static_hash_url(token)
-
-        # {{rss:*}}
-        elif Token.RSS == token.type:
-            return self.merge_token_rss(token)
-
-        # {{node:*}}
-        elif Token.NODE == token.type:
-            return self.merge_token_node(token)
-
-        # {{node-url:*}}
-        elif Token.NODE_URL == token.type:
-            return self.merge_token_node_url(token)
-
-        # {{node-name:*}}
-        elif Token.NODE_NAME == token.type:
-            return self.merge_token_node_name(token)
-
-        # {{node-title:*}}
-        elif Token.NODE_TITLE == token.type:
-            return self.merge_token_node_title(token)
-
-        # {{node-link:*}}
-        elif Token.NODE_LINK == token.type:
-            return self.merge_token_node_link(token)
-
-        # {{node-list:*}}
-        elif Token.NODE_LIST == token.type:
-            return self.merge_token_node_list(token)
-
-        # {{tag-list:*}}
-        elif Token.TAG_LIST == token.type:
-            return self.merge_token_tag_list(token)
-
-        # {{soju:*}}
-        elif Token.SOJU == token.type:
-            return self.merge_token_soju(token)
+        # substitution parameter
+        handler = _PAGE_MERGE_TOKEN_DISPATCH.get(token.type)
+        if handler is not None:
+            return handler(self, token)
 
         # unknown
-        else:
-            self.line_error(
-                token,
-                "invalid parameter or value: '%s'" %
-                (token.original_string))
-            raise _ImpossibleError()
+        self.line_error(
+            token,
+            "invalid parameter or value: '%s'" %
+            (token.original_string))
+        raise _ImpossibleError()
 
     def merge_line(self, line: str) -> str:
         """
@@ -3088,9 +3151,12 @@ class Page:
         self.validate_template_name(Token("Template: " + template), template)
 
         # get the path to the template file
-        template_file = os.path.join(self.project_root,
-                                     TEMPLATES_ROOT,
-                                     template)
+        template_file = template_file_paths.get(template)
+        if template_file is None:
+            template_file = os.path.join(self.project_root,
+                                         TEMPLATES_ROOT,
+                                         template)
+            template_file_paths[template] = template_file
 
         # if Template is set to "null"
         if "null" == self.template:
@@ -3189,6 +3255,32 @@ class Page:
         return str(self.node) + " [" + self.template + "]"
 
 
+# performance optimization:
+# Token type -> Page merge_token_* method dispatch
+_PAGE_MERGE_TOKEN_DISPATCH: Dict[Optional[str], Any] = {
+    Token.VALUE: Page.merge_token_value,
+    Token.VALUE_UNESCAPED: Page.merge_token_value_unescaped,
+    Token.INCLUDE: Page.merge_token_include,
+    Token.CREATED: Page.merge_token_created,
+    Token.MODIFIED: Page.merge_token_modified,
+    Token.OLDEST: Page.merge_token_oldest,
+    Token.LATEST: Page.merge_token_latest,
+    Token.BREADCRUMBS: Page.merge_token_breadcrumbs,
+    Token.BREADCRUMBS_ROOT: Page.merge_token_breadcrumbs_root,
+    Token.STATIC_URL: Page.merge_token_static_url,
+    Token.STATIC_HASH_URL: Page.merge_token_static_hash_url,
+    Token.RSS: Page.merge_token_rss,
+    Token.NODE: Page.merge_token_node,
+    Token.NODE_URL: Page.merge_token_node_url,
+    Token.NODE_NAME: Page.merge_token_node_name,
+    Token.NODE_TITLE: Page.merge_token_node_title,
+    Token.NODE_LINK: Page.merge_token_node_link,
+    Token.NODE_LIST: Page.merge_token_node_list,
+    Token.TAG_LIST: Page.merge_token_tag_list,
+    Token.SOJU: Page.merge_token_soju,
+}
+
+
 class FileWriter:
     """
     Writes an individual file to disk.
@@ -3268,6 +3360,9 @@ class GzipFileWriter:
         Accepts the path to the file, and an optional write mode.
 
         """
+
+        # deferred import
+        import gzip
 
         self.path = path
         self.mode = mode
@@ -3469,6 +3564,9 @@ def log_filtered_traceback(e: Exception, filter_string: str) -> None:
     matches the filter string.
 
     """
+
+    # deferred import
+    import traceback
 
     # extract a subset of the traceback from the exception we
     # caught, starting with the entry point into the user-defined
@@ -4106,7 +4204,7 @@ def create_tag_node_tree(project_root: str,
         # __Tag-List-HTML
         lines = []
         canonical_lines = []
-        for node in sorted(tag_node_index[tag]):
+        for node in sorted(tag_node_index[tag], key=Node.get_sort_key):
             line = link_prefix + node.get_link() + link_suffix
             lines.append(line)
 
@@ -4645,7 +4743,9 @@ def write_rss(project_root: str, root_node: Node) -> None:
     nodes_to_write = []
 
     # pick out the most recent eligible nodes for inclusion
-    for node in heapq.nsmallest(rss_max_entries, eligible_node_set):
+    for node in heapq.nsmallest(rss_max_entries,
+                                eligible_node_set,
+                                key=Node.get_sort_key):
         nodes_to_write.append(node)
 
     # write the RSS file
