@@ -3,6 +3,20 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.7.0 (Nov 9 18:43 2026)
+------------------------------------------------------------------------------
+- Add URL encoding to generated node URLs and links
+- Add URL encoding to static URL and static hash URL file references
+- Add URL encoding to robots.txt if sitemap file has special characters
+- Add URL encoding to generated sitemap and sitemap index files
+- Add URL encoding to generated RSS URLs
+- Add URL encoding to {{rss:url}} substitution parameter
+- Add encode_url_path() function
+- Export encode_url_path() function into soju and handlers
+- Add Node get_encoded_url() method
+- Add URLENCODE_ASCII_CHARS constant
+- Allow spaces and other special characters in tags
+
 VERSION 1.6.1 (Sep 23 20:11 2026)
 ------------------------------------------------------------------------------
 - Add Page class Token to method dispatch table as a performance optimization

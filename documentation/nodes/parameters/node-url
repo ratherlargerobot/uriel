@@ -13,6 +13,11 @@ RSS-Include: true
 <p>For example: <a href="{{node:url}}">{{node:url}}</a></p>
 
 <p>
+    The value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> is URL
+    encoded, and is safe to include in HTML links.
+</p>
+
+<p>
     Compare this with {{node-link:parameters/node-url-some-other-node}}, which
     lets you get the URL of another node on the web site.
 </p>

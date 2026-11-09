@@ -8,6 +8,7 @@
 # from uriel import SojuError
 # from uriel import log
 # from uriel import escape
+# from uriel import encode_url_path
 
 # The following variables are available to pass to functions:
 #

@@ -4,7 +4,7 @@
     <title>Uriel Documentation</title>
     <link>http://localhost:8000/</link>
     <description>Uriel Documentation</description>
-    <lastBuildDate>Wed, 23 Sep 2026 22:09:49 -0400</lastBuildDate>
+    <lastBuildDate>Mon, 09 Nov 2026 18:43:26 -0500</lastBuildDate>
     <image>
         <url>http://localhost:8000/favicon-32x32.png</url>
         <title>Uriel Documentation</title>
@@ -12,6 +12,144 @@
         <width>32</width>
         <height>32</height>
     </image>
+    <item>
+        <title>{{node-url:foo/bar}}</title>
+        <link>http://localhost:8000/parameters/node-url-some-other-node/</link>
+        <description><![CDATA[<h1>{{node-url:foo/bar}}</h1>
+
+<p>
+    The <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b>
+    parameter evaluates to the URL for the node specified in the rvalue
+    portion of the parameter. Nodes are specified as paths starting from the
+    <a href="http://localhost:8000/directories/nodes/">nodes</a> directory.
+</p>
+
+<p>
+    For example, on this documentation site, we have another node with the
+    path <i>parameters/some-other-node</i>.
+</p>
+
+<p>
+    If we reference it using <i>parameters/some-other-node</i> as the rvalue,
+    then
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    The value of <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b> is
+    URL encoded, and is safe to include in HTML links.
+</p>
+
+<p>
+    Compare this with <a href="http://localhost:8000/parameters/node-url/">{{node:url}}</a>, which lets you get
+    the URL of the current node.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<pre>/parameters/some-other-node/</pre>
+
+<p>
+    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
+    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    The actual value of
+    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
+    in the current context evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/some-other-node/</pre>
+
+<p>
+    View this in both the <a href="http://localhost:8000/parameters/node-url-some-other-node/">web page</a> and the
+    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
+</p>]]></description>
+        <category>parameters</category>
+        <pubDate>Mon, 09 Nov 2026 18:34:13 -0500</pubDate>
+    </item>
+    <item>
+        <title>{{node:url}}</title>
+        <link>http://localhost:8000/parameters/node-url/</link>
+        <description><![CDATA[<h1>{{node:url}}</h1>
+
+<p>
+    The <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> parameter evaluates
+    to the URL for the current node.
+</p>
+
+<h3>Typical Usage</h3>
+
+<p>Use this when you need to get the URL for the current page.</p>
+
+<p>For example: <a href="http://localhost:8000/parameters/node-url/">http://localhost:8000/parameters/node-url/</a></p>
+
+<p>
+    The value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> is URL
+    encoded, and is safe to include in HTML links.
+</p>
+
+<p>
+    Compare this with <a href="http://localhost:8000/parameters/node-url-some-other-node/">{{node-url:foo/bar}}</a>, which
+    lets you get the URL of another node on the web site.
+</p>
+
+<h3>URL Representation in HTML vs. RSS</h3>
+
+<p>
+    In generated HTML pages, the URL will include the full path to the URL
+    from the root of the web site, but will not include the domain name. Like
+    this:
+</p>
+
+<pre>/parameters/node-url/</pre>
+
+<p>
+    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
+    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
+</p>
+
+<pre>http://localhost:8000/parameters/node-url/</pre>
+
+<p>
+    The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
+    current context evaluates to:
+</p>
+
+<pre>http://localhost:8000/parameters/node-url/</pre>
+
+<p>
+    View this in both the <a href="http://localhost:8000/parameters/node-url/">web page</a> and the
+    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
+</p>]]></description>
+        <category>parameters</category>
+        <pubDate>Mon, 09 Nov 2026 18:31:14 -0500</pubDate>
+    </item>
+    <item>
+        <title>VirtualNode Example</title>
+        <link>http://localhost:8000/handlers/virtual/</link>
+        <description><![CDATA[<h1>VirtualNode Example</h1>
+
+<p>Hello from a VirtualNode.</p>
+
+<p>See the <a href="http://localhost:8000/handlers/">Handlers</a> page for more details.</p>
+
+<p>This is a special message for RSS readers only.</p>]]></description>
+        <category>user-defined-python-code</category>
+        <pubDate>Thu, 29 Oct 2026 23:55:41 -0400</pubDate>
+    </item>
     <item>
         <title>Soju</title>
         <link>http://localhost:8000/soju/</link>
@@ -58,6 +196,7 @@
 # from uriel import SojuError
 # from uriel import log
 # from uriel import escape
+# from uriel import encode_url_path
 
 # The following variables are available to pass to functions:
 #
@@ -255,7 +394,7 @@ def example(page, node, project_root, use_canonical_url):
 
 <pre>Hello from the <b>example()</b> function!
 
-Generated by uriel version 1.6.1
+Generated by uriel version 1.7.0
 
 page:              soju [null]
 node:              soju
@@ -365,135 +504,7 @@ parameter error:
           'oops'
 soju: error in function call to 'soju.example(page, node, project_root, use_canonical_url)': 'oops'</pre>]]></description>
         <category>user-defined-python-code</category>
-        <pubDate>Tue, 22 Sep 2026 16:35:02 -0400</pubDate>
-    </item>
-    <item>
-        <title>VirtualNode Example</title>
-        <link>http://localhost:8000/handlers/virtual/</link>
-        <description><![CDATA[<h1>VirtualNode Example</h1>
-
-<p>Hello from a VirtualNode.</p>
-
-<p>See the <a href="http://localhost:8000/handlers/">Handlers</a> page for more details.</p>
-
-<p>This is a special message for RSS readers only.</p>]]></description>
-        <category>user-defined-python-code</category>
-        <pubDate>Thu, 23 Jul 2026 17:16:28 -0400</pubDate>
-    </item>
-    <item>
-        <title>{{node-url:foo/bar}}</title>
-        <link>http://localhost:8000/parameters/node-url-some-other-node/</link>
-        <description><![CDATA[<h1>{{node-url:foo/bar}}</h1>
-
-<p>
-    The <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b>
-    parameter evaluates to the URL for the node specified in the rvalue
-    portion of the parameter. Nodes are specified as paths starting from the
-    <a href="http://localhost:8000/directories/nodes/">nodes</a> directory.
-</p>
-
-<p>
-    For example, on this documentation site, we have another node with the
-    path <i>parameters/some-other-node</i>.
-</p>
-
-<p>
-    If we reference it using <i>parameters/some-other-node</i> as the rvalue,
-    then
-    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
-    evaluates to:
-</p>
-
-<pre>http://localhost:8000/parameters/some-other-node/</pre>
-
-<p>
-    Compare this with <a href="http://localhost:8000/parameters/node-url/">{{node:url}}</a>, which lets you get
-    the URL of the current node.
-</p>
-
-<h3>URL Representation in HTML vs. RSS</h3>
-
-<p>
-    In generated HTML pages, the URL will include the full path to the URL
-    from the root of the web site, but will not include the domain name. Like
-    this:
-</p>
-
-<pre>/parameters/some-other-node/</pre>
-
-<p>
-    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
-    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
-</p>
-
-<pre>http://localhost:8000/parameters/some-other-node/</pre>
-
-<p>
-    The actual value of
-    <b>&lbrace;&lbrace;node-url:parameters/some-other-node&rbrace;&rbrace;</b>
-    in the current context evaluates to:
-</p>
-
-<pre>http://localhost:8000/parameters/some-other-node/</pre>
-
-<p>
-    View this in both the <a href="http://localhost:8000/parameters/node-url-some-other-node/">web page</a> and the
-    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
-</p>]]></description>
-        <category>parameters</category>
-        <pubDate>Sun, 14 Jun 2026 18:41:42 -0400</pubDate>
-    </item>
-    <item>
-        <title>{{node:url}}</title>
-        <link>http://localhost:8000/parameters/node-url/</link>
-        <description><![CDATA[<h1>{{node:url}}</h1>
-
-<p>
-    The <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> parameter evaluates
-    to the URL for the current node.
-</p>
-
-<h3>Typical Usage</h3>
-
-<p>Use this when you need to get the URL for the current page.</p>
-
-<p>For example: <a href="http://localhost:8000/parameters/node-url/">http://localhost:8000/parameters/node-url/</a></p>
-
-<p>
-    Compare this with <a href="http://localhost:8000/parameters/node-url-some-other-node/">{{node-url:foo/bar}}</a>, which
-    lets you get the URL of another node on the web site.
-</p>
-
-<h3>URL Representation in HTML vs. RSS</h3>
-
-<p>
-    In generated HTML pages, the URL will include the full path to the URL
-    from the root of the web site, but will not include the domain name. Like
-    this:
-</p>
-
-<pre>/parameters/node-url/</pre>
-
-<p>
-    In the <a href="http://localhost:8000/generated/">generated RSS feed</a>, the URL
-    will include the <a href="http://localhost:8000/headers/canonical-url/">Canonical-URL</a>. Like this:
-</p>
-
-<pre>http://localhost:8000/parameters/node-url/</pre>
-
-<p>
-    The actual value of <b>&lbrace;&lbrace;node:url&rbrace;&rbrace;</b> in the
-    current context evaluates to:
-</p>
-
-<pre>http://localhost:8000/parameters/node-url/</pre>
-
-<p>
-    View this in both the <a href="http://localhost:8000/parameters/node-url/">web page</a> and the
-    <a href="http://localhost:8000/rss.xml">RSS feed</a>, and compare the results.
-</p>]]></description>
-        <category>parameters</category>
-        <pubDate>Sun, 14 Jun 2026 18:40:42 -0400</pubDate>
+        <pubDate>Thu, 29 Oct 2026 23:55:36 -0400</pubDate>
     </item>
     <item>
         <title>RSS-Add-Node-Title-Header: true</title>

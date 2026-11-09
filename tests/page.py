@@ -2316,12 +2316,27 @@ class TestPage(unittest.TestCase):
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
-            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo = uriel.VirtualNode(project_root, "foo bar/index", root)
 
             page = uriel.Page(project_root, foo)
 
             self.assertEqual(
-                "/foo/",
+                "/foo%20bar/",
+                page.merge_token_node(uriel.Token("{{node:url}}")))
+
+    def test_merge_token_node_colon_url_canonical(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            foo = uriel.VirtualNode(project_root, "foo bar/index", root)
+
+            page = uriel.Page(project_root, foo, use_canonical_url=True)
+
+            self.assertEqual(
+                "https://example.com/foo%20bar/",
                 page.merge_token_node(uriel.Token("{{node:url}}")))
 
     def test_merge_token_node_colon_name(self):
@@ -2358,12 +2373,12 @@ class TestPage(unittest.TestCase):
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
-            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            foo = uriel.VirtualNode(project_root, "foo bar/index", root)
 
             page = uriel.Page(project_root, foo)
 
             self.assertEqual(
-                "<a href=\"/foo/\">Foo</a>",
+                "<a href=\"/foo%20bar/\">Foo Bar</a>",
                 page.merge_token_node(uriel.Token("{{node:link}}")))
 
     def test_merge_token_node_invalid_value(self):
@@ -2387,7 +2402,7 @@ class TestPage(unittest.TestCase):
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
-            child = uriel.VirtualNode(project_root, "child/index", root)
+            child = uriel.VirtualNode(project_root, "child node/index", root)
             root.add_child(child)
 
             page = uriel.Page(project_root, root)
@@ -2397,8 +2412,8 @@ class TestPage(unittest.TestCase):
                 page.merge_token_node_url(uriel.Token("{{node-url:index}}")))
 
             self.assertEqual(
-                "/child/",
-                page.merge_token_node_url(uriel.Token("{{node-url:child/index}}")))
+                "/child%20node/",
+                page.merge_token_node_url(uriel.Token("{{node-url:child node/index}}")))
 
             self.assertRaises(
                 uriel.UrielError,
@@ -2412,7 +2427,7 @@ class TestPage(unittest.TestCase):
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("canonical-url", "https://example.com")
-            child = uriel.VirtualNode(project_root, "child/index", root)
+            child = uriel.VirtualNode(project_root, "child node/index", root)
             root.add_child(child)
 
             page = uriel.Page(project_root, root, use_canonical_url=True)
@@ -2422,8 +2437,8 @@ class TestPage(unittest.TestCase):
                 page.merge_token_node_url(uriel.Token("{{node-url:index}}")))
 
             self.assertEqual(
-                "https://example.com/child/",
-                page.merge_token_node_url(uriel.Token("{{node-url:child/index}}")))
+                "https://example.com/child%20node/",
+                page.merge_token_node_url(uriel.Token("{{node-url:child node/index}}")))
 
             self.assertRaises(
                 uriel.UrielError,
@@ -2489,7 +2504,7 @@ class TestPage(unittest.TestCase):
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
 
-            child = uriel.VirtualNode(project_root, "child/index", root)
+            child = uriel.VirtualNode(project_root, "child node/index", root)
             root.add_child(child)
 
             page = uriel.Page(project_root, root)
@@ -2499,8 +2514,8 @@ class TestPage(unittest.TestCase):
                 page.merge_token_node_link(uriel.Token("{{node-link:index}}")))
 
             self.assertEqual(
-                "<a href=\"/child/\">Child</a>",
-                page.merge_token_node_link(uriel.Token("{{node-link:child/index}}")))
+                "<a href=\"/child%20node/\">Child Node</a>",
+                page.merge_token_node_link(uriel.Token("{{node-link:child node/index}}")))
 
             self.assertRaises(
                 uriel.UrielError,
@@ -2515,7 +2530,7 @@ class TestPage(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("canonical-url", "https://example.com")
 
-            child = uriel.VirtualNode(project_root, "child/index", root)
+            child = uriel.VirtualNode(project_root, "child node/index", root)
             root.add_child(child)
 
             page = uriel.Page(project_root, root, use_canonical_url=True)
@@ -2525,8 +2540,8 @@ class TestPage(unittest.TestCase):
                 page.merge_token_node_link(uriel.Token("{{node-link:index}}")))
 
             self.assertEqual(
-                "<a href=\"https://example.com/child/\">Child</a>",
-                page.merge_token_node_link(uriel.Token("{{node-link:child/index}}")))
+                "<a href=\"https://example.com/child%20node/\">Child Node</a>",
+                page.merge_token_node_link(uriel.Token("{{node-link:child node/index}}")))
 
             self.assertRaises(
                 uriel.UrielError,
@@ -3018,7 +3033,7 @@ class TestPage(unittest.TestCase):
         with TempDir() as project_root:
             public_dir = os.path.join(project_root, "public")
             images_dir = os.path.abspath(os.path.join(public_dir, "images"))
-            image_file = os.path.abspath(os.path.join(public_dir, "images/hello.jpg"))
+            image_file = os.path.abspath(os.path.join(public_dir, "images/hello world.jpg"))
 
             os.mkdir(public_dir)
             os.mkdir(images_dir)
@@ -3032,9 +3047,9 @@ class TestPage(unittest.TestCase):
             page = uriel.Page(project_root, root)
 
             self.assertEqual(
-                "/images/hello.jpg",
+                "/images/hello%20world.jpg",
                 page.merge_token(
-                    uriel.Token("{{static-url:/images/hello.jpg}}")
+                    uriel.Token("{{static-url:/images/hello world.jpg}}")
                 )
             )
 
@@ -3047,7 +3062,7 @@ class TestPage(unittest.TestCase):
             self.assertRaises(
                 uriel.UrielError,
                 page.merge_token,
-                uriel.Token("{{static-url:../public/images/hello.jpg}}")
+                uriel.Token("{{static-url:../public/images/hello world.jpg}}")
             )
 
     def test_merge_token_with_static_hash_url(self):
@@ -3056,11 +3071,11 @@ class TestPage(unittest.TestCase):
 
         with TempDir() as project_root:
             public_dir = os.path.join(project_root, "public")
-            css_dir = os.path.abspath(os.path.join(public_dir, "css"))
-            css_file = os.path.abspath(os.path.join(public_dir, "css/main.css"))
+            css_dir = os.path.abspath(os.path.join(public_dir, "css stuff"))
+            css_file = os.path.abspath(os.path.join(public_dir, "css stuff/main file.css"))
             hashed_css_file = os.path.abspath(
                 os.path.join(public_dir,
-                             "css/d41d8cd98f00b204e9800998ecf8427e.css"))
+                             "css stuff/d41d8cd98f00b204e9800998ecf8427e.css"))
 
             os.mkdir(public_dir)
             os.mkdir(css_dir)
@@ -3076,9 +3091,9 @@ class TestPage(unittest.TestCase):
             # hashed file name is based on md5 hash of file contents,
             # and is created the first time this token is merged
             self.assertEqual(
-                "/css/d41d8cd98f00b204e9800998ecf8427e.css",
+                "/css%20stuff/d41d8cd98f00b204e9800998ecf8427e.css",
                 page.merge_token(
-                    uriel.Token("{{static-hash-url:/css/main.css}}")
+                    uriel.Token("{{static-hash-url:/css stuff/main file.css}}")
                 )
             )
             self.assertTrue(os.path.isfile(hashed_css_file))
@@ -3092,7 +3107,7 @@ class TestPage(unittest.TestCase):
             self.assertRaises(
                 uriel.UrielError,
                 page.merge_token,
-                uriel.Token("{{static-hash-url:../public/css/main.css}}")
+                uriel.Token("{{static-hash-url:../public/css stuff/main file.css}}")
             )
 
     def test_merge_token_with_rss(self):

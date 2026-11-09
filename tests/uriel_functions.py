@@ -2147,6 +2147,236 @@ class TestFunctionEscapeXml(unittest.TestCase):
             escaped)
 
 
+class TestFunctionEncodeUrlPath(unittest.TestCase):
+    """
+    Tests the encode_url_path() function.
+
+    """
+
+    def test_none(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertRaises(Exception, uriel.encode_url_path, None)
+
+    def test_basic(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        plain = "foo"
+        expected = "foo"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_space(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        plain = "hello world"
+        expected = "hello%20world"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        plain = "/foo/bar/"
+        expected = "/foo/bar/"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_mixed_ascii(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        plain = "/A mix+of.(stuff)!{}@,<># xyz/"
+        expected = "/A%20mix+of.%28stuff%29%21%7B%7D%40,%3C%3E%23%20xyz/"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_basic_unicode(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        plain = "/Le café/カピバラ/"
+        expected = "/Le%20café/カピバラ/"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_unicode_precomposed_nfc_linux(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # カピバラ
+        # Japanese, NFC, precomposed, 12 bytes
+        # (the comment above is the NFC 12 byte version)
+        plain_bytes = [
+            0xE3, 0x82, 0xAB, 0xE3, 0x83, 0x94,
+            0xE3, 0x83, 0x90, 0xE3, 0x83, 0xA9 ]
+        plain = bytes(plain_bytes).decode("UTF-8")
+        # the expected string is NFC/precomposed,
+        # and matches the input exactly, byte for byte
+        expected_bytes = [
+            0xE3, 0x82, 0xAB, 0xE3, 0x83, 0x94,
+            0xE3, 0x83, 0x90, 0xE3, 0x83, 0xA9 ]
+        expected = bytes(expected_bytes).decode("UTF-8")
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_unicode_decomposed_nfd_macos(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # カピバラ
+        # Japanese, NFD, decomposed, 18 bytes
+        # (the comment above is the NFD 18 byte version)
+        plain_bytes = [
+            0xE3, 0x82, 0xAB, 0xE3, 0x83, 0x92, 0xE3, 0x82, 0x9A,
+            0xE3, 0x83, 0x8F, 0xE3, 0x82, 0x99, 0xE3, 0x83, 0xA9 ]
+        plain = bytes(plain_bytes).decode("UTF-8")
+        # the expected string is NFC/precomposed.
+        # the encoded bytes differ from the input, but they both have
+        # the equivalent Japanese characters
+        expected_bytes = [
+            0xE3, 0x82, 0xAB, 0xE3, 0x83, 0x94,
+            0xE3, 0x83, 0x90, 0xE3, 0x83, 0xA9 ]
+        expected = bytes(expected_bytes).decode("UTF-8")
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x00_0x19(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # ASCII invisible characters NUL, BEL, \t, \n, many others
+        plain = "".join(chr(i) for i in range(0x00, 0x19+1))
+        encoded = uriel.encode_url_path(plain)
+        expected = "%00%01%02%03%04%05%06%07%08%09%0A%0B%0C%0D%0E%0F" + \
+                   "%10%11%12%13%14%15%16%17%18%19"
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x20_0x2a(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # SPACE !"#$%&'()*
+        plain = "".join(chr(i) for i in range(0x20, 0x2A+1))
+        expected = "%20%21%22%23%24%25%26%27%28%29%2A"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x2b_0x39(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # +,-./0123456789
+        plain = "".join(chr(i) for i in range(0x2B, 0x39+1))
+        expected = "+,-./0123456789"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x3a_0x40(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # :;<=>?@
+        plain = "".join(chr(i) for i in range(0x3A, 0x40+1))
+        expected = "%3A%3B%3C%3D%3E%3F%40"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x41_0x5a(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # A-Z
+        plain = "".join(chr(i) for i in range(0x41, 0x5A+1))
+        expected = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x5b_0x5e(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # [\]^
+        plain = "".join(chr(i) for i in range(0x5B, 0x5E+1))
+        expected = "%5B%5C%5D%5E"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x5f(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # _
+        plain = chr(0x5F)
+        expected = "_"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x60(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # `
+        plain = chr(0x60)
+        expected = "%60"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x61_0x7a(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # a-z
+        plain = "".join(chr(i) for i in range(0x61, 0x7A+1))
+        expected = "abcdefghijklmnopqrstuvwxyz"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x7b_0x7d(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # {|}
+        plain = "".join(chr(i) for i in range(0x7B, 0x7D+1))
+        expected = "%7B%7C%7D"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x7e(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # ~
+        plain = chr(0x7E)
+        expected = "~"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_ascii_0x7f(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # DEL
+        plain = chr(0x7F)
+        expected = "%7F"
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+    def test_bytes_0x80_0xff(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        # everything else passes through cleanly
+        plain = "".join(chr(i) for i in range(0x80, 0xFF+1))
+        expected = "".join(chr(i) for i in range(0x80, 0xFF+1))
+        encoded = uriel.encode_url_path(plain)
+        self.assertEqual(expected, encoded)
+
+
 class TestFunctionCreateFileNodeTree(unittest.TestCase):
     """
     Tests the create_file_node_tree() function.
@@ -2238,24 +2468,24 @@ class TestFunctionCreateTagNodeTree(unittest.TestCase):
             baz.add_child(quux)
 
             root.set_header("tag-node", "tag")
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.create_tag_node_tree(project_root, root, False)
 
             # tag
             self.assertEqual(
-                "<p><a href=\"/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"/tag/d/\">d</a></p>",
                 tag.get_header("__tag-list-html"))
 
-            # tag/a
-            tag_a = root.find_node_by_path("tag/a")
-            self.assertEqual("a", tag_a.get_header("title"))
+            # tag/a encoded
+            tag_a = root.find_node_by_path("tag/a encoded")
+            self.assertEqual("a encoded", tag_a.get_header("title"))
             self.assertEqual("false", tag_a.get_header("flat-url"))
             self.assertEqual(
                 "<p><a href=\"/foo/\">Foo</a></p>\n" + \
@@ -2308,24 +2538,24 @@ class TestFunctionCreateTagNodeTree(unittest.TestCase):
             baz.add_child(quux)
 
             root.set_header("tag-node", "tag")
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.create_tag_node_tree(project_root, root, True)
 
             # tag
             self.assertEqual(
-                "<p><a href=\"https://example.com/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"https://example.com/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/d/\">d</a></p>",
                 tag.get_header("__tag-list-html-canonical"))
 
-            # tag/a
-            tag_a = root.find_node_by_path("tag/a")
-            self.assertEqual("a", tag_a.get_header("title"))
+            # tag/a encoded
+            tag_a = root.find_node_by_path("tag/a encoded")
+            self.assertEqual("a encoded", tag_a.get_header("title"))
             self.assertEqual("false", tag_a.get_header("flat-url"))
             self.assertEqual(
                 "<p><a href=\"https://example.com/foo/\">Foo</a></p>\n" + \
@@ -2463,10 +2693,10 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
             bar.add_child(baz)
             baz.add_child(quux)
 
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.create_tag_node_tree(project_root, root, False)
 
@@ -2475,7 +2705,7 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
             self.assertEqual("", root.get_header("__tag-list-html"))
 
             self.assertEqual(
-                "<a href=\"/tag/a/\">a</a>",
+                "<a href=\"/tag/a%20encoded/\">a encoded</a>",
                 foo.get_header("__tag-list-html"))
 
             self.assertEqual(
@@ -2487,7 +2717,7 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
                 baz.get_header("__tag-list-html"))
 
             self.assertEqual(
-                "<a href=\"/tag/a/\">a</a>, " + \
+                "<a href=\"/tag/a%20encoded/\">a encoded</a>, " + \
                 "<a href=\"/tag/b/\">b</a>, " + \
                 "<a href=\"/tag/c/\">c</a>, " + \
                 "<a href=\"/tag/d/\">d</a>",
@@ -2535,10 +2765,10 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
             bar.add_child(baz)
             baz.add_child(quux)
 
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.create_tag_node_tree(project_root, root, True)
 
@@ -2547,7 +2777,7 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
             self.assertEqual("", root.get_header("__tag-list-html-canonical"))
 
             self.assertEqual(
-                "<a href=\"https://example.com/tag/a/\">a</a>",
+                "<a href=\"https://example.com/tag/a%20encoded/\">a encoded</a>",
                 foo.get_header("__tag-list-html-canonical"))
 
             self.assertEqual(
@@ -2559,7 +2789,7 @@ class TestFunctionCreateTagLinksRecursive(unittest.TestCase):
                 baz.get_header("__tag-list-html-canonical"))
 
             self.assertEqual(
-                "<a href=\"https://example.com/tag/a/\">a</a>, " + \
+                "<a href=\"https://example.com/tag/a%20encoded/\">a encoded</a>, " + \
                 "<a href=\"https://example.com/tag/b/\">b</a>, " + \
                 "<a href=\"https://example.com/tag/c/\">c</a>, " + \
                 "<a href=\"https://example.com/tag/d/\">d</a>",
@@ -2578,10 +2808,10 @@ class TestFunctionCreateChildNodeListHtml(unittest.TestCase):
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
-            foo = uriel.VirtualNode(project_root, "foo/index", root)
-            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
-            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
-            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            foo = uriel.VirtualNode(project_root, "foo encoded/index", root)
+            bar = uriel.VirtualNode(project_root, "foo encoded/bar/index", foo)
+            baz = uriel.VirtualNode(project_root, "foo encoded/bar/baz/index", bar)
+            quux = uriel.VirtualNode(project_root, "foo encoded/bar/baz/quux", baz)
 
             root.add_child(foo)
             foo.add_child(bar)
@@ -2591,19 +2821,19 @@ class TestFunctionCreateChildNodeListHtml(unittest.TestCase):
             uriel.create_child_node_list_html(root, False)
 
             self.assertEqual(
-                "<p><a href=\"/foo/\">Foo</a></p>",
+                "<p><a href=\"/foo%20encoded/\">Foo Encoded</a></p>",
                 root.get_header("__node-list-html"))
 
             self.assertEqual(
-                "<p><a href=\"/foo/bar/\">Bar</a></p>",
+                "<p><a href=\"/foo%20encoded/bar/\">Bar</a></p>",
                 foo.get_header("__node-list-html"))
 
             self.assertEqual(
-                "<p><a href=\"/foo/bar/baz/\">Baz</a></p>",
+                "<p><a href=\"/foo%20encoded/bar/baz/\">Baz</a></p>",
                 bar.get_header("__node-list-html"))
 
             self.assertEqual(
-                "<p><a href=\"/foo/bar/baz/quux/\">Quux</a></p>",
+                "<p><a href=\"/foo%20encoded/bar/baz/quux/\">Quux</a></p>",
                 baz.get_header("__node-list-html"))
 
             self.assertEqual(
@@ -2617,10 +2847,10 @@ class TestFunctionCreateChildNodeListHtml(unittest.TestCase):
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("canonical-url", "https://example.com")
-            foo = uriel.VirtualNode(project_root, "foo/index", root)
-            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
-            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
-            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            foo = uriel.VirtualNode(project_root, "foo encoded/index", root)
+            bar = uriel.VirtualNode(project_root, "foo encoded/bar/index", foo)
+            baz = uriel.VirtualNode(project_root, "foo encoded/bar/baz/index", bar)
+            quux = uriel.VirtualNode(project_root, "foo encoded/bar/baz/quux", baz)
 
             root.add_child(foo)
             foo.add_child(bar)
@@ -2630,19 +2860,19 @@ class TestFunctionCreateChildNodeListHtml(unittest.TestCase):
             uriel.create_child_node_list_html(root, True)
 
             self.assertEqual(
-                "<p><a href=\"https://example.com/foo/\">Foo</a></p>",
+                "<p><a href=\"https://example.com/foo%20encoded/\">Foo Encoded</a></p>",
                 root.get_header("__node-list-html-canonical"))
 
             self.assertEqual(
-                "<p><a href=\"https://example.com/foo/bar/\">Bar</a></p>",
+                "<p><a href=\"https://example.com/foo%20encoded/bar/\">Bar</a></p>",
                 foo.get_header("__node-list-html-canonical"))
 
             self.assertEqual(
-                "<p><a href=\"https://example.com/foo/bar/baz/\">Baz</a></p>",
+                "<p><a href=\"https://example.com/foo%20encoded/bar/baz/\">Baz</a></p>",
                 bar.get_header("__node-list-html-canonical"))
 
             self.assertEqual(
-                "<p><a href=\"https://example.com/foo/bar/baz/quux/\">Quux</a></p>",
+                "<p><a href=\"https://example.com/foo%20encoded/bar/baz/quux/\">Quux</a></p>",
                 baz.get_header("__node-list-html-canonical"))
 
             self.assertEqual(
@@ -2675,10 +2905,10 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
             baz.add_child(quux)
             root.add_child(tag)
 
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.augment_node_tree(project_root, root)
 
@@ -2694,7 +2924,7 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
                 "<p><a href=\"/foo/bar/\">Bar</a></p>",
                 foo.get_header("__node-list-html"))
             self.assertEqual(
-                "<a href=\"/tag/a/\">a</a>",
+                "<a href=\"/tag/a%20encoded/\">a encoded</a>",
                 foo.get_header("__tag-list-html"))
 
             # bar
@@ -2718,7 +2948,7 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
                 "",
                 quux.get_header("__node-list-html"))
             self.assertEqual(
-                "<a href=\"/tag/a/\">a</a>, " + \
+                "<a href=\"/tag/a%20encoded/\">a encoded</a>, " + \
                 "<a href=\"/tag/b/\">b</a>, " + \
                 "<a href=\"/tag/c/\">c</a>, " + \
                 "<a href=\"/tag/d/\">d</a>",
@@ -2728,13 +2958,13 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
             self.assertIsNotNone(tag.created)
             self.assertIsNotNone(tag.modified)
             self.assertEqual(
-                "<p><a href=\"/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"/tag/d/\">d</a></p>",
                 tag.get_header("__node-list-html"))
             self.assertEqual(
-                "<p><a href=\"/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"/tag/d/\">d</a></p>",
@@ -2760,10 +2990,10 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
             baz.add_child(quux)
             root.add_child(tag)
 
-            foo.set_header("tags", "a")
+            foo.set_header("tags", "a encoded")
             bar.set_header("tags", "b")
             baz.set_header("tags", "c")
-            quux.set_header("tags", "a, b, c, d")
+            quux.set_header("tags", "a encoded, b, c, d")
 
             uriel.augment_node_tree(project_root, root)
 
@@ -2779,7 +3009,7 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
                 "<p><a href=\"https://example.com/foo/bar/\">Bar</a></p>",
                 foo.get_header("__node-list-html-canonical"))
             self.assertEqual(
-                "<a href=\"https://example.com/tag/a/\">a</a>",
+                "<a href=\"https://example.com/tag/a%20encoded/\">a encoded</a>",
                 foo.get_header("__tag-list-html-canonical"))
 
             # bar
@@ -2803,7 +3033,7 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
                 "",
                 quux.get_header("__node-list-html-canonical"))
             self.assertEqual(
-                "<a href=\"https://example.com/tag/a/\">a</a>, " + \
+                "<a href=\"https://example.com/tag/a%20encoded/\">a encoded</a>, " + \
                 "<a href=\"https://example.com/tag/b/\">b</a>, " + \
                 "<a href=\"https://example.com/tag/c/\">c</a>, " + \
                 "<a href=\"https://example.com/tag/d/\">d</a>",
@@ -2813,13 +3043,13 @@ class TestFunctionAugmentNodeTree(unittest.TestCase):
             self.assertIsNotNone(tag.created)
             self.assertIsNotNone(tag.modified)
             self.assertEqual(
-                "<p><a href=\"https://example.com/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"https://example.com/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/d/\">d</a></p>",
                 tag.get_header("__node-list-html-canonical"))
             self.assertEqual(
-                "<p><a href=\"https://example.com/tag/a/\">a</a></p>\n" + \
+                "<p><a href=\"https://example.com/tag/a%20encoded/\">a encoded</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/b/\">b</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/c/\">c</a></p>\n" + \
                 "<p><a href=\"https://example.com/tag/d/\">d</a></p>",
@@ -3400,6 +3630,118 @@ class TestFunctionWriteRss(unittest.TestCase):
                     lines[15])
                 self.assertEqual(
                     "        <description><![CDATA[<h1>Foo</h1>",
+                    lines[16])
+                self.assertEqual(
+                    "",
+                    lines[17])
+                self.assertEqual(
+                    "foo]]></description>",
+                    lines[18])
+                self.assertTrue("<pubDate>" in lines[19])
+                self.assertTrue("</pubDate>" in lines[19])
+                self.assertEqual(
+                    "    </item>",
+                    lines[20])
+                self.assertEqual(
+                    "</channel>",
+                    lines[21])
+                self.assertEqual(
+                    "</rss>",
+                    lines[22])
+                self.assertEqual(
+                    "",
+                    lines[23])
+
+    def test_write_rss_urlencode_paths(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            rss_file = os.path.join(public_dir, "rss.xml")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("rss-url", "/rss.xml")
+            root.set_header("rss-title", "My Website")
+            root.set_header("rss-description", "All about my website")
+
+            foo = uriel.VirtualNode(project_root, "foo bar/index", root)
+            foo.set_header("rss-include", "true")
+            foo.set_body("foo")
+
+            baz = uriel.VirtualNode(project_root, "foo bar/baz quux", foo)
+            baz.set_header("rss-include", "true")
+            baz.set_header("rss-add-node-title-header", "false")
+            baz.set_body("bar")
+
+            root.add_child(foo)
+            root.add_child(baz)
+
+            uriel.write_rss(project_root, root)
+
+            self.assertTrue(os.path.isfile(rss_file))
+
+            self.assertEqual(1, len(c.stderr))
+            self.assertEqual("creating '" + rss_file + "'", c.stderr[0])
+
+            with open(rss_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(24, len(lines))
+                self.assertEqual(
+                    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+                    lines[0])
+                self.assertEqual(
+                    "<rss version=\"2.0\">",
+                    lines[1])
+                self.assertEqual(
+                    "<channel>",
+                    lines[2])
+                self.assertEqual(
+                    "    <title>My Website</title>",
+                    lines[3])
+                self.assertEqual(
+                    "    <link>https://example.com/</link>",
+                    lines[4])
+                self.assertEqual(
+                    "    <description>All about my website</description>",
+                    lines[5])
+                self.assertTrue("<lastBuildDate>" in lines[6])
+                self.assertTrue("</lastBuildDate>" in lines[6])
+                self.assertEqual(
+                    "    <item>",
+                    lines[7])
+                self.assertEqual(
+                    "        <title>Baz Quux</title>",
+                    lines[8])
+                self.assertEqual(
+                    "        <link>https://example.com/foo%20bar/baz%20quux/</link>",
+                    lines[9])
+                self.assertEqual(
+                    "        <description><![CDATA[bar]]></description>",
+                    lines[10])
+                self.assertTrue("<pubDate>" in lines[11])
+                self.assertTrue("</pubDate>" in lines[11])
+                self.assertEqual(
+                    "    </item>",
+                    lines[12])
+
+                self.assertEqual(
+                    "    <item>",
+                    lines[13])
+                self.assertEqual(
+                    "        <title>Foo Bar</title>",
+                    lines[14])
+                self.assertEqual(
+                    "        <link>https://example.com/foo%20bar/</link>",
+                    lines[15])
+                self.assertEqual(
+                    "        <description><![CDATA[<h1>Foo Bar</h1>",
                     lines[16])
                 self.assertEqual(
                     "",
@@ -4050,6 +4392,16 @@ class TestFunctionGetSitemapUrl(unittest.TestCase):
 
             self.assertEqual("sitemap.xml", uriel.get_sitemap_url(root))
 
+    def test_get_sitemap_url_with_encoding(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("sitemap-url", "/site%20map.xml")
+
+            self.assertEqual("site%20map.xml", uriel.get_sitemap_url(root))
+
     def test_get_sitemap_url_directory_traversal(self):
         c = UrielContainer()
         uriel = c.uriel
@@ -4232,6 +4584,7 @@ class TestFunctionGetNumberedSitemapUrl(unittest.TestCase):
         self.assertEqual("sitemap-002.xml", uriel.get_numbered_sitemap_url("sitemap.xml", 2))
         self.assertEqual("sitemap-500.xml", uriel.get_numbered_sitemap_url("sitemap.xml", 500))
         self.assertEqual("sitemap-99999.xml", uriel.get_numbered_sitemap_url("sitemap.xml", 99999))
+        self.assertEqual("sitemap-99999.xml", uriel.get_numbered_sitemap_url("sitemap.xml", 99999))
 
     def test_get_numbered_sitemap_url_xml_gz(self):
         c = UrielContainer()
@@ -4241,6 +4594,26 @@ class TestFunctionGetNumberedSitemapUrl(unittest.TestCase):
         self.assertEqual("sitemap-002.xml.gz", uriel.get_numbered_sitemap_url("sitemap.xml.gz", 2))
         self.assertEqual("sitemap-500.xml.gz", uriel.get_numbered_sitemap_url("sitemap.xml.gz", 500))
         self.assertEqual("sitemap-99999.xml.gz", uriel.get_numbered_sitemap_url("sitemap.xml.gz", 99999))
+
+    def test_get_numbered_sitemap_url_xml_not_urlencoded(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual("site map-001.xml", uriel.get_numbered_sitemap_url("site map.xml", 1))
+        self.assertEqual("site map-002.xml", uriel.get_numbered_sitemap_url("site map.xml", 2))
+        self.assertEqual("site map-500.xml", uriel.get_numbered_sitemap_url("site map.xml", 500))
+        self.assertEqual("site map-99999.xml", uriel.get_numbered_sitemap_url("site map.xml", 99999))
+        self.assertEqual("site map-99999.xml", uriel.get_numbered_sitemap_url("site map.xml", 99999))
+
+    def test_get_numbered_sitemap_url_xml_gz_not_urlencoded(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual("site map-001.xml.gz", uriel.get_numbered_sitemap_url("site map.xml.gz", 1))
+        self.assertEqual("site map-002.xml.gz", uriel.get_numbered_sitemap_url("site map.xml.gz", 2))
+        self.assertEqual("site map-500.xml.gz", uriel.get_numbered_sitemap_url("site map.xml.gz", 500))
+        self.assertEqual("site map-99999.xml.gz", uriel.get_numbered_sitemap_url("site map.xml.gz", 99999))
+        self.assertEqual("site map-99999.xml.gz", uriel.get_numbered_sitemap_url("site map.xml.gz", 99999))
 
 
 class TestFunctionWriteSitemapIndexAndSitemapFiles(unittest.TestCase):
@@ -4614,6 +4987,67 @@ class TestFunctionWriteSitemapIndexAndSitemapFiles(unittest.TestCase):
                 self.assertEqual(
                     '        <loc>http://example.com/child1/</loc>',
                     lines[3])
+
+    def test_sitemap_index_urlencodes_sitemaps(
+            self):
+
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            sitemap_index_file = os.path.join(public_dir, "site map.xml")
+            sitemap_file1 = os.path.join(public_dir, "site map-001.xml")
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "http://example.com")
+            root.set_header("sitemap-url", "/site map.xml")
+            root.set_header("sitemap-index", "true")
+
+            child1 = uriel.VirtualNode(project_root, "child1", root)
+            root.add_child(child1)
+
+            os.mkdir(public_dir)
+
+            uriel.write_sitemap_index_and_sitemap_files(project_root, root)
+
+            self.assertEqual(2, len(c.stderr))
+
+            self.assertTrue("creating '" in c.stderr[0])
+            self.assertTrue("public/site map.xml'" in c.stderr[0])
+
+            self.assertTrue("creating '" in c.stderr[1])
+            self.assertTrue("public/site map-001.xml'" in c.stderr[1])
+
+            self.assertTrue(os.path.exists(sitemap_index_file))
+            self.assertTrue(os.path.exists(sitemap_file1))
+
+            with open(sitemap_index_file, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(8, len(lines))
+
+                self.assertEqual(
+                    '        <loc>http://example.com/site%20map-001.xml</loc>',
+                    lines[3])
+                self.assertEqual(
+                    '</sitemapindex>',
+                    lines[6])
+
+            with open(sitemap_file1, "r") as f:
+                contents = f.read()
+
+                lines = contents.split("\n")
+
+                self.assertEqual(12, len(lines))
+                self.assertEqual(
+                    '        <loc>http://example.com/</loc>',
+                    lines[3])
+                self.assertEqual(
+                    '        <loc>http://example.com/child1/</loc>',
+                    lines[7])
 
     def test_sitemap_max_files_one(self):
         c = UrielContainer()
@@ -6370,6 +6804,31 @@ class TestFunctionWriteRobotsTxt(unittest.TestCase):
                     "Sitemap: https://example.com/sitemap.xml\n",
                     contents)
 
+    def test_write_robots_txt_with_encoded_sitemap_url(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            public_dir = os.path.join(project_root, "public")
+            robots_txt = os.path.join(project_root, "public/robots.txt")
+
+            os.mkdir(public_dir)
+
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("canonical-url", "https://example.com")
+            root.set_header("sitemap-url", "site map.xml")
+
+            uriel.write_robots_txt(project_root, root)
+
+            self.assertTrue(os.path.isfile(robots_txt))
+
+            with open(robots_txt, "r") as f:
+                contents = f.read()
+
+                self.assertEqual(
+                    "Sitemap: https://example.com/site%20map.xml\n",
+                    contents)
+
 
 class TestFunctionGetDefaultTemplateContents(unittest.TestCase):
     """
@@ -6455,6 +6914,7 @@ class TestFunctionGetDefaultSojuContents(unittest.TestCase):
             "# from uriel import SojuError\n" + \
             "# from uriel import log\n" + \
             "# from uriel import escape\n" + \
+            "# from uriel import encode_url_path\n" + \
             "\n" + \
             "# The following variables are available to pass to functions:\n" + \
             "#\n" + \
@@ -6498,6 +6958,7 @@ class TestFunctionGetDefaultHandlersContents(unittest.TestCase):
             "# from uriel import HandlerError\n" + \
             "# from uriel import log\n" + \
             "# from uriel import escape\n" + \
+            "# from uriel import encode_url_path\n" + \
             "\n" + \
             "#def init(project_root):\n" + \
             "#    pass\n" + \

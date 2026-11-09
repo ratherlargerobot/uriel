@@ -42,11 +42,11 @@
     </url>
     <url>
         <loc>http://localhost:8000/handlers/</loc>
-        <lastmod>2026-07-23T17:16:28-04:00</lastmod>
+        <lastmod>2026-10-29T23:55:41-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/handlers/virtual/</loc>
-        <lastmod>2026-07-23T17:16:28-04:00</lastmod>
+        <lastmod>2026-10-29T23:55:41-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/headers/</loc>
@@ -322,11 +322,11 @@
     </url>
     <url>
         <loc>http://localhost:8000/parameters/node-url-some-other-node/</loc>
-        <lastmod>2026-06-14T18:41:42-04:00</lastmod>
+        <lastmod>2026-11-09T18:34:13-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/node-url/</loc>
-        <lastmod>2026-06-14T18:40:42-04:00</lastmod>
+        <lastmod>2026-11-09T18:31:14-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/parameters/oldest/</loc>
@@ -374,71 +374,71 @@
     </url>
     <url>
         <loc>http://localhost:8000/soju/</loc>
-        <lastmod>2026-09-22T16:35:02-04:00</lastmod>
+        <lastmod>2026-10-29T23:55:36-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/banana/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/bar/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/breadcrumbs/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/foo/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/headers/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/parameters/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/robots-txt/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/root-node/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss-headers/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/rss/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap-headers/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/sitemap/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/soju/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/static/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tag/user-defined-python-code/</loc>
-        <lastmod>2026-09-23T22:09:49-04:00</lastmod>
+        <lastmod>2026-11-09T18:43:26-05:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/tags/</loc>
@@ -454,7 +454,7 @@
     </url>
     <url>
         <loc>http://localhost:8000/uriel/constants/</loc>
-        <lastmod>2026-08-31T16:51:07-04:00</lastmod>
+        <lastmod>2026-10-30T19:15:13-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/uriel/exceptions/</loc>
@@ -462,7 +462,7 @@
     </url>
     <url>
         <loc>http://localhost:8000/uriel/functions/</loc>
-        <lastmod>2026-06-14T18:36:51-04:00</lastmod>
+        <lastmod>2026-10-30T00:04:36-04:00</lastmod>
     </url>
     <url>
         <loc>http://localhost:8000/uriel/node/</loc>

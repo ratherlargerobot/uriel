@@ -23,6 +23,11 @@ RSS-Include: true
 <pre>{{node-url:parameters/some-other-node}}</pre>
 
 <p>
+    The value of <b>&lbrace;&lbrace;node-url:foo/bar&rbrace;&rbrace;</b> is
+    URL encoded, and is safe to include in HTML links.
+</p>
+
+<p>
     Compare this with {{node-link:parameters/node-url}}, which lets you get
     the URL of the current node.
 </p>

@@ -494,12 +494,14 @@ class TestNode(unittest.TestCase):
             bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
             baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
             quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            not_encoded = uriel.VirtualNode(project_root, "foo/not encoded", foo)
 
             self.assertEqual("/", root.get_url())
             self.assertEqual("/foo/", foo.get_url())
             self.assertEqual("/foo/bar/", bar.get_url())
             self.assertEqual("/foo/bar/baz/", baz.get_url())
             self.assertEqual("/foo/bar/baz/quux/", quux.get_url())
+            self.assertEqual("/foo/not encoded/", not_encoded.get_url())
 
     def test_get_url_flat_url(self):
         c = UrielContainer()
@@ -512,12 +514,14 @@ class TestNode(unittest.TestCase):
             bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
             baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
             quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            not_encoded = uriel.VirtualNode(project_root, "foo/not encoded", foo)
 
             self.assertEqual("/", root.get_url())
             self.assertEqual("/foo/", foo.get_url())
             self.assertEqual("/bar/", bar.get_url())
             self.assertEqual("/baz/", baz.get_url())
             self.assertEqual("/quux/", quux.get_url())
+            self.assertEqual("/not encoded/", not_encoded.get_url())
 
     def test_get_url_flat_url_section(self):
         c = UrielContainer()
@@ -558,6 +562,49 @@ class TestNode(unittest.TestCase):
             self.assertEqual("/foo-index/bar-index/baz-index/", baz.get_url())
             self.assertEqual("/foo-index/bar-index/baz-index/quux/", quux.get_url())
             self.assertEqual("/foo-index/bar-index/baz-index/quux-index/", quux_index.get_url())
+
+    def test_get_encoded_url(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            encoded = uriel.VirtualNode(project_root, "foo/is encoded", foo)
+            encoded_child = uriel.VirtualNode(project_root, "foo/is encoded/child node", encoded)
+
+            self.assertEqual("/", root.get_encoded_url())
+            self.assertEqual("/foo/", foo.get_encoded_url())
+            self.assertEqual("/foo/bar/", bar.get_encoded_url())
+            self.assertEqual("/foo/bar/baz/", baz.get_encoded_url())
+            self.assertEqual("/foo/bar/baz/quux/", quux.get_encoded_url())
+            self.assertEqual("/foo/is%20encoded/", encoded.get_encoded_url())
+            self.assertEqual("/foo/is%20encoded/child%20node/", encoded_child.get_encoded_url())
+
+    def test_get_encoded_url_flat_url(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        with TempDir() as project_root:
+            root = uriel.VirtualNode(project_root, "index")
+            root.set_header("flat-url", "true")
+            foo = uriel.VirtualNode(project_root, "foo/index", root)
+            bar = uriel.VirtualNode(project_root, "foo/bar/index", foo)
+            baz = uriel.VirtualNode(project_root, "foo/bar/baz/index", bar)
+            quux = uriel.VirtualNode(project_root, "foo/bar/baz/quux", baz)
+            encoded = uriel.VirtualNode(project_root, "foo/is encoded", foo)
+            encoded_child = uriel.VirtualNode(project_root, "foo/is encoded/child node", encoded)
+
+            self.assertEqual("/", root.get_encoded_url())
+            self.assertEqual("/foo/", foo.get_encoded_url())
+            self.assertEqual("/bar/", bar.get_encoded_url())
+            self.assertEqual("/baz/", baz.get_encoded_url())
+            self.assertEqual("/quux/", quux.get_encoded_url())
+            self.assertEqual("/is%20encoded/", encoded.get_encoded_url())
+            self.assertEqual("/child%20node/", encoded_child.get_encoded_url())
 
     def test_get_canonical_url_header_not_set(self):
         c = UrielContainer()
@@ -1186,7 +1233,7 @@ class TestNode(unittest.TestCase):
             tags = root.get_tags()
             self.assertTrue("Aardvark" in tags)
 
-    def test_get_tags_invalid_space(self):
+    def test_get_tags_valid_space(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -1194,9 +1241,10 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "foo bar")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            tags = root.get_tags()
+            self.assertTrue("foo bar" in tags)
 
-    def test_get_tags_invalid_hash(self):
+    def test_get_tags_valid_hash(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -1204,16 +1252,10 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "c#")
 
-            try:
-                root.get_tags()
-                self.assertTrue(False)
-            except uriel.UrielError as e:
-                self.assertEqual(
-                    "invalid tag 'c#' in node 'index', " + \
-                    "can not contain '#', '?' or '%'",
-                    str(e))
+            tags = root.get_tags()
+            self.assertTrue("c#" in tags)
 
-    def test_get_tags_invalid_question_mark(self):
+    def test_get_tags_valid_question_mark(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -1221,9 +1263,10 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "what?")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            tags = root.get_tags()
+            self.assertTrue("what?" in tags)
 
-    def test_get_tags_invalid_percent(self):
+    def test_get_tags_valid_percent(self):
         c = UrielContainer()
         uriel = c.uriel
 
@@ -1231,17 +1274,25 @@ class TestNode(unittest.TestCase):
             root = uriel.VirtualNode(project_root, "index")
             root.set_header("tags", "100%pure")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            tags = root.get_tags()
+            self.assertTrue("100%pure" in tags)
 
-    def test_get_tags_invalid_url_character_among_valid_tags(self):
+    def test_get_tags_valid_url_character_among_valid_tags(self):
         c = UrielContainer()
         uriel = c.uriel
 
         with TempDir() as project_root:
             root = uriel.VirtualNode(project_root, "index")
-            root.set_header("tags", "foo, c#, bar")
+            root.set_header("tags", "foo, Baz Quux, c#, 100%pure, what?, bar")
 
-            self.assertRaises(uriel.UrielError, root.get_tags)
+            tags = root.get_tags()
+            self.assertEqual(6, len(tags))
+            self.assertTrue("foo" in tags)
+            self.assertTrue("Baz Quux" in tags)
+            self.assertTrue("c#" in tags)
+            self.assertTrue("100%pure" in tags)
+            self.assertTrue("what?" in tags)
+            self.assertTrue("bar" in tags)
 
     def test_get_tags_valid_url_safe_punctuation(self):
         c = UrielContainer()

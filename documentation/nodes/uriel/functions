@@ -31,6 +31,20 @@ Accepts unescaped text.
 Returns an HTML escaped string.</pre>
 
 
+<pre><b>encode_url_path(url_path: str) -> str</b>
+
+URL encode a URL path.
+
+Accepts an unencoded URL path.
+
+The URL path is likely to include slashes, and slashes are not URL
+encoded. This is relatively permissive filtering that allows Unicode
+characters to pass through, but filters out ASCII special characters that
+are likely to cause problems in various ways.
+
+Returns a URL encoded URL path (with slashes preserved literally).</pre>
+
+
 <pre><b>get_eligible_nodes(node: Node,
                    boolean_header: str,
                    default: bool,

@@ -34,6 +34,7 @@ import re
 import shutil
 import sys
 import heapq
+import unicodedata
 
 # deferred imports
 #import ast
@@ -54,7 +55,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.6.1"
+VERSION = "1.7.0"
 
 # exit codes
 EXIT_OK = 0
@@ -89,6 +90,31 @@ SITEMAP_MAX_FILES = 500
 # (can be overridden via Sitemap-Max-Entries header)
 SITEMAP_MAX_ENTRIES = 50000
 
+# ASCII characters that we want to URL encode,
+# because they might cause problems in various ways
+URLENCODE_ASCII_CHARS = set(
+    # ASCII invisible characters NUL, BEL, \t, \n, many others
+    "".join(chr(i) for i in range(0x00, 0x19+1)) +
+
+    # SPACE !"#$%&'()*
+    "".join(chr(i) for i in range(0x20, 0x2A+1)) +
+
+    # :;<=>?@
+    "".join(chr(i) for i in range(0x3A, 0x40+1)) +
+
+    # [\]^
+    "".join(chr(i) for i in range(0x5B, 0x5E+1)) +
+
+    # `
+    "".join(chr(i) for i in range(0x60, 0x60+1)) +
+
+    # {|}
+    "".join(chr(i) for i in range(0x7B, 0x7D+1)) +
+
+    # DEL
+    "".join(chr(i) for i in range(0x7F, 0x7F+1))
+)
+
 # performance optimization
 # static file path -> hashed filename
 static_hash_filenames: Dict[str, str] = {}
@@ -105,6 +131,10 @@ template_file_paths: Dict[str, str] = {}
 # template file path -> list of (template line, tokens parsed from that line)
 # the tokens in the tuple are optional, many lines don't have parameters
 template_tokens: Dict[str, List[Tuple[str, Optional[List["Token"]]]]] = {}
+
+# performance optimization
+# non-encoded URL path -> URL-encoded URL path
+encoded_url_path_cache: Dict[str, str] = {}
 
 class UrielError(Exception):
     """
@@ -705,7 +735,7 @@ class Node:
 
     def get_url(self) -> str:
         """
-        Get the URL path for this Node.
+        Get the plain, non-encoded URL path for this Node.
 
         URL paths are relative to the root of the site.
 
@@ -718,6 +748,11 @@ class Node:
         placed in the rendered files.
 
         This method never returns canonical URLs, only URL paths.
+
+        This method returns URL paths that have not been URL encoded.
+        This is good for dealing with local directories on the filesystem,
+        but bad for creating links. For URL-encoded URL paths, use the
+        get_encoded_url() method instead.
 
         """
 
@@ -776,6 +811,28 @@ class Node:
 
         return self.url_cache
 
+    def get_encoded_url(self) -> str:
+        """
+        Get the URL encoded URL path for this Node.
+
+        URL paths are relative to the root of the site.
+
+        Example URL paths:
+            /
+            /foo/
+            /foo/bar/
+
+        This method never returns canonical URLs, only URL paths.
+
+        This method returns URL paths that have been URL encoded.
+        This is good for creating links, but bad for dealing with local
+        directories on the filesystem. For non-encoded URL paths, use the
+        get_url() method instead.
+
+        """
+
+        return encode_url_path(self.get_url())
+
     def get_canonical_url_base(self) -> str:
         """
         Get the base URL of the web site, as set by the Canonical-URL
@@ -818,7 +875,7 @@ class Node:
 
         """
 
-        return self.get_canonical_url_base() + self.get_url()
+        return self.get_canonical_url_base() + self.get_encoded_url()
 
     def get_name(self) -> str:
         """
@@ -959,7 +1016,7 @@ class Node:
             return self.link_cache
 
         # cache the link
-        self.link_cache = "<a href=\"" + self.get_url() + "\">" + \
+        self.link_cache = "<a href=\"" + self.get_encoded_url() + "\">" + \
                self.get_escaped_title() + "</a>"
 
         # return the cached link
@@ -1041,18 +1098,6 @@ class Node:
                 if ("." == tag) or (".." == tag):
                     errstr = "invalid tag '%s' in node '%s', " + \
                              "can not be '.' or '..'"
-                    raise UrielError(errstr % (tag, self.get_path()))
-
-                # make sure tags don't contain whitespace
-                if re.match(r"^.*?\s+.*?$", tag):
-                    errstr = "invalid tag '%s' in node '%s', " + \
-                             "can not contain whitespace"
-                    raise UrielError(errstr % (tag, self.get_path()))
-
-                # make sure special URL characters aren't used in tags
-                if ("#" in tag) or ("?" in tag) or ("%" in tag):
-                    errstr = "invalid tag '%s' in node '%s', " + \
-                             "can not contain '#', '?' or '%%'"
                     raise UrielError(errstr % (tag, self.get_path()))
 
                 tag_set.add(tag)
@@ -2259,7 +2304,7 @@ class Page:
             return node.get_canonical_url()
 
         # non-canonical
-        return node.get_url()
+        return node.get_encoded_url()
 
     def get_node_link(self, node: Node) -> str:
         """
@@ -2280,17 +2325,20 @@ class Page:
 
         """
 
+        # URL encode the provided static URL path
+        encoded_url = encode_url_path(url)
+
         # canonical
         if self.use_canonical_url:
-            if url.startswith("/"):
+            if encoded_url.startswith("/"):
                 root_node = self.node.get_root_node()
-                url = url[1:]
-                return root_node.get_canonical_url() + url
+                encoded_url = encoded_url[1:]
+                return root_node.get_canonical_url() + encoded_url
 
-            return node.get_canonical_url() + url
+            return node.get_canonical_url() + encoded_url
 
         # non-canonical
-        return url
+        return encoded_url
 
     def get_maybe_canonical_html_fragment(self,
                                           token: Token,
@@ -2737,9 +2785,12 @@ class Page:
         if rss_url.startswith("/"):
             rss_url = rss_url[1:]
 
+        # URL encode RSS URL path
+        encoded_rss_url = encode_url_path(rss_url)
+
         # get canonical RSS URL
         root_node = self.node.get_root_node()
-        rss_canonical_url = root_node.get_canonical_url() + rss_url
+        rss_canonical_url = root_node.get_canonical_url() + encoded_rss_url
 
         return rss_canonical_url
 
@@ -3989,6 +4040,9 @@ def escape_xml(text: str) -> str:
 
     """
 
+    if text is None:
+        raise Exception("XML text can not be null")
+
     unescaped_lines = text.split("\n")
     escaped_lines = []
 
@@ -3998,6 +4052,56 @@ def escape_xml(text: str) -> str:
         escaped_lines.append(escaped_line)
 
     return "\n".join(escaped_lines)
+
+def encode_url_path(url_path: str) -> str:
+    """
+    URL encode a URL path.
+
+    Accepts an unencoded URL path.
+
+    The URL path is likely to include slashes, and slashes are not URL
+    encoded. This is relatively permissive filtering that allows Unicode
+    characters to pass through, but filters out ASCII special characters that
+    are likely to cause problems in various ways.
+
+    Returns a URL encoded URL path (with slashes preserved literally).
+
+    """
+
+    if url_path is None:
+        raise Exception("URL path can not be null")
+
+    # if we have already computed this URL path encoding,
+    # just return it from the cache
+    if url_path in encoded_url_path_cache:
+        return encoded_url_path_cache[url_path]
+
+    # Unicode: Normalize to Composed Form (NFC)
+    # this is necessary because Mac and Linux have different approaches to
+    # representing some characters with accents, etc.
+    normalized_path = unicodedata.normalize("NFC", url_path)
+
+    # build up the characters to return in a list
+    encoded_chars = []
+
+    # go through each character from the input
+    for char in normalized_path:
+        # if it's a weird ASCII character, percent-encode its ASCII byte value
+        if char in URLENCODE_ASCII_CHARS:
+            encoded_chars.append(f"%{ord(char):02X}")
+
+        # otherwise, pass it through unmodified
+        else:
+            encoded_chars.append(char)
+
+    # return the encoded characters as a string
+    encoded_url = "".join(encoded_chars)
+
+    # cache the result for next time
+    encoded_url_path_cache[url_path] = encoded_url
+
+    # return the encoded URL
+    return encoded_url
 
 def create_file_node_tree(project_root: str,
                           parent_path: Optional[str] = None,
@@ -4147,10 +4251,11 @@ def create_tag_node_tree(project_root: str,
     canonical_lines = []
     for tag in sorted(tag_node_index.keys()):
         escaped_tag = escape(tag)
+        encoded_tag = encode_url_path(tag)
 
         line = link_prefix + \
             "<a href=\"" + \
-            tag_node.get_url() + escaped_tag + "/" + "\">" + \
+            tag_node.get_encoded_url() + encoded_tag + "/" + "\">" + \
             escaped_tag + "</a>" + \
             link_suffix
         lines.append(line)
@@ -4158,7 +4263,7 @@ def create_tag_node_tree(project_root: str,
         if use_canonical_url:
             c_line = link_prefix + \
                 "<a href=\"" + \
-                tag_node.get_canonical_url() + escaped_tag + "/" + "\">" + \
+                tag_node.get_canonical_url() + encoded_tag + "/" + "\">" + \
                 escaped_tag + "</a>" + \
                 link_suffix
             canonical_lines.append(c_line)
@@ -4251,7 +4356,7 @@ def create_tag_links(node: Node, use_canonical_url: bool) -> str:
         if use_canonical_url:
             url = tag_vnode.get_canonical_url()
         else:
-            url = tag_vnode.get_url()
+            url = tag_vnode.get_encoded_url()
 
         # construct a link to the vnode
         link = "<a href=\"" + url + "\">" + escape(tag) + "</a>"
@@ -4385,7 +4490,7 @@ def get_max_url_path_len(node: Node,
     """
 
     # get the maximum length of the url and path for this node
-    url_len = len(node.get_url())
+    url_len = len(node.get_encoded_url())
     path_len = len(node.get_path())
 
     # raise the max values, if the new lengths are higher
@@ -4486,13 +4591,13 @@ def write_nodes(project_root: str,
     log("%s | %s | %s" %
         (node.get_node_type().ljust(7),
          node.get_path().ljust(max_path_len),
-         node.get_url()))
+         node.get_encoded_url()))
 
     # make sure the URL is unique before we write the node
     url = node.get_url()
     if url in unique_urls:
         err = "duplicate node URL '%s' in node '%s'"
-        raise UrielError(err % (url, node.get_path()))
+        raise UrielError(err % (node.get_encoded_url(), node.get_path()))
     unique_urls.add(url)
 
     # write the rendered file
@@ -5106,7 +5211,8 @@ def write_sitemap_index_and_sitemap_files(project_root: str,
     sitemap_urls = []
     for sitemap_number in sorted(sitemap_number_to_sitemap_url):
         sitemap_url = sitemap_number_to_sitemap_url[sitemap_number]
-        sitemap_canonical_url = canonical_url + "/" + sitemap_url
+        encoded_sitemap_url = encode_url_path(sitemap_url)
+        sitemap_canonical_url = canonical_url + "/" + encoded_sitemap_url
         sitemap_urls.append(sitemap_canonical_url)
 
     # write sitemap index file
@@ -5332,6 +5438,9 @@ def write_robots_txt(project_root: str, root_node: Node) -> None:
     if sitemap_url is None:
         return
 
+    # URL encode the sitemap URL path
+    encoded_sitemap_url = encode_url_path(sitemap_url)
+
     # write robots.txt
     #
     # this is just enough to get the sitemap listed,
@@ -5341,7 +5450,7 @@ def write_robots_txt(project_root: str, root_node: Node) -> None:
         log("creating '%s'" % (printable_path(robots_txt_file)))
         fw = FileWriter(robots_txt_file)
         fw.write("Sitemap: " + \
-                root_node.get_canonical_url() + sitemap_url + "\n")
+                root_node.get_canonical_url() + encoded_sitemap_url + "\n")
         fw.close()
 
 def get_default_template_contents() -> str:
@@ -5416,6 +5525,7 @@ def get_default_soju_contents() -> str:
     lines.append("# from uriel import SojuError")
     lines.append("# from uriel import log")
     lines.append("# from uriel import escape")
+    lines.append("# from uriel import encode_url_path")
     lines.append("")
     lines.append("# The following variables are available to pass to " + \
                  "functions:")
@@ -5455,6 +5565,7 @@ def get_default_handlers_contents() -> str:
     lines.append("# from uriel import HandlerError")
     lines.append("# from uriel import log")
     lines.append("# from uriel import escape")
+    lines.append("# from uriel import encode_url_path")
     lines.append("")
     lines.append("#def init(project_root):")
     lines.append("#    pass")
@@ -5680,6 +5791,7 @@ def init_modules(project_root: str) -> None:
             return log("soju: " + str(s))
         soju.log = soju_log
         soju.escape = escape
+        soju.encode_url_path = encode_url_path
 
         # make this module available to the rest of the program
         globals()["soju"] = soju
@@ -5705,6 +5817,7 @@ def init_modules(project_root: str) -> None:
             return log("handler: " + str(s))
         handlers.log = handlers_log
         handlers.escape = escape
+        handlers.encode_url_path = encode_url_path
 
         # make this module available to the rest of the program
         globals()["handlers"] = handlers

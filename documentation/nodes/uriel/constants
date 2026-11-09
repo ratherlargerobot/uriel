@@ -51,5 +51,30 @@ SITEMAP_MAX_FILES = 500
 
 # default maximum number of sitemap entries
 # (can be overridden via Sitemap-Max-Entries header)
-SITEMAP_MAX_ENTRIES = 50000</pre>
+SITEMAP_MAX_ENTRIES = 50000
+
+# ASCII characters that we want to URL encode,
+# because they might cause problems in various ways
+URLENCODE_ASCII_CHARS = set(
+    # ASCII invisible characters NUL, BEL, \t, \n, many others
+    "".join(chr(i) for i in range(0x00, 0x19+1)) +
+
+    # SPACE !"#$%&amp;'()*
+    "".join(chr(i) for i in range(0x20, 0x2A+1)) +
+
+    # :;&lt;=&gt;?@
+    "".join(chr(i) for i in range(0x3A, 0x40+1)) +
+
+    # [\]^
+    "".join(chr(i) for i in range(0x5B, 0x5E+1)) +
+
+    # `
+    "".join(chr(i) for i in range(0x60, 0x60+1)) +
+
+    # {|}
+    "".join(chr(i) for i in range(0x7B, 0x7D+1)) +
+
+    # DEL
+    "".join(chr(i) for i in range(0x7F, 0x7F+1))
+)</pre>
 
