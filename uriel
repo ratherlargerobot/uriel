@@ -55,7 +55,7 @@ from typing import Optional
 PROGRAM_NAME = "uriel"
 
 # program version
-VERSION = "1.7.0"
+VERSION = "1.7.1"
 
 # exit codes
 EXIT_OK = 0
@@ -4479,6 +4479,51 @@ def render_node_tree(project_root: str, node: Node) -> None:
     for child in node.get_children():
         render_node_tree(project_root, child)
 
+def get_visual_text_width(text: str) -> int:
+    """
+    Get the number of characters that this text uses when printed.
+
+    For a lot of text, this is the same as len(text).
+
+    However, some Unicode characters have lengths other than 1, and this
+    function tries to take that into account when computing the length.
+
+    Accepts a string.
+
+    Returns an integer with the number of visual characters taken up by the
+    input string.
+
+    """
+
+    # common case: printable ASCII text
+    # (fast path)
+    if text.isascii() and text.isprintable():
+        return len(text)
+
+    # special case: evaluate each Unicode character for display width
+    # (slow path)
+    visual_width = 0
+    for char in text:
+        # get the Unicode category for this character
+        category = unicodedata.category(char)
+
+        # M: Letter, Modifier
+        #    zero-width modifier for other characters (accents, diacritics)
+        if category.startswith("M"):
+            continue
+
+        # see if this character has an East Asian Width designation
+        eaw = unicodedata.east_asian_width(char)
+
+        # W: Wide
+        # F: Full Width
+        if eaw in ("W", "F"):
+            visual_width += 2
+        else:
+            visual_width += 1
+
+    return max(0, visual_width)
+
 def get_max_url_path_len(node: Node,
                          max_url_len: int = 0,
                          max_path_len: int = 0) -> Tuple[int, int]:
@@ -4490,8 +4535,8 @@ def get_max_url_path_len(node: Node,
     """
 
     # get the maximum length of the url and path for this node
-    url_len = len(node.get_encoded_url())
-    path_len = len(node.get_path())
+    url_len = get_visual_text_width(node.get_encoded_url())
+    path_len = get_visual_text_width(node.get_path())
 
     # raise the max values, if the new lengths are higher
     max_url_len = max(url_len, max_url_len)
@@ -4584,13 +4629,19 @@ def write_nodes(project_root: str,
     # create the directory, if it doesn't exist already
     os.makedirs(directory, exist_ok=True)
 
+    # figure out how many characters the node path will use for display,
+    # and then add padding (spaces) to the end to make the table align
+    node_path_width = get_visual_text_width(node.get_path())
+    padding = " " * (max_path_len - node_path_width)
+    node_path_with_padding = node.get_path() + padding
+
     # log this node being written
     #
     # node types in the first column are "file" or "virtual",
     # so a maximum of 7 characters
     log("%s | %s | %s" %
         (node.get_node_type().ljust(7),
-         node.get_path().ljust(max_path_len),
+         node_path_with_padding,
          node.get_encoded_url()))
 
     # make sure the URL is unique before we write the node

@@ -3092,6 +3092,49 @@ class TestFunctionRenderNodeTree(unittest.TestCase):
             self.assertEqual("<p>\nquux\n</p>\n", child.get_rendered_body())
 
 
+class TestFunctionGetVisualTextWidth(unittest.TestCase):
+    """
+    Tests the get_visual_text_width() function.
+
+    """
+
+    def test_empty(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(0, uriel.get_visual_text_width(""))
+
+    def test_slash(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(1, uriel.get_visual_text_width("/"))
+
+    def test_hello_world(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(11, uriel.get_visual_text_width("Hello World"))
+
+    def test_double_width_character(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(2, uriel.get_visual_text_width("ラ"))
+
+    def test_double_width_capybara(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(8, uriel.get_visual_text_width("カピバラ"))
+
+    def test_mixed_width_path(self):
+        c = UrielContainer()
+        uriel = c.uriel
+
+        self.assertEqual(10, uriel.get_visual_text_width("/カピバラ/"))
+
+
 class TestFunctionGetMaxUrlPathLen(unittest.TestCase):
     """
     Tests the get_max_url_path_len() function.

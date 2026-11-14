@@ -3,6 +3,10 @@ Uriel changelog
 https://uriel.foo/
 ------------------------------------------------------------------------------
 
+VERSION 1.7.1 (Nov 13 21:57 2026)
+------------------------------------------------------------------------------
+- Improve Unicode pretty printing log support in type/node/path table output
+
 VERSION 1.7.0 (Nov 9 18:43 2026)
 ------------------------------------------------------------------------------
 - Add URL encoding to generated node URLs and links
